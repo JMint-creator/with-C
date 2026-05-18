@@ -193,13 +193,14 @@ export default function App() {
   };
 
   useEffect(() => {
-    document.documentElement.style.backgroundColor = currentThemeConfig.bg;
-    document.body.style.backgroundColor = currentThemeConfig.bg;
+    const bgColor = view === 'home' ? currentThemeConfig.bg : '#F2F2F7';
+    document.documentElement.style.backgroundColor = bgColor;
+    document.body.style.backgroundColor = bgColor;
     return () => {
       document.documentElement.style.backgroundColor = '';
       document.body.style.backgroundColor = '';
     };
-  }, [currentThemeConfig.bg]);
+  }, [currentThemeConfig.bg, view]);
 
   if (view === 'data') {
     return (
@@ -322,7 +323,7 @@ export default function App() {
       <div 
         className="w-full max-w-[420px] mx-auto flex flex-col justify-between flex-1 gap-4 px-4 shrink-0"
         style={{
-          paddingBottom: 'max(1.5rem, calc(0.5rem + env(safe-area-inset-bottom)))',
+          paddingBottom: 'max(2rem, calc(1.5rem + env(safe-area-inset-bottom)))',
           paddingTop: 'max(1.5rem, calc(0.5rem + env(safe-area-inset-top)))'
         }}
       >
@@ -432,7 +433,7 @@ export default function App() {
           {apps.map((app, idx) => (
             <div key={app.name} className="flex flex-col items-center gap-1.5 cursor-pointer group">
               <div 
-                className="w-[66px] h-[66px] rounded-[22px] bg-white/65 backdrop-blur-lg border border-white/80 shadow-[0_4px_20px_-6px_rgba(0,0,0,0.06)] flex items-center justify-center group-hover:bg-white/75 transition-all group-active:scale-95"
+                className="w-[66px] h-[66px] rounded-[22px] bg-white/50 backdrop-blur-lg border border-white/60 shadow-[0_4px_20px_-6px_rgba(0,0,0,0.06)] flex items-center justify-center group-hover:bg-white/60 transition-all group-active:scale-95"
                 style={{ color: currentThemeConfig.textSecondary }}
               >
                 <app.icon size={28} strokeWidth={1.5} />
@@ -444,7 +445,7 @@ export default function App() {
 
         {/* Bottom Tools Pill */}
         <motion.div 
-          className="backdrop-blur-xl border border-white/60 rounded-[32px] p-3.5 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.06)] grid grid-cols-4 shrink-0 items-center justify-items-center transition-colors duration-500 mb-1"
+          className="backdrop-blur-xl border border-white/60 rounded-[32px] p-3.5 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.06)] grid grid-cols-4 shrink-0 items-center justify-items-center transition-colors duration-500 mb-3"
           style={{ backgroundColor: currentThemeConfig.cardBg }}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
