@@ -296,7 +296,7 @@ export default function App() {
 
   return (
     <div 
-      className="min-h-[100dvh] w-full text-[#333] font-sans flex flex-col items-center overflow-y-auto overflow-x-hidden selection:bg-[#DCD6CE]/50 transition-colors duration-500"
+      className="flex-1 w-full text-[#333] font-sans flex flex-col items-center overflow-x-hidden selection:bg-[#DCD6CE]/50 transition-colors duration-500 relative"
       style={{
         backgroundColor: currentThemeConfig.bg,
         backgroundImage: wallpaper ? `url(${wallpaper})` : 'none',
@@ -306,15 +306,18 @@ export default function App() {
         color: currentThemeConfig.textPrimary
       }}
     >
+      <div 
+         className="fixed inset-0 w-full h-full -z-10"
+         style={{ backgroundColor: currentThemeConfig.bg }}
+      />
       {chatCss && <style dangerouslySetInnerHTML={{ __html: chatCss }} />}
       {chatFont && <style dangerouslySetInnerHTML={{ __html: `@font-face { font-family: 'CustomChatFont'; src: url('${chatFont}'); } * { font-family: 'CustomChatFont', sans-serif !important; }`}} />}
 
       <div 
-        className="w-full max-w-[360px] mx-auto flex flex-col justify-between gap-5 px-5 shrink-0"
+        className="w-full max-w-[400px] mx-auto flex flex-col justify-between flex-1 gap-4 px-5 shrink-0"
         style={{
-          minHeight: '100dvh',
-          paddingBottom: 'max(1.5rem, calc(2rem + env(safe-area-inset-bottom)))',
-          paddingTop: 'max(1.5rem, calc(2rem + env(safe-area-inset-top)))'
+          paddingBottom: 'max(1.5rem, calc(0.5rem + env(safe-area-inset-bottom)))',
+          paddingTop: 'max(1.5rem, calc(0.5rem + env(safe-area-inset-top)))'
         }}
       >
         
