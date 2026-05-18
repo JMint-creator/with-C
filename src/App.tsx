@@ -254,7 +254,7 @@ export default function App() {
 
   return (
     <div 
-      className="h-[100dvh] w-full bg-[#EBE7DF] text-[#333] font-sans px-5 py-4 sm:py-6 flex flex-col items-center justify-center overflow-hidden selection:bg-[#DCD6CE]/50 transition-colors duration-500"
+      className="fixed inset-0 w-full bg-[#EBE7DF] text-[#333] font-sans px-5 flex flex-col items-center justify-center overflow-hidden selection:bg-[#DCD6CE]/50 transition-colors duration-500 pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]"
       style={{
         backgroundColor: currentThemeConfig.bg,
         backgroundImage: wallpaper ? `url(${wallpaper})` : 'none',
@@ -266,7 +266,7 @@ export default function App() {
       {chatCss && <style dangerouslySetInnerHTML={{ __html: chatCss }} />}
       {chatFont && <style dangerouslySetInnerHTML={{ __html: `@font-face { font-family: 'CustomChatFont'; src: url('${chatFont}'); } * { font-family: 'CustomChatFont', sans-serif !important; }`}} />}
 
-      <div className="w-full max-w-[360px] mx-auto h-full max-h-[850px] flex flex-col justify-between pt-safe pb-safe gap-3">
+      <div className="w-full max-w-[360px] mx-auto h-full max-h-[850px] flex flex-col justify-between gap-3 py-4 sm:py-6">
         
         {/* Profile Card */}
         <motion.div 
