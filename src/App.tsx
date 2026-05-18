@@ -44,42 +44,42 @@ const tools = [
 const colorThemes = {
   warm: { 
     bg: '#EBE7DF', 
-    cardBg: 'rgba(248, 246, 242, 0.15)', 
+    cardBg: 'rgba(248, 246, 242, 0.55)', 
     textPrimary: '#333333', 
     textSecondary: '#84817A',
     numColor: '#2B2B2B'
   },
   mint: { 
     bg: '#E3EBE6', 
-    cardBg: 'rgba(242, 248, 244, 0.15)', 
+    cardBg: 'rgba(242, 248, 244, 0.55)', 
     textPrimary: '#2C3A33', 
     textSecondary: '#7A8C82',
     numColor: '#1F2E26'
   },
   sakura: { 
     bg: '#EBE2E4', 
-    cardBg: 'rgba(249, 243, 245, 0.15)', 
+    cardBg: 'rgba(249, 243, 245, 0.55)', 
     textPrimary: '#3B2A2D', 
     textSecondary: '#8A7B7E',
     numColor: '#2D1B1E'
   },
   blue: {
     bg: '#E0E7ED',
-    cardBg: 'rgba(240, 244, 248, 0.15)',
+    cardBg: 'rgba(240, 244, 248, 0.55)',
     textPrimary: '#2B3A4A',
     textSecondary: '#7A8A9A',
     numColor: '#1A2A3A'
   },
   purple: {
     bg: '#E6E0ED',
-    cardBg: 'rgba(245, 240, 248, 0.15)',
+    cardBg: 'rgba(245, 240, 248, 0.55)',
     textPrimary: '#3A2B4A',
     textSecondary: '#8A7A9A',
     numColor: '#2A1A3A'
   }
 };
 
-const SettingItem = ({ icon: Icon, label, value, onClick, onChange, hideBorder = false }: any) => {
+const SettingItem = ({ icon: Icon, label, value, onClick, onChange, isTextarea = false, hideBorder = false }: any) => {
   return (
     <div 
       className={`flex items-center bg-white transition-colors pl-4 ${!onChange ? 'active:bg-gray-50 cursor-pointer' : ''}`}
@@ -109,28 +109,50 @@ const SettingItem = ({ icon: Icon, label, value, onClick, onChange, hideBorder =
   )
 }
 
+function useLocalState<T>(key: string, initialValue: T): [T, (val: T) => void] {
+  const [state, setState] = useState<T>(() => {
+    try {
+      const item = window.localStorage.getItem(key);
+      return item ? JSON.parse(item) : initialValue;
+    } catch (error) {
+      return initialValue;
+    }
+  });
+
+  const setValue = (value: T) => {
+    try {
+      setState(value);
+      window.localStorage.setItem(key, JSON.stringify(value));
+    } catch (error) {}
+  };
+
+  return [state, setValue];
+}
+
 export default function App() {
   const [view, setView] = useState<'home' | 'appearance'>('home');
 
   // UI States
-  const [wallpaper, setWallpaper] = useState('');
-  const [avatar1, setAvatar1] = useState('');
-  const [avatar2, setAvatar2] = useState('');
-  const [name1, setName1] = useState('Yuli');
-  const [name2, setName2] = useState('Milk');
-  const [motto, setMotto] = useState('沉睡中缠绵 · 清醒又幻灭');
+  const [wallpaper, setWallpaper] = useLocalState('app_wallpaper', '');
+  const [profileBg, setProfileBg] = useLocalState('app_profileBg', '');
+  const [avatar1, setAvatar1] = useLocalState('app_avatar1', '');
+  const [avatar2, setAvatar2] = useLocalState('app_avatar2', '');
+  const [name1, setName1] = useLocalState('app_name1', 'Yuli');
+  const [name2, setName2] = useLocalState('app_name2', 'Milk');
+  const [motto, setMotto] = useLocalState('app_motto', '沉睡中缠绵 · 清醒又幻灭');
 
   // Theme
-  const [theme, setTheme] = useState<'warm' | 'mint' | 'sakura' | 'blue' | 'purple'>('warm');
+  const [theme, setTheme] = useLocalState<'warm' | 'mint' | 'sakura' | 'blue' | 'purple'>('app_theme', 'warm');
 
   // Chat Settings
-  const [chatAvatar1, setChatAvatar1] = useState('');
-  const [chatAvatar2, setChatAvatar2] = useState('');
-  const [chatCss, setChatCss] = useState('');
-  const [chatFont, setChatFont] = useState('');
+  const [chatAvatar1, setChatAvatar1] = useLocalState('app_chatAvatar1', '');
+  const [chatAvatar2, setChatAvatar2] = useLocalState('app_chatAvatar2', '');
+  const [chatCss, setChatCss] = useLocalState('app_chatCss', '');
+  const [chatFont, setChatFont] = useLocalState('app_chatFont', '');
 
   // Refs
   const wallpaperInputRef = useRef<HTMLInputElement>(null);
+  const profileBgInputRef = useRef<HTMLInputElement>(null);
   const avatar1InputRef = useRef<HTMLInputElement>(null);
   const avatar2InputRef = useRef<HTMLInputElement>(null);
   const chatAvatar1InputRef = useRef<HTMLInputElement>(null);
@@ -181,12 +203,13 @@ export default function App() {
            <div className="mb-8">
               <div className="text-[13px] text-[#6d6d72] ml-4 mb-2 uppercase tracking-wide">界面美化</div>
               <div className="bg-white rounded-[10px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
-                 <SettingItem icon={ImageIcon} label="上传壁纸" value={wallpaper ? '已上传 (重新上传)' : '未设置'} onClick={() => wallpaperInputRef.current?.click()} />
+                 <SettingItem icon={ImageIcon} label="上传主壁纸" value={wallpaper ? '已上传 (重新上传)' : '未设置'} onClick={() => wallpaperInputRef.current?.click()} />
+                 <SettingItem icon={ImageIcon} label="上传顶部卡片图" value={profileBg ? '已上传' : '未设置'} onClick={() => profileBgInputRef.current?.click()} />
                  <SettingItem icon={User} label="顶部头像 1" value={avatar1 ? '已上传' : '未设置'} onClick={() => avatar1InputRef.current?.click()} />
                  <SettingItem icon={User} label="顶部头像 2" value={avatar2 ? '已上传' : '未设置'} onClick={() => avatar2InputRef.current?.click()} />
                  <SettingItem icon={Type} label="顶部昵称 1" value={name1} onChange={setName1} />
                  <SettingItem icon={Type} label="顶部昵称 2" value={name2} onChange={setName2} />
-                 <SettingItem icon={MessageCircle} label="顶部宣言" value={motto} onChange={setMotto} hideBorder={true}/>
+                 <SettingItem icon={MessageCircle} label="顶部宣言" value={motto} onChange={setMotto} isTextarea={true} hideBorder={true}/>
               </div>
            </div>
 
@@ -216,6 +239,7 @@ export default function App() {
 
         {/* Hidden inputs */}
         <input type="file" ref={wallpaperInputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setWallpaper)} />
+        <input type="file" ref={profileBgInputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setProfileBg)} />
         <input type="file" ref={avatar1InputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setAvatar1)} />
         <input type="file" ref={avatar2InputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setAvatar2)} />
         
@@ -246,37 +270,51 @@ export default function App() {
         
         {/* Profile Card */}
         <motion.div 
-          className="backdrop-blur-xl border border-white/60 rounded-[28px] p-4 flex flex-col items-center shadow-[0_8px_32px_-12px_rgba(0,0,0,0.06)] shrink-0 transition-colors duration-500"
-          style={{ backgroundColor: currentThemeConfig.cardBg }}
+          className="border border-white/60 rounded-[32px] flex flex-col items-center shadow-[0_8px_32px_-12px_rgba(0,0,0,0.06)] shrink-0 transition-colors duration-500 overflow-hidden w-full"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          {/* Avatars */}
-          <div className="relative mb-2 flex justify-center items-center w-full">
-            <div className="relative flex items-center justify-center">
-              <div 
-                className="w-[56px] h-[56px] rounded-full border-[1.5px] overflow-hidden flex items-center justify-center shadow-sm transition-transform hover:scale-105 cursor-pointer z-10 -mr-3"
-                style={{ borderColor: currentThemeConfig.cardBg, backgroundColor: currentThemeConfig.bg, color: currentThemeConfig.textSecondary }}
-                onClick={() => avatar1InputRef.current?.click()}
-              >
-                {avatar1 ? <img src={avatar1} className="w-full h-full object-cover" /> : <Cat size={24} strokeWidth={1.5} />}
-              </div>
-              <div 
-                className="w-[56px] h-[56px] rounded-full border-[1.5px] overflow-hidden flex items-center justify-center shadow-sm transition-transform hover:scale-105 cursor-pointer z-0"
-                style={{ borderColor: currentThemeConfig.cardBg, backgroundColor: currentThemeConfig.bg, color: currentThemeConfig.textSecondary }}
-                onClick={() => avatar2InputRef.current?.click()}
-              >
-                {avatar2 ? <img src={avatar2} className="w-full h-full object-cover" /> : <Cat size={24} strokeWidth={1.5} />}
+          {/* Header Image */}
+          <div 
+            className="w-full h-[140px] bg-cover bg-center shrink-0 relative"
+            style={{ 
+              backgroundImage: profileBg ? `url(${profileBg})` : 'none',
+              backgroundColor: currentThemeConfig.cardBg
+            }}
+          />
+          
+          {/* Bottom Frosted Container */}
+          <div 
+            className="w-full relative pt-[48px] pb-6 px-4 flex flex-col items-center backdrop-blur-xl"
+            style={{ backgroundColor: currentThemeConfig.cardBg }}
+          >
+            {/* Avatars */}
+            <div className="absolute -top-[36px] flex justify-center items-center w-full">
+              <div className="relative flex items-center justify-center">
+                <div 
+                  className="w-[72px] h-[72px] rounded-full border-[3px] overflow-hidden flex items-center justify-center shadow-sm transition-transform hover:scale-105 cursor-pointer z-10 -mr-4"
+                  style={{ borderColor: currentThemeConfig.bg, backgroundColor: currentThemeConfig.bg, color: currentThemeConfig.textSecondary }}
+                  onClick={() => avatar1InputRef.current?.click()}
+                >
+                  {avatar1 ? <img src={avatar1} className="w-full h-full object-cover" /> : <Cat size={30} strokeWidth={1.5} />}
+                </div>
+                <div 
+                  className="w-[72px] h-[72px] rounded-full border-[3px] overflow-hidden flex items-center justify-center shadow-sm transition-transform hover:scale-105 cursor-pointer z-0"
+                  style={{ borderColor: currentThemeConfig.bg, backgroundColor: currentThemeConfig.bg, color: currentThemeConfig.textSecondary }}
+                  onClick={() => avatar2InputRef.current?.click()}
+                >
+                  {avatar2 ? <img src={avatar2} className="w-full h-full object-cover" /> : <Cat size={30} strokeWidth={1.5} />}
+                </div>
               </div>
             </div>
+            
+            <div className="flex items-center gap-2 mb-2">
+              <h1 className="text-[19px] font-semibold tracking-wide">{name1}</h1>
+              <span className="text-[15px] font-light" style={{color: currentThemeConfig.textSecondary}}>&</span>
+              <h1 className="text-[19px] font-semibold tracking-wide">{name2}</h1>
+            </div>
+            <p className="text-[13px] leading-[1.6] text-center whitespace-pre-line" style={{color: currentThemeConfig.textSecondary}}>{motto}</p>
           </div>
-          
-          <div className="flex items-center gap-1.5 mb-1.5">
-            <h1 className="text-[17px] font-medium tracking-wide">{name1}</h1>
-            <span className="text-sm font-light" style={{color: currentThemeConfig.textSecondary}}>&</span>
-            <h1 className="text-[17px] font-medium tracking-wide">{name2}</h1>
-          </div>
-          <p className="text-[12px] mb-1" style={{color: currentThemeConfig.textSecondary}}>{motto}</p>
         </motion.div>
 
         {/* Widgets Row */}
@@ -327,7 +365,7 @@ export default function App() {
 
         {/* Apps Grid */}
         <motion.div 
-          className="grid grid-cols-4 gap-y-2 gap-x-2 pt-1 pb-1 shrink-0"
+          className="grid grid-cols-4 gap-y-4 gap-x-3 pt-1 pb-1 shrink-0"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
@@ -335,19 +373,19 @@ export default function App() {
           {apps.map((app, idx) => (
             <div key={app.name} className="flex flex-col items-center gap-1.5 cursor-pointer group">
               <div 
-                className="w-[60px] h-[60px] rounded-[20px] bg-white/40 border border-white/70 shadow-[0_4px_16px_-6px_rgba(0,0,0,0.05)] flex items-center justify-center group-hover:bg-white/60 transition-all group-active:scale-95"
+                className="w-[64px] h-[64px] rounded-[22px] bg-white/60 backdrop-blur-md border border-white/80 shadow-[0_4px_16px_-6px_rgba(0,0,0,0.06)] flex items-center justify-center group-hover:bg-white/70 transition-all group-active:scale-95"
                 style={{ color: currentThemeConfig.textSecondary }}
               >
-                <app.icon size={26} strokeWidth={1.25} />
+                <app.icon size={28} strokeWidth={1.25} />
               </div>
-              <span className="text-[11px]" style={{ color: currentThemeConfig.textSecondary }}>{app.name}</span>
+              <span className="text-[12px] font-medium" style={{ color: currentThemeConfig.textSecondary }}>{app.name}</span>
             </div>
           ))}
         </motion.div>
 
         {/* Bottom Tools Pill */}
         <motion.div 
-          className="backdrop-blur-xl border border-white/60 rounded-[28px] p-3 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.06)] grid grid-cols-4 shrink-0 items-center justify-items-center transition-colors duration-500"
+          className="backdrop-blur-xl border border-white/60 rounded-[32px] p-3.5 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.06)] grid grid-cols-4 shrink-0 items-center justify-items-center transition-colors duration-500"
           style={{ backgroundColor: currentThemeConfig.cardBg }}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -360,12 +398,12 @@ export default function App() {
               onClick={() => tool.name === '外观设置' && setView('appearance')}
             >
               <div 
-                className="w-[50px] h-[50px] rounded-[18px] bg-white/40 border border-white/70 shadow-[0_4px_12px_-6px_rgba(0,0,0,0.04)] flex items-center justify-center group-hover:bg-white/60 transition-all group-active:scale-95"
+                className="w-[52px] h-[52px] rounded-[18px] bg-white/50 backdrop-blur-md border border-white/80 shadow-[0_4px_12px_-6px_rgba(0,0,0,0.04)] flex items-center justify-center group-hover:bg-white/65 transition-all group-active:scale-95"
                 style={{ color: currentThemeConfig.textSecondary }}
               >
                 <tool.icon size={22} strokeWidth={1.25} />
               </div>
-              <span className="text-[10px] leading-none" style={{ color: currentThemeConfig.textSecondary }}>{tool.name}</span>
+              <span className="text-[11px] leading-none mt-0.5 font-medium" style={{ color: currentThemeConfig.textSecondary }}>{tool.name}</span>
             </div>
           ))}
         </motion.div>
