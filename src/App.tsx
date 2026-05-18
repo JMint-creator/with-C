@@ -130,7 +130,7 @@ function useLocalState<T>(key: string, initialValue: T): [T, (val: T) => void] {
 }
 
 export default function App() {
-  const [view, setView] = useState<'home' | 'appearance'>('home');
+  const [view, setView] = useState<'home' | 'appearance' | 'data'>('home');
 
   // UI States
   const [wallpaper, setWallpaper] = useLocalState('app_wallpaper', '');
@@ -183,7 +183,83 @@ export default function App() {
     e.target.value = '';
   }
 
+  const exportData = () => {
+    const data = {
+      app_wallpaper: localStorage.getItem('app_wallpaper'),
+      app_profileBg: localStorage.getItem('app_profileBg'),
+      app_avatar1: localStorage.getItem('app_avatar1'),
+      app_avatar2: localStorage.getItem('app_avatar2'),
+      app_name1: localStorage.getItem('app_name1'),
+      app_name2: localStorage.getItem('app_name2'),
+      app_motto: localStorage.getItem('app_motto'),
+      app_theme: localStorage.getItem('app_theme'),
+      app_chatAvatar1: localStorage.getItem('app_chatAvatar1'),
+      app_chatAvatar2: localStorage.getItem('app_chatAvatar2'),
+      app_chatCss: localStorage.getItem('app_chatCss'),
+      app_chatFont: localStorage.getItem('app_chatFont'),
+    };
+    navigator.clipboard.writeText(JSON.stringify(data)).then(() => {
+        alert('配置代码已复制到剪贴板！请到桌面版的“数据管理”中点击导入配置并粘贴。');
+    }).catch(() => {
+        alert('复制失败，请重试');
+    });
+  };
+
+  const importData = () => {
+    const input = prompt('请在此粘贴你的配置数据（由网页版导出的代码）：');
+    if (input) {
+        try {
+            const data = JSON.parse(input);
+            if (data) {
+                if (data.app_wallpaper !== undefined) localStorage.setItem('app_wallpaper', data.app_wallpaper || '');
+                if (data.app_profileBg !== undefined) localStorage.setItem('app_profileBg', data.app_profileBg || '');
+                if (data.app_avatar1 !== undefined) localStorage.setItem('app_avatar1', data.app_avatar1 || '');
+                if (data.app_avatar2 !== undefined) localStorage.setItem('app_avatar2', data.app_avatar2 || '');
+                if (data.app_name1 !== undefined) localStorage.setItem('app_name1', data.app_name1 || '');
+                if (data.app_name2 !== undefined) localStorage.setItem('app_name2', data.app_name2 || '');
+                if (data.app_motto !== undefined) localStorage.setItem('app_motto', data.app_motto || '');
+                if (data.app_theme !== undefined) localStorage.setItem('app_theme', data.app_theme || '');
+                if (data.app_chatAvatar1 !== undefined) localStorage.setItem('app_chatAvatar1', data.app_chatAvatar1 || '');
+                if (data.app_chatAvatar2 !== undefined) localStorage.setItem('app_chatAvatar2', data.app_chatAvatar2 || '');
+                if (data.app_chatCss !== undefined) localStorage.setItem('app_chatCss', data.app_chatCss || '');
+                if (data.app_chatFont !== undefined) localStorage.setItem('app_chatFont', data.app_chatFont || '');
+                alert('配置导入成功！点击确定将重新加载应用。');
+                window.location.reload();
+            }
+        } catch (e) {
+            alert('配置数据格式错误，请检查是否完整复制！');
+        }
+    }
+  };
+
   const currentThemeConfig = colorThemes[theme];
+
+  if (view === 'data') {
+    return (
+      <div className="fixed inset-0 bg-[#F2F2F7] z-50 flex flex-col font-sans overflow-x-hidden overflow-y-auto w-full">
+        {chatFont && <style dangerouslySetInnerHTML={{ __html: `@font-face { font-family: 'CustomChatFont'; src: url('${chatFont}'); } * { font-family: 'CustomChatFont', sans-serif !important; }`}} />}
+        <div className="w-full flex items-center justify-between px-3 py-3 bg-[#F2F2F7] sticky top-0 z-10 border-b border-[#c6c6c8]/50 shadow-sm">
+          <button onClick={() => setView('home')} className="text-[#007AFF] text-[17px] flex items-center active:opacity-50 transition-opacity">
+            <ChevronLeft size={24} className="-ml-1.5" />返回
+          </button>
+          <span className="text-[17px] font-semibold text-black">数据管理</span>
+          <div className="w-[60px]"></div>
+        </div>
+        <div className="w-full max-w-md mx-auto px-4 pb-12 pt-6">
+           <div className="mb-8">
+              <div className="text-[13px] text-[#6d6d72] ml-4 mb-2 uppercase tracking-wide">数据同步（Safari添加到桌面必备）</div>
+              <div className="bg-white rounded-[10px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+                 <SettingItem icon={Database} label="1. 导出配置项" value="在 Safari 网页中点击" onClick={exportData} />
+                 <SettingItem icon={Database} label="2. 导入配置项" value="在桌面版 app 中点击" onClick={importData} hideBorder={true} />
+              </div>
+              <p className="text-[12px] text-[#8e8e93] mt-3 ml-4 leading-relaxed">
+                * 由于 iOS 系统的限制，网页添加到桌面后会产生一个全新的沙盒环境。请先在 Safari 浏览器中设置好所有内容后，点击“导出配置项”，然后打开添加到桌面的应用，进入数据管理点击“导入配置项”，粘贴刚才复制的代码即可同步数据！
+              </p>
+           </div>
+        </div>
+      </div>
+    );
+  }
 
   if (view === 'appearance') {
     return (
@@ -254,7 +330,7 @@ export default function App() {
 
   return (
     <div 
-      className="fixed inset-0 w-full bg-[#EBE7DF] text-[#333] font-sans px-5 flex flex-col items-center justify-center overflow-hidden selection:bg-[#DCD6CE]/50 transition-colors duration-500 pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]"
+      className="fixed inset-0 w-full text-[#333] font-sans px-5 flex flex-col items-center justify-center overflow-hidden selection:bg-[#DCD6CE]/50 transition-colors duration-500 pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]"
       style={{
         backgroundColor: currentThemeConfig.bg,
         backgroundImage: wallpaper ? `url(${wallpaper})` : 'none',
@@ -263,6 +339,10 @@ export default function App() {
         color: currentThemeConfig.textPrimary
       }}
     >
+      <div 
+         className="absolute inset-0 w-full h-full -z-10"
+         style={{ backgroundColor: currentThemeConfig.bg }}
+      />
       {chatCss && <style dangerouslySetInnerHTML={{ __html: chatCss }} />}
       {chatFont && <style dangerouslySetInnerHTML={{ __html: `@font-face { font-family: 'CustomChatFont'; src: url('${chatFont}'); } * { font-family: 'CustomChatFont', sans-serif !important; }`}} />}
 
@@ -365,7 +445,7 @@ export default function App() {
 
         {/* Apps Grid */}
         <motion.div 
-          className="grid grid-cols-4 gap-y-4 gap-x-3 pt-1 pb-1 shrink-0"
+          className="grid grid-cols-4 gap-y-4 gap-x-3 pt-1 pb-1 shrink-0 px-1"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
@@ -373,10 +453,10 @@ export default function App() {
           {apps.map((app, idx) => (
             <div key={app.name} className="flex flex-col items-center gap-1.5 cursor-pointer group">
               <div 
-                className="w-[64px] h-[64px] rounded-[22px] bg-white/60 backdrop-blur-md border border-white/80 shadow-[0_4px_16px_-6px_rgba(0,0,0,0.06)] flex items-center justify-center group-hover:bg-white/70 transition-all group-active:scale-95"
+                className="w-[66px] h-[66px] rounded-[22px] bg-white/75 backdrop-blur-xl border border-white/90 shadow-[0_4px_20px_-6px_rgba(0,0,0,0.08)] flex items-center justify-center group-hover:bg-white/85 transition-all group-active:scale-95"
                 style={{ color: currentThemeConfig.textSecondary }}
               >
-                <app.icon size={28} strokeWidth={1.25} />
+                <app.icon size={28} strokeWidth={1.5} />
               </div>
               <span className="text-[12px] font-medium" style={{ color: currentThemeConfig.textSecondary }}>{app.name}</span>
             </div>
@@ -385,7 +465,7 @@ export default function App() {
 
         {/* Bottom Tools Pill */}
         <motion.div 
-          className="backdrop-blur-xl border border-white/60 rounded-[32px] p-3.5 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.06)] grid grid-cols-4 shrink-0 items-center justify-items-center transition-colors duration-500"
+          className="backdrop-blur-xl border border-white/60 rounded-[32px] p-3.5 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.06)] grid grid-cols-4 shrink-0 items-center justify-items-center transition-colors duration-500 mb-2"
           style={{ backgroundColor: currentThemeConfig.cardBg }}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -395,7 +475,10 @@ export default function App() {
             <div 
               key={tool.name} 
               className="flex flex-col items-center justify-center gap-1.5 cursor-pointer group"
-              onClick={() => tool.name === '外观设置' && setView('appearance')}
+              onClick={() => {
+                if (tool.name === '外观设置') setView('appearance');
+                if (tool.name === '数据管理') setView('data');
+              }}
             >
               <div 
                 className="w-[52px] h-[52px] rounded-[18px] bg-white/50 backdrop-blur-md border border-white/80 shadow-[0_4px_12px_-6px_rgba(0,0,0,0.04)] flex items-center justify-center group-hover:bg-white/65 transition-all group-active:scale-95"
