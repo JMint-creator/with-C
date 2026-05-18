@@ -347,7 +347,7 @@ export default function App() {
 
         {/* Bottom Tools Pill */}
         <motion.div 
-          className="backdrop-blur-xl border border-white/60 rounded-[28px] px-3 py-2 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.06)] grid grid-cols-4 shrink-0 transition-colors duration-500"
+          className="backdrop-blur-xl border border-white/60 rounded-[28px] p-3 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.06)] grid grid-cols-4 shrink-0 items-center justify-items-center transition-colors duration-500"
           style={{ backgroundColor: currentThemeConfig.cardBg }}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -356,7 +356,7 @@ export default function App() {
           {tools.map(tool => (
             <div 
               key={tool.name} 
-              className="flex flex-col items-center gap-1.5 cursor-pointer group"
+              className="flex flex-col items-center justify-center gap-1.5 cursor-pointer group"
               onClick={() => tool.name === '外观设置' && setView('appearance')}
             >
               <div 
@@ -365,7 +365,7 @@ export default function App() {
               >
                 <tool.icon size={22} strokeWidth={1.25} />
               </div>
-              <span className="text-[10px]" style={{ color: currentThemeConfig.textSecondary }}>{tool.name}</span>
+              <span className="text-[10px] leading-none" style={{ color: currentThemeConfig.textSecondary }}>{tool.name}</span>
             </div>
           ))}
         </motion.div>
