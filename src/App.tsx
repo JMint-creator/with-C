@@ -205,7 +205,10 @@ export default function App() {
     return (
       <div className="fixed inset-0 bg-[#F2F2F7] z-50 flex flex-col font-sans overflow-x-hidden overflow-y-auto w-full">
         {chatFont && <style dangerouslySetInnerHTML={{ __html: `@font-face { font-family: 'CustomChatFont'; src: url('${chatFont}'); } * { font-family: 'CustomChatFont', sans-serif !important; }`}} />}
-        <div className="w-full flex items-center justify-between px-3 py-3 bg-[#F2F2F7] sticky top-0 z-10 border-b border-[#c6c6c8]/50 shadow-sm">
+        <div 
+          className="w-full flex items-center justify-between px-3 pb-3 bg-[#F2F2F7] sticky top-0 z-10 border-b border-[#c6c6c8]/50 shadow-sm"
+          style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))' }}
+        >
           <button onClick={() => setView('home')} className="text-[#007AFF] text-[17px] flex items-center active:opacity-50 transition-opacity">
             <ChevronLeft size={24} className="-ml-1.5" />返回
           </button>
@@ -232,7 +235,10 @@ export default function App() {
       <div className="fixed inset-0 bg-[#F2F2F7] z-50 flex flex-col font-sans overflow-x-hidden overflow-y-auto w-full">
         {chatFont && <style dangerouslySetInnerHTML={{ __html: `@font-face { font-family: 'CustomChatFont'; src: url('${chatFont}'); } * { font-family: 'CustomChatFont', sans-serif !important; }`}} />}
         {/* Header */}
-        <div className="w-full flex items-center justify-between px-3 py-3 bg-[#F2F2F7] sticky top-0 z-10 border-b border-[#c6c6c8]/50 shadow-sm">
+        <div 
+          className="w-full flex items-center justify-between px-3 pb-3 bg-[#F2F2F7] sticky top-0 z-10 border-b border-[#c6c6c8]/50 shadow-sm"
+          style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))' }}
+        >
           <button onClick={() => setView('home')} className="text-[#007AFF] text-[17px] flex items-center active:opacity-50 transition-opacity">
             <ChevronLeft size={24} className="-ml-1.5" />返回
           </button>
@@ -314,7 +320,7 @@ export default function App() {
       {chatFont && <style dangerouslySetInnerHTML={{ __html: `@font-face { font-family: 'CustomChatFont'; src: url('${chatFont}'); } * { font-family: 'CustomChatFont', sans-serif !important; }`}} />}
 
       <div 
-        className="w-full max-w-[400px] mx-auto flex flex-col justify-between flex-1 gap-4 px-5 shrink-0"
+        className="w-full max-w-[420px] mx-auto flex flex-col justify-between flex-1 gap-4 px-4 shrink-0"
         style={{
           paddingBottom: 'max(1.5rem, calc(0.5rem + env(safe-area-inset-bottom)))',
           paddingTop: 'max(1.5rem, calc(0.5rem + env(safe-area-inset-top)))'
@@ -418,7 +424,7 @@ export default function App() {
 
         {/* Apps Grid */}
         <motion.div 
-          className="grid grid-cols-4 gap-y-4 gap-x-3 pt-1 pb-1 shrink-0 px-1"
+          className="grid grid-cols-4 gap-y-2.5 gap-x-3 pt-1 pb-1 shrink-0 px-1"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
@@ -426,7 +432,7 @@ export default function App() {
           {apps.map((app, idx) => (
             <div key={app.name} className="flex flex-col items-center gap-1.5 cursor-pointer group">
               <div 
-                className="w-[66px] h-[66px] rounded-[22px] bg-white/75 backdrop-blur-xl border border-white/90 shadow-[0_4px_20px_-6px_rgba(0,0,0,0.08)] flex items-center justify-center group-hover:bg-white/85 transition-all group-active:scale-95"
+                className="w-[66px] h-[66px] rounded-[22px] bg-white/65 backdrop-blur-lg border border-white/80 shadow-[0_4px_20px_-6px_rgba(0,0,0,0.06)] flex items-center justify-center group-hover:bg-white/75 transition-all group-active:scale-95"
                 style={{ color: currentThemeConfig.textSecondary }}
               >
                 <app.icon size={28} strokeWidth={1.5} />
@@ -438,7 +444,7 @@ export default function App() {
 
         {/* Bottom Tools Pill */}
         <motion.div 
-          className="backdrop-blur-xl border border-white/60 rounded-[32px] p-3.5 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.06)] grid grid-cols-4 shrink-0 items-center justify-items-center transition-colors duration-500 mt-auto"
+          className="backdrop-blur-xl border border-white/60 rounded-[32px] p-3.5 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.06)] grid grid-cols-4 shrink-0 items-center justify-items-center transition-colors duration-500 mb-1"
           style={{ backgroundColor: currentThemeConfig.cardBg }}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
