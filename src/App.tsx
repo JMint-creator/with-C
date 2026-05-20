@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   MessageCircle, 
   Mail, 
@@ -203,7 +203,7 @@ const DecideView = ({ onClose, themeConfig, onStartDecide, isDeciding }: { onClo
   };
 
   return (
-    <div className="flex-1 w-full flex flex-col font-sans overflow-x-hidden relative" style={{ backgroundColor: themeConfig.bg }}>
+    <div className="flex-1 h-full w-full flex flex-col font-sans overflow-x-hidden overflow-y-auto relative scrollable-content" style={{ backgroundColor: themeConfig.bg }}>
       {/* Header */}
       <div className="w-full flex items-center justify-between px-4 pb-3 sticky top-0 z-10 pt-[max(1rem,env(safe-area-inset-top))]" style={{ backgroundColor: themeConfig.bg ? themeConfig.bg + 'cc' : '#fcfbf9cc', backdropFilter: 'blur(12px)' }}>
           <button onClick={onClose} className="text-[#8e8e93] text-[15px] flex items-center active:opacity-50 transition-opacity w-[60px]">
@@ -375,7 +375,7 @@ export default function App() {
   const [motto, setMotto] = useLocalState('app_motto', '沉睡中缠绵 · 清醒又幻灭');
 
   // Theme
-  const [theme, setTheme] = useLocalState<'warm' | 'mint' | 'sakura' | 'blue' | 'purple'>('app_theme', 'warm');
+  const [theme, setTheme] = useLocalState<'warm' | 'mint' | 'sakura' | 'blue' | 'purple' | 'red'>('app_theme', 'warm');
 
   // Chat Settings
   const [chatBg, setChatBg] = useLocalState('app_chatBg', '');
@@ -418,7 +418,7 @@ export default function App() {
       setIsMusicPlaying(false);
       return;
     }
-    setCurrentMusicIndex(prev => (prev + 1) % musicList.length);
+    setCurrentMusicIndex((currentMusicIndex + 1) % musicList.length);
   };
 
   useEffect(() => {
@@ -488,12 +488,12 @@ export default function App() {
   };
   const prevMusic = () => {
     if (musicList.length === 0) return;
-    setCurrentMusicIndex(prev => (prev - 1 + musicList.length) % musicList.length);
+    setCurrentMusicIndex((currentMusicIndex - 1 + musicList.length) % musicList.length);
     setIsMusicPlaying(true);
   };
   const nextMusic = () => {
     if (musicList.length === 0) return;
-    setCurrentMusicIndex(prev => (prev + 1) % musicList.length);
+    setCurrentMusicIndex((currentMusicIndex + 1) % musicList.length);
     setIsMusicPlaying(true);
   };
 
@@ -577,11 +577,6 @@ export default function App() {
     document.body.style.backgroundSize = 'cover';
     document.body.style.backgroundPosition = 'center';
     document.body.style.backgroundAttachment = 'fixed';
-    
-    const themeColorMeta = document.getElementById('theme-color-meta');
-    if (themeColorMeta) {
-      themeColorMeta.setAttribute('content', bgColor);
-    }
     
     return () => {
       document.documentElement.style.backgroundColor = '';
@@ -778,7 +773,7 @@ export default function App() {
 
   if (view === 'data') {
     return (
-      <div className="flex-1 w-full bg-[#F2F2F7] flex flex-col overflow-x-hidden relative text-[12px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
+      <div className="flex-1 w-full bg-[#F2F2F7] flex flex-col h-full overflow-x-hidden overflow-y-auto relative text-[12px] scrollable-content" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
         
         <div 
           className="w-full flex items-center justify-between px-3 pb-3 bg-[#F2F2F7] sticky top-0 z-10 border-b border-[#c6c6c8]/50 shadow-sm"
@@ -808,7 +803,7 @@ export default function App() {
 
   if (view === 'library') {
     return (
-      <div className="flex-1 w-full bg-[#F2F2F7] flex flex-col overflow-x-hidden relative text-[11px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
+      <div className="flex-1 w-full bg-[#F2F2F7] flex flex-col h-full overflow-x-hidden overflow-y-auto relative text-[11px] scrollable-content" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
         
         
         {/* Header */}
@@ -842,11 +837,11 @@ export default function App() {
                                 input.type = 'file';
                                 input.accept = '.js,.json,text/plain';
                                 input.onchange = (e) => {
-                                    const file = e.target.files[0];
+                                    const file = (e.target as HTMLInputElement).files?.[0];
                                     if (!file) return;
                                     const reader = new FileReader();
                                     reader.onload = (event) => {
-                                        const content = event.target?.result;
+                                        const content = event.target?.result as string;
                                         try {
                                             let data = null;
                                             try {
@@ -1013,7 +1008,7 @@ export default function App() {
                           const files = e.target.files;
                           if (!files) return;
                           const newStickers = [...stickers];
-                          Array.from(files).forEach(file => {
+                          Array.from(files).forEach((file: File) => {
                               const reader = new FileReader();
                               reader.onload = (event) => {
                                   newStickers.push(event.target?.result as string);
@@ -1119,7 +1114,7 @@ export default function App() {
 
   if (view === 'music_manager') {
     return (
-      <div className="flex-1 w-full bg-[#F2F2F7] flex flex-col overflow-x-hidden relative text-[14px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
+      <div className="flex-1 w-full bg-[#F2F2F7] flex flex-col h-full overflow-x-hidden overflow-y-auto relative text-[14px] scrollable-content" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
         <div 
           className="w-full flex items-center justify-between px-3 pb-3 bg-[#F2F2F7] sticky top-0 z-10 border-b border-[#c6c6c8]/50 shadow-sm"
           style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))' }}
@@ -1171,7 +1166,7 @@ export default function App() {
 
   if (view === 'appearance') {
     return (
-      <div className="flex-1 w-full bg-[#F2F2F7] flex flex-col overflow-x-hidden relative text-[11px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
+      <div className="flex-1 w-full bg-[#F2F2F7] flex flex-col h-full overflow-x-hidden overflow-y-auto relative text-[11px] scrollable-content" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
         
         {/* Header */}
         <div 
@@ -1254,7 +1249,7 @@ export default function App() {
 
   return (
     <div 
-      className="flex-1 w-full text-[#333] font-sans flex flex-col items-center overflow-x-hidden selection:bg-[#DCD6CE]/50 transition-colors duration-500 relative"
+      className="flex-1 w-full text-[#333] font-sans flex flex-col items-center overflow-x-hidden overflow-y-auto selection:bg-[#DCD6CE]/50 transition-colors duration-500 relative h-full scrollable-content"
       style={{
         color: currentThemeConfig.textPrimary
       }}
