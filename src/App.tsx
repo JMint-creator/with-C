@@ -564,14 +564,26 @@ export default function App() {
 
   useEffect(() => {
     let bgColor = currentThemeConfig.bg;
+    let bgImage = 'none';
+    
+    if (view === 'home' && wallpaper) bgImage = `url(${wallpaper})`;
+    if (view === 'chat' && chatBg) bgImage = `url(${chatBg})`;
+    
     if (view !== 'home' && view !== 'chat') bgColor = '#F2F2F7';
+    
     document.documentElement.style.backgroundColor = bgColor;
     document.body.style.backgroundColor = bgColor;
+    document.body.style.backgroundImage = bgImage;
+    document.body.style.backgroundSize = 'cover';
+    document.body.style.backgroundPosition = 'center';
+    document.body.style.backgroundAttachment = 'fixed';
+    
     return () => {
       document.documentElement.style.backgroundColor = '';
       document.body.style.backgroundColor = '';
+      document.body.style.backgroundImage = '';
     };
-  }, [currentThemeConfig.bg, view]);
+  }, [currentThemeConfig.bg, view, wallpaper, chatBg]);
 
   const [showAddMusicModal, setShowAddMusicModal] = useState(false);
   const [addMusicName, setAddMusicName] = useState('');
@@ -1239,18 +1251,9 @@ export default function App() {
     <div 
       className="flex-1 w-full text-[#333] font-sans flex flex-col items-center overflow-x-hidden selection:bg-[#DCD6CE]/50 transition-colors duration-500 relative min-h-[100dvh]"
       style={{
-        backgroundColor: currentThemeConfig.bg,
-        backgroundImage: wallpaper ? `url(${wallpaper})` : 'none',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundAttachment: 'fixed',
         color: currentThemeConfig.textPrimary
       }}
     >
-      <div 
-         className="fixed inset-0 w-full h-full -z-10"
-         style={{ backgroundColor: currentThemeConfig.bg }}
-      />
       {chatCss && <style dangerouslySetInnerHTML={{ __html: chatCss }} />}
       {chatFont && <style dangerouslySetInnerHTML={{ __html: `@font-face { font-family: 'CustomChatFont'; src: url('${chatFont}'); } * { font-family: 'CustomChatFont', sans-serif !important; }`}} />}
 

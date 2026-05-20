@@ -316,8 +316,8 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
   const customStyle = chatFont ? { fontFamily: 'CustomChatFont, sans-serif' } : {};
 
   return (
-    <div className="fixed inset-0 w-full h-full overflow-hidden z-50" style={{ ...customStyle, backgroundColor: themeConfig.bg }}>
-      {chatBg && <img src={chatBg} alt="" className="absolute inset-0 w-full h-full object-cover z-0" />}
+    <div className="fixed inset-0 overflow-hidden z-50 transition-colors" style={{ ...customStyle, backgroundColor: themeConfig.bg }}>
+      {chatBg && <img src={chatBg} alt="" className="absolute inset-0 object-cover pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 0 }} /> }
       {chatFont && <style dangerouslySetInnerHTML={{ __html: `@font-face { font-family: 'CustomChatFont'; src: url('${chatFont}'); }` }} />}
       {chatCss && <style dangerouslySetInnerHTML={{ __html: chatCss }} />}
       
@@ -345,7 +345,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} className="absolute inset-0 overflow-y-auto px-4 pt-[calc(env(safe-area-inset-top)+80px)] pb-[calc(env(safe-area-inset-bottom)+120px)] flex flex-col scrollbar-hide z-0">
+      <div ref={scrollRef} className="absolute inset-0 overflow-y-auto px-4 pt-[calc(env(safe-area-inset-top)+80px)] pb-[calc(env(safe-area-inset-bottom)+120px)] flex flex-col scrollbar-hide z-10">
         {messages.map((msg, i) => {
           const isMe = msg.sender === 'me';
           const avatar = isMe ? (avatar1 || '') : (avatar2 || '');
