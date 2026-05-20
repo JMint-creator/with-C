@@ -33,7 +33,6 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
   const [mockVideo] = useLocalState('app_chatMockVideoCall', true);
   const [cardGroups] = useLocalState<any[]>('app_cardGroups', []);
   const replyCards = cardGroups.flatMap(g => g.cards).map(content => ({ content }));
-  const [statuses] = useLocalState<any[]>('app_atmosphereStatuses', []);
   const [receiptStyle] = useLocalState('app_chatReceiptStyle', 'graphic');
   const [readReceipt] = useLocalState('app_chatReadReceipt', true);
   const [readNoReply] = useLocalState('app_chatReadNoReply', false);
@@ -78,23 +77,6 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
   const primaryColor = themeConfig.textPrimary || '#a894a7';
   const [chatBubbleColor] = useLocalState('app_chatBubbleColor', '');
   const bubbleColor = chatBubbleColor || primaryColor;
-
-  const [dynamicStatus, setDynamicStatus] = useState('在线');
-
-  useEffect(() => {
-    if (statuses.length === 0) return;
-    setDynamicStatus(statuses[Math.floor(Math.random() * statuses.length)].content);
-    let timer: any;
-    const scheduleNextStatus = () => {
-      const waitHours = 1 + Math.random() * 7;
-      timer = setTimeout(() => {
-         setDynamicStatus(statuses[Math.floor(Math.random() * statuses.length)].content);
-         scheduleNextStatus();
-      }, Math.floor(waitHours * 3600 * 1000));
-    };
-    scheduleNextStatus();
-    return () => clearTimeout(timer);
-  }, [statuses]);
 
   useEffect(() => {
     let timer: any;
@@ -334,7 +316,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
   const customStyle = chatFont ? { fontFamily: 'CustomChatFont, sans-serif' } : {};
 
   return (
-    <div className="fixed inset-0 w-full h-[100dvh] overflow-hidden z-50 bg-white" style={{ ...customStyle, backgroundColor: themeConfig.bg }}>
+    <div className="fixed inset-0 w-full h-full overflow-hidden z-50" style={{ ...customStyle, backgroundColor: themeConfig.bg }}>
       {chatBg && <img src={chatBg} alt="" className="absolute inset-0 w-full h-full object-cover z-0" />}
       {chatFont && <style dangerouslySetInnerHTML={{ __html: `@font-face { font-family: 'CustomChatFont'; src: url('${chatFont}'); }` }} />}
       {chatCss && <style dangerouslySetInnerHTML={{ __html: chatCss }} />}
@@ -344,20 +326,18 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
         <button onClick={onClose} className="w-[70px] flex items-center p-1 text-black/60 active:opacity-50 transition-opacity">
           <ChevronLeft size={26} className="-ml-1" />
         </button>
-        <div className="flex-1 flex items-center justify-center space-x-3 h-[38px]">
+        <div className="flex-1 flex items-center justify-center space-x-2 h-[38px]">
           {avatar2 && (
-            <div className="w-[38px] h-[38px] rounded-full overflow-hidden shadow-sm border border-black/5 shrink-0 bg-white">
+            <div className="w-[34px] h-[34px] rounded-full overflow-hidden shadow-sm border border-black/5 shrink-0 bg-white">
               <img src={avatar2} alt="" className="w-full h-full object-cover" />
             </div>
           )}
-          <div className="flex flex-col items-start justify-between h-[38px] py-[2px]">
-            <input 
-              value={charId}
-              onChange={e => setCharId(e.target.value)}
-              className="text-[15px] font-medium text-left bg-transparent outline-none m-0 p-0 text-black max-w-[120px] leading-none"
-            />
-            <div className="text-[11px] leading-none text-black/40">{dynamicStatus}</div>
-          </div>
+          <input 
+            value={charId}
+            onChange={e => setCharId(e.target.value)}
+            className="text-[18px] font-semibold text-center bg-transparent outline-none m-0 p-0 text-black leading-none"
+            style={{ width: `${Math.max(1, charId.length) * 1.1 + 0.5}em` }}
+          />
         </div>
         <div className="w-[70px] flex items-center justify-end pr-1">
           <button onClick={onOpenSettings} className="text-black/60 active:opacity-50 transition-opacity p-1.5"><MoreHorizontal size={24} /></button>
@@ -436,7 +416,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
                          {receiptStyle === 'text' ? (
                            <span style={{color: isRead ? bubbleColor : 'inherit'}} className={isRead ? 'font-medium' : ''}>{isRead ? '已读' : '送达'}</span>
                          ) : (
-                           isRead ? <CheckCheck size={16} strokeWidth={2} style={{color: bubbleColor}} /> : <Check size={16} strokeWidth={2} className="opacity-40" />
+                           isRead ? <CheckCheck size={18} strokeWidth={2.5} style={{color: bubbleColor, marginLeft: '2px'}} /> : <Check size={16} strokeWidth={2} className="opacity-40" />
                          )}
                       </span>
                     )}
@@ -474,22 +454,22 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            className="absolute bottom-[calc(4rem+env(safe-area-inset-bottom))] left-3 right-3 bg-white/70 backdrop-blur-xl rounded-[16px] py-4 flex justify-center space-x-4 items-center z-20 shadow-[0_10px_40px_rgba(0,0,0,0.08)] border border-white/50"
+            className="absolute bottom-[calc(4rem+env(safe-area-inset-bottom))] left-3 right-3 bg-white/70 backdrop-blur-xl rounded-[16px] py-4 flex justify-around px-2 items-center z-20 shadow-[0_10px_40px_rgba(0,0,0,0.08)] border border-white/50"
           >
-             <button className="flex flex-col items-center gap-2 group w-[60px]" onClick={() => { initiateCall(); setShowPlusMenu(false); }}>
-                <div className="w-[45px] h-[45px] rounded-[14px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><Video size={24} strokeWidth={1.5} /></div>
+             <button className="flex flex-col items-center gap-2 group w-[64px]" onClick={() => { initiateCall(); setShowPlusMenu(false); }}>
+                <div className="w-[50px] h-[50px] rounded-[16px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><Video size={24} strokeWidth={1.5} /></div>
                 <span className="text-[11px] text-black/50">视频通话</span>
              </button>
-             <div className="flex flex-col items-center gap-2 group cursor-pointer w-[60px]" onClick={() => imageInputRef.current?.click()}>
-                <div className="w-[45px] h-[45px] rounded-[14px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><ImageIcon size={24} strokeWidth={1.5} /></div>
+             <div className="flex flex-col items-center gap-2 group cursor-pointer w-[64px]" onClick={() => imageInputRef.current?.click()}>
+                <div className="w-[50px] h-[50px] rounded-[16px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><ImageIcon size={24} strokeWidth={1.5} /></div>
                 <span className="text-[11px] text-black/50">图片</span>
              </div>
-             <div className="flex flex-col items-center gap-2 group cursor-pointer w-[60px]" onClick={() => stickerInputRef.current?.click()}>
-                <div className="w-[45px] h-[45px] rounded-[14px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><Smile size={24} strokeWidth={1.5} /></div>
+             <div className="flex flex-col items-center gap-2 group cursor-pointer w-[64px]" onClick={() => stickerInputRef.current?.click()}>
+                <div className="w-[50px] h-[50px] rounded-[16px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><Smile size={24} strokeWidth={1.5} /></div>
                 <span className="text-[11px] text-black/50">表情库</span>
              </div>
-             <button className="flex flex-col items-center gap-2 group w-[60px]" onClick={() => { handleNudge(); setShowPlusMenu(false); }}>
-                <div className="w-[45px] h-[45px] rounded-[14px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><Heart size={24} strokeWidth={1.5} /></div>
+             <button className="flex flex-col items-center gap-2 group w-[64px]" onClick={() => { handleNudge(); setShowPlusMenu(false); }}>
+                <div className="w-[50px] h-[50px] rounded-[16px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><Heart size={24} strokeWidth={1.5} /></div>
                 <span className="text-[11px] text-black/50">拍一拍</span>
              </button>
              
@@ -518,7 +498,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
           </div>
           {input.trim() ? (
             <button className="w-9 h-9 flex items-center justify-center shrink-0 text-white rounded-full shadow-md active:scale-95 transition-transform" style={{backgroundColor: primaryColor}} onClick={() => handleSend()}>
-              <Send size={16} className="ml-0.5" />
+              <Send size={18} strokeWidth={1.5} className="-ml-0.5 mt-0.5" />
             </button>
           ) : (
             <button className="w-9 h-9 flex items-center justify-center shrink-0 active:scale-95 transition-transform" style={{ color: primaryColor }} onClick={() => simulateReply()}>

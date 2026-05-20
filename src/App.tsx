@@ -349,9 +349,7 @@ export default function App() {
   const [view, setView] = useState<'home' | 'appearance' | 'data' | 'library' | 'decide' | 'chat' | 'chat_settings' | 'music_manager'>('home');
 
   // Library States
-  const [libTab, setLibTab] = useState<'reply' | 'atmosphere'>('reply');
-  const [replySubTab, setReplySubTab] = useState<'cards' | 'emoji' | 'stickers'>('cards');
-  const [atmosSubTab, setAtmosSubTab] = useState<'nudge' | 'status'>('nudge');
+  const [replySubTab, setReplySubTab] = useState<'cards' | 'emoji' | 'stickers' | 'nudge'>('cards');
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
   const [importModalData, setImportModalData] = useState<{name: string, data: any} | null>(null);
   const [confirmModal, setConfirmModal] = useState<{title: string, msg: string, onConfirm: () => void} | null>(null);
@@ -366,7 +364,6 @@ export default function App() {
   const [emojis, setEmojis] = useLocalState<string[]>('app_emojis', ['😀', '😂', '🥰', '👍', '🙏']);
   const [stickers, setStickers] = useLocalState<string[]>('app_stickers', []);
   const [nudges, setNudges] = useLocalState<string[]>('app_nudges', ['拍了拍我的 脑袋', '拍了拍我的 肩膀']);
-  const [statuses, setStatuses] = useLocalState<string[]>('app_statuses', ['在线', '忙碌', '离开']);
 
   // UI States
   const [wallpaper, setWallpaper] = useLocalState('app_wallpaper', '');
@@ -566,7 +563,8 @@ export default function App() {
   };
 
   useEffect(() => {
-    const bgColor = view === 'home' ? currentThemeConfig.bg : '#F2F2F7';
+    let bgColor = currentThemeConfig.bg;
+    if (view !== 'home' && view !== 'chat') bgColor = '#F2F2F7';
     document.documentElement.style.backgroundColor = bgColor;
     document.body.style.backgroundColor = bgColor;
     return () => {
@@ -805,26 +803,17 @@ export default function App() {
             <ChevronLeft size={24} className="-ml-1.5" />返回
           </button>
           
-          <div className="flex bg-[#e3e3e8] rounded-[9px] p-[2px]">
-             <button 
-               className={`px-4 py-1 rounded-[7px] text-[11px] font-medium transition-all ${libTab === 'reply' ? 'bg-white shadow-sm text-black' : 'text-[#8e8e93]'}`} 
-               onClick={() => setLibTab('reply')}
-             >回复库</button>
-             <button 
-               className={`px-4 py-1 rounded-[7px] text-[11px] font-medium transition-all ${libTab === 'atmosphere' ? 'bg-white shadow-sm text-black' : 'text-[#8e8e93]'}`} 
-               onClick={() => setLibTab('atmosphere')}
-             >氛围感</button>
-          </div>
+          <span className="text-[14px] font-semibold text-black">字卡库</span>
           <div className="w-[60px]"></div>
         </div>
 
         <div className="flex-1 overflow-y-auto pb-12 w-full max-w-md mx-auto mt-2">
-          {libTab === 'reply' && (
              <div>
                <div className="flex space-x-1 px-4 mt-2 font-medium text-[12px] border-b border-[#c6c6c8]/30">
                    <button className={`px-3 py-2 ${replySubTab === 'cards' ? 'border-b-2 border-[#007AFF] text-[#007AFF]' : 'text-[#8e8e93]'}`} onClick={() => setReplySubTab('cards')}>主字卡</button>
                    <button className={`px-3 py-2 ${replySubTab === 'emoji' ? 'border-b-2 border-[#007AFF] text-[#007AFF]' : 'text-[#8e8e93]'}`} onClick={() => setReplySubTab('emoji')}>Emoji</button>
                    <button className={`px-3 py-2 ${replySubTab === 'stickers' ? 'border-b-2 border-[#007AFF] text-[#007AFF]' : 'text-[#8e8e93]'}`} onClick={() => setReplySubTab('stickers')}>表情库</button>
+                   <button className={`px-3 py-2 ${replySubTab === 'nudge' ? 'border-b-2 border-[#007AFF] text-[#007AFF]' : 'text-[#8e8e93]'}`} onClick={() => setReplySubTab('nudge')}>拍一拍</button>
                </div>
 
                {replySubTab === 'cards' && (
@@ -1019,17 +1008,7 @@ export default function App() {
                       }} />
                  </div>
                )}
-             </div>
-          )}
-
-          {libTab === 'atmosphere' && (
-             <div>
-               <div className="flex space-x-1 px-4 mt-2 font-medium text-[12px] border-b border-[#c6c6c8]/30">
-                   <button className={`px-3 py-2 ${atmosSubTab === 'nudge' ? 'border-b-2 border-[#007AFF] text-[#007AFF]' : 'text-[#8e8e93]'}`} onClick={() => setAtmosSubTab('nudge')}>拍一拍</button>
-                   <button className={`px-3 py-2 ${atmosSubTab === 'status' ? 'border-b-2 border-[#007AFF] text-[#007AFF]' : 'text-[#8e8e93]'}`} onClick={() => setAtmosSubTab('status')}>对方状态</button>
-               </div>
-
-               {atmosSubTab === 'nudge' && (
+               {replySubTab === 'nudge' && (
                  <div className="mt-4 px-4 space-y-2 pb-8">
                      <div className="bg-white rounded-[10px] shadow-[0_1px_2px_rgba(0,0,0,0.05)] overflow-hidden">
                        {nudges.map((item, idx) => (
@@ -1054,34 +1033,7 @@ export default function App() {
                      <button onClick={() => setNudges([...nudges, '拍了拍我的...'])} className="w-full py-3 bg-white text-[#007AFF] font-medium rounded-[10px] shadow-[0_1px_2px_rgba(0,0,0,0.05)] flex items-center justify-center gap-2 mt-4 active:bg-gray-50 transition-colors"><Plus size={18}/> 添加拍一拍</button>
                  </div>
                )}
-
-               {atmosSubTab === 'status' && (
-                 <div className="mt-4 px-4 space-y-2 pb-8">
-                     <div className="bg-white rounded-[10px] shadow-[0_1px_2px_rgba(0,0,0,0.05)] overflow-hidden">
-                       {statuses.map((item, idx) => (
-                          <div key={idx} className="flex justify-between items-center p-3 border-b border-[#E5E5EA] last:border-b-0">
-                               <input 
-                                 className="bg-transparent outline-none flex-1 text-[13px] text-[#333]" 
-                                 value={item} 
-                                 onChange={(e) => {
-                                    const newStatuses = [...statuses];
-                                    newStatuses[idx] = e.target.value;
-                                    setStatuses(newStatuses);
-                                 }} 
-                               />
-                               <button onClick={() => {
-                                   const newStatuses = [...statuses];
-                                   newStatuses.splice(idx, 1);
-                                   setStatuses(newStatuses);
-                               }} className="text-[#c6c6c8] p-1 active:opacity-50"><X size={18}/></button>
-                          </div>
-                       ))}
-                     </div>
-                     <button onClick={() => setStatuses([...statuses, '新状态'])} className="w-full py-3 bg-white text-[#007AFF] font-medium rounded-[10px] shadow-[0_1px_2px_rgba(0,0,0,0.05)] flex items-center justify-center gap-2 mt-4 active:bg-gray-50 transition-colors"><Plus size={18}/> 添加状态</button>
-                 </div>
-               )}
              </div>
-          )}
         </div>
 
         {importModalData && (
