@@ -1295,9 +1295,9 @@ export default function App() {
       {chatFont && <style dangerouslySetInnerHTML={{ __html: `@font-face { font-family: 'CustomChatFont'; src: url('${chatFont}'); } * { font-family: 'CustomChatFont', sans-serif !important; }`}} />}
 
       <div 
-        className="w-full max-w-[420px] mx-auto flex flex-col justify-between flex-1 gap-4 px-4 shrink-0"
+        className="w-full max-w-[420px] mx-auto flex flex-col justify-between flex-1 gap-3 px-4 shrink-0"
         style={{
-          paddingBottom: 'max(2rem, calc(1.5rem + env(safe-area-inset-bottom)))',
+          paddingBottom: 'max(1.5rem, calc(1rem + env(safe-area-inset-bottom)))',
           paddingTop: 'max(1.5rem, calc(0.5rem + env(safe-area-inset-top)))'
         }}
       >
@@ -1310,7 +1310,7 @@ export default function App() {
         >
           {/* Header Image */}
           <div 
-            className="w-full h-[150px] bg-cover bg-center shrink-0 relative"
+            className="w-full h-[140px] bg-cover bg-center shrink-0 relative"
             style={{ 
               backgroundImage: profileBg ? `url(${profileBg})` : 'none',
               backgroundColor: currentThemeConfig.cardBg
@@ -1455,7 +1455,7 @@ export default function App() {
 
         {/* Bottom Tools Pill */}
         <motion.div 
-          className="backdrop-blur-xl border border-white/60 rounded-[48px] p-3.5 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.06)] grid grid-cols-4 shrink-0 items-center justify-items-center transition-colors duration-500 mb-8"
+          className="backdrop-blur-xl border border-white/60 rounded-[48px] p-3.5 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.06)] grid grid-cols-4 shrink-0 items-center justify-items-center transition-colors duration-500 mb-2"
           style={{ backgroundColor: currentThemeConfig.cardBg }}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
