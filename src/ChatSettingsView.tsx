@@ -46,7 +46,7 @@ export const ChatSettingsView = ({ onClose, themeConfig }: { onClose: () => void
             >
               {tab}
               {activeTab === tab && (
-                <motion.layoutId className="absolute bottom-[-1px] left-0 right-0 h-[2px] rounded-t-full bg-[#a894a7]" style={{ backgroundColor: primaryColor }} />
+                <motion.div layoutId="activeChatSettingsTab" className="absolute bottom-[-1px] left-0 right-0 h-[2px] rounded-t-full bg-[#a894a7]" style={{ backgroundColor: primaryColor }} />
               )}
             </button>
           ))}
