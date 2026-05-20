@@ -317,25 +317,22 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
 
   return (
     <div 
-      className="fixed inset-0 flex flex-col z-50 overflow-hidden transition-colors" 
+      className="flex-1 w-full min-h-[100dvh] flex flex-col relative overflow-hidden transition-colors" 
       style={{ 
         ...customStyle, 
         backgroundColor: themeConfig.bg,
+        backgroundImage: chatBg ? `url("${chatBg}")` : 'none',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat'
       }}
     >
-      {chatBg && (
-        <img 
-          src={chatBg} 
-          alt="" 
-          className="absolute inset-0 w-full h-full object-cover pointer-events-none z-0" 
-        />
-      )}
       {chatFont && <style dangerouslySetInnerHTML={{ __html: `@font-face { font-family: 'CustomChatFont'; src: url('${chatFont}'); }` }} />}
       {chatCss && <style dangerouslySetInnerHTML={{ __html: chatCss }} />}
       
       {/* Header */}
       <div 
-        className="w-full shrink-0 px-3 pt-[max(0.5rem,env(safe-area-inset-top))] pb-1 z-20 relative"
+        className="w-full flex-shrink-0 px-3 pt-[max(0.5rem,env(safe-area-inset-top))] pb-1 z-20 relative"
       >
         <div className="rounded-[12px] flex items-center justify-between px-3 py-2 shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-white/50" style={{ backgroundColor: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(20px)' }}>
           <button onClick={onClose} className="w-[70px] flex items-center p-1 text-black/60 active:opacity-50 transition-opacity">
