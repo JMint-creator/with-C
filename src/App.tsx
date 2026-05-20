@@ -1295,10 +1295,10 @@ export default function App() {
       {chatFont && <style dangerouslySetInnerHTML={{ __html: `@font-face { font-family: 'CustomChatFont'; src: url('${chatFont}'); } * { font-family: 'CustomChatFont', sans-serif !important; }`}} />}
 
       <div 
-        className="w-full max-w-[420px] mx-auto flex flex-col justify-between flex-1 gap-2.5 px-4 shrink-0"
+        className="w-full max-w-[420px] mx-auto flex flex-col justify-between flex-1 gap-4 px-4 shrink-0"
         style={{
-          paddingBottom: 'max(1rem, calc(0.5rem + env(safe-area-inset-bottom)))',
-          paddingTop: 'max(1rem, calc(0.5rem + env(safe-area-inset-top)))'
+          paddingBottom: 'max(2rem, calc(1.5rem + env(safe-area-inset-bottom)))',
+          paddingTop: 'max(1.5rem, calc(0.5rem + env(safe-area-inset-top)))'
         }}
       >
         
@@ -1310,7 +1310,7 @@ export default function App() {
         >
           {/* Header Image */}
           <div 
-            className="w-full h-[120px] bg-cover bg-center shrink-0 relative"
+            className="w-full h-[150px] bg-cover bg-center shrink-0 relative"
             style={{ 
               backgroundImage: profileBg ? `url(${profileBg})` : 'none',
               backgroundColor: currentThemeConfig.cardBg
@@ -1319,21 +1319,21 @@ export default function App() {
           
           {/* Bottom Frosted Container */}
           <div 
-            className="w-full relative pt-[42px] pb-4 px-4 flex flex-col items-center backdrop-blur-xl"
+            className="w-full relative pt-[48px] pb-6 px-4 flex flex-col items-center backdrop-blur-xl"
             style={{ backgroundColor: currentThemeConfig.cardBg }}
           >
             {/* Avatars */}
-            <div className="absolute -top-[32px] flex justify-center items-center w-full">
+            <div className="absolute -top-[36px] flex justify-center items-center w-full">
               <div className="relative flex items-center justify-center">
                 <div 
-                  className="w-[64px] h-[64px] rounded-full border-[3px] overflow-hidden flex items-center justify-center shadow-sm transition-transform hover:scale-105 cursor-pointer z-10 -mr-4"
+                  className="w-[72px] h-[72px] rounded-full border-[3px] overflow-hidden flex items-center justify-center shadow-sm transition-transform hover:scale-105 cursor-pointer z-10 -mr-4"
                   style={{ borderColor: currentThemeConfig.bg, backgroundColor: currentThemeConfig.bg, color: currentThemeConfig.textSecondary }}
                   onClick={() => avatar1InputRef.current?.click()}
                 >
                   {avatar1 ? <img src={avatar1} className="w-full h-full object-cover" /> : <Cat size={30} strokeWidth={1.5} />}
                 </div>
                 <div 
-                  className="w-[64px] h-[64px] rounded-full border-[3px] overflow-hidden flex items-center justify-center shadow-sm transition-transform hover:scale-105 cursor-pointer z-0"
+                  className="w-[72px] h-[72px] rounded-full border-[3px] overflow-hidden flex items-center justify-center shadow-sm transition-transform hover:scale-105 cursor-pointer z-0"
                   style={{ borderColor: currentThemeConfig.bg, backgroundColor: currentThemeConfig.bg, color: currentThemeConfig.textSecondary }}
                   onClick={() => avatar2InputRef.current?.click()}
                 >
@@ -1352,10 +1352,10 @@ export default function App() {
         </motion.div>
 
         {/* Widgets Row */}
-        <div className="grid grid-cols-2 gap-2.5 shrink-0">
+        <div className="grid grid-cols-2 gap-3 shrink-0">
           {/* Music Widget */}
           <motion.div 
-            className="backdrop-blur-xl border border-white/60 rounded-[20px] p-3.5 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.06)] flex flex-col transition-colors duration-500"
+            className="backdrop-blur-xl border border-white/60 rounded-[24px] p-4 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.06)] flex flex-col transition-colors duration-500"
             style={{ backgroundColor: currentThemeConfig.cardBg }}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -1395,7 +1395,7 @@ export default function App() {
 
           {/* Anniversary Widget */}
           <motion.div 
-            className="backdrop-blur-xl border border-white/60 rounded-[20px] py-4 px-4 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.06)] flex flex-col justify-between items-center transition-colors duration-500 relative overflow-hidden"
+            className="backdrop-blur-xl border border-white/60 rounded-[24px] py-5 px-4 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.06)] flex flex-col justify-between items-center transition-colors duration-500 relative overflow-hidden"
             style={{ backgroundColor: currentThemeConfig.cardBg }}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -1428,7 +1428,7 @@ export default function App() {
 
         {/* Apps Grid */}
         <motion.div 
-          className="grid grid-cols-4 gap-y-2 gap-x-2 pt-1 pb-1 shrink-0 px-1"
+          className="grid grid-cols-4 gap-y-2.5 gap-x-3 pt-1 pb-1 shrink-0 px-1"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
@@ -1443,7 +1443,7 @@ export default function App() {
               }}
             >
               <div 
-                className="w-[60px] h-[60px] rounded-[20px] bg-white/40 backdrop-blur-md border border-white/40 shadow-[0_4px_20px_-6px_rgba(0,0,0,0.06)] flex items-center justify-center group-hover:bg-white/50 transition-all group-active:scale-95"
+                className="w-[66px] h-[66px] rounded-[22px] bg-white/40 backdrop-blur-md border border-white/40 shadow-[0_4px_20px_-6px_rgba(0,0,0,0.06)] flex items-center justify-center group-hover:bg-white/50 transition-all group-active:scale-95"
                 style={{ color: currentThemeConfig.textSecondary }}
               >
                 <app.icon size={28} strokeWidth={1.5} />
@@ -1455,7 +1455,7 @@ export default function App() {
 
         {/* Bottom Tools Pill */}
         <motion.div 
-          className="backdrop-blur-xl border border-white/60 rounded-[40px] p-2.5 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.06)] grid grid-cols-4 shrink-0 items-center justify-items-center transition-colors duration-500 mb-2"
+          className="backdrop-blur-xl border border-white/60 rounded-[48px] p-3.5 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.06)] grid grid-cols-4 shrink-0 items-center justify-items-center transition-colors duration-500 mb-8"
           style={{ backgroundColor: currentThemeConfig.cardBg }}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1473,7 +1473,7 @@ export default function App() {
               }}
             >
               <div 
-                className="w-[48px] h-[48px] rounded-[16px] bg-white/50 backdrop-blur-md border border-white/80 shadow-[0_4px_12px_-6px_rgba(0,0,0,0.04)] flex items-center justify-center group-hover:bg-white/65 transition-all group-active:scale-95"
+                className="w-[52px] h-[52px] rounded-[18px] bg-white/50 backdrop-blur-md border border-white/80 shadow-[0_4px_12px_-6px_rgba(0,0,0,0.04)] flex items-center justify-center group-hover:bg-white/65 transition-all group-active:scale-95"
                 style={{ color: currentThemeConfig.textSecondary }}
               >
                 <tool.icon size={22} strokeWidth={1.25} />
