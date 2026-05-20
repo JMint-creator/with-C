@@ -203,7 +203,7 @@ const DecideView = ({ onClose, themeConfig, onStartDecide, isDeciding }: { onClo
   };
 
   return (
-    <div className="flex-1 min-h-[100dvh] w-full flex flex-col font-sans overflow-x-hidden relative" style={{ backgroundColor: themeConfig.bg }}>
+    <div className="flex-1 w-full flex flex-col font-sans overflow-x-hidden relative" style={{ backgroundColor: themeConfig.bg }}>
       {/* Header */}
       <div className="w-full flex items-center justify-between px-4 pb-3 sticky top-0 z-10 pt-[max(1rem,env(safe-area-inset-top))]" style={{ backgroundColor: themeConfig.bg ? themeConfig.bg + 'cc' : '#fcfbf9cc', backdropFilter: 'blur(12px)' }}>
           <button onClick={onClose} className="text-[#8e8e93] text-[15px] flex items-center active:opacity-50 transition-opacity w-[60px]">
@@ -578,11 +578,6 @@ export default function App() {
     document.body.style.backgroundPosition = 'center';
     document.body.style.backgroundAttachment = 'fixed';
     
-    const themeColorMeta = document.getElementById('theme-color-meta');
-    if (themeColorMeta) {
-       themeColorMeta.setAttribute('content', bgColor);
-    }
-    
     return () => {
       document.documentElement.style.backgroundColor = '';
       document.body.style.backgroundColor = '';
@@ -778,7 +773,7 @@ export default function App() {
 
   if (view === 'data') {
     return (
-      <div className="flex-1 w-full bg-[#F2F2F7] flex flex-col min-h-[100dvh] overflow-x-hidden relative text-[12px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
+      <div className="flex-1 w-full bg-[#F2F2F7] flex flex-col overflow-x-hidden relative text-[12px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
         
         <div 
           className="w-full flex items-center justify-between px-3 pb-3 bg-[#F2F2F7] sticky top-0 z-10 border-b border-[#c6c6c8]/50 shadow-sm"
@@ -808,7 +803,7 @@ export default function App() {
 
   if (view === 'library') {
     return (
-      <div className="flex-1 w-full bg-[#F2F2F7] flex flex-col min-h-[100dvh] overflow-x-hidden relative text-[11px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
+      <div className="flex-1 w-full bg-[#F2F2F7] flex flex-col overflow-x-hidden relative text-[11px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
         
         
         {/* Header */}
@@ -1119,7 +1114,7 @@ export default function App() {
 
   if (view === 'music_manager') {
     return (
-      <div className="flex-1 w-full bg-[#F2F2F7] flex flex-col min-h-[100dvh] overflow-x-hidden relative text-[14px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
+      <div className="flex-1 w-full bg-[#F2F2F7] flex flex-col overflow-x-hidden relative text-[14px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
         <div 
           className="w-full flex items-center justify-between px-3 pb-3 bg-[#F2F2F7] sticky top-0 z-10 border-b border-[#c6c6c8]/50 shadow-sm"
           style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))' }}
@@ -1171,7 +1166,7 @@ export default function App() {
 
   if (view === 'appearance') {
     return (
-      <div className="flex-1 w-full bg-[#F2F2F7] flex flex-col min-h-[100dvh] overflow-x-hidden relative text-[11px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
+      <div className="flex-1 w-full bg-[#F2F2F7] flex flex-col overflow-x-hidden relative text-[11px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
         
         {/* Header */}
         <div 
@@ -1254,7 +1249,7 @@ export default function App() {
 
   return (
     <div 
-      className="flex-1 w-full text-[#333] font-sans flex flex-col items-center overflow-x-hidden selection:bg-[#DCD6CE]/50 transition-colors duration-500 relative min-h-[100dvh]"
+      className="flex-1 w-full text-[#333] font-sans flex flex-col items-center overflow-x-hidden selection:bg-[#DCD6CE]/50 transition-colors duration-500 relative"
       style={{
         color: currentThemeConfig.textPrimary
       }}
