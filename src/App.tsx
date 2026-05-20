@@ -100,7 +100,7 @@ const colorThemes = {
   }
 };
 
-const SettingItem = ({ icon: Icon, label, value, onClick, onChange, isTextarea = false, hideBorder = false }: any) => {
+const SettingItem = ({ icon: Icon, label, value, onClick, onChange, isTextarea = false, isColor = false, hideBorder = false }: any) => {
   return (
     <div 
       className={`flex items-center bg-white transition-colors pl-4 ${!onChange ? 'active:bg-gray-50 cursor-pointer' : ''}`}
@@ -112,7 +112,14 @@ const SettingItem = ({ icon: Icon, label, value, onClick, onChange, isTextarea =
       <div className={`flex-1 flex items-center justify-between py-3.5 pr-4 ${!hideBorder ? 'border-b border-[#E5E5EA]' : ''}`}>
         <span className="text-[14px] text-[#333]">{label}</span>
         <div className="flex items-center gap-2">
-          {onChange ? (
+          {isColor ? (
+            <input 
+              type="color" 
+              value={value || '#a894a7'} 
+              onChange={(e) => onChange(e.target.value)} 
+              className="w-8 h-8 rounded shrink-0 cursor-pointer p-0 border-0 bg-transparent"
+            />
+          ) : onChange && !isTextarea ? (
             <input 
               type="text" 
               value={value} 
@@ -120,7 +127,7 @@ const SettingItem = ({ icon: Icon, label, value, onClick, onChange, isTextarea =
               className="text-[13px] text-[#888] text-right bg-transparent outline-none max-w-[150px]"
               placeholder="输入..."
             />
-          ) : (
+          ) : !isTextarea && (
              <span className="text-[13px] text-[#888] truncate max-w-[120px]">{value}</span>
           )}
           {!onChange && <ChevronRight size={18} className="text-[#C7C7CC]" />}
@@ -380,6 +387,7 @@ export default function App() {
   const [chatCss, setChatCss] = useLocalState('app_chatCss', '');
   const [chatFont, setChatFont] = useLocalState('app_chatFont', '');
   const [chatKeepAlive] = useLocalState('app_chatKeepAlive', false);
+  const [chatBubbleColor, setChatBubbleColor] = useLocalState('app_chatBubbleColor', '');
 
   // Anniversary Settings
   const [anniversaryDate, setAnniversaryDate] = useLocalState('app_anniversaryDate', '2024-10-28');
@@ -1241,6 +1249,7 @@ export default function App() {
               <div className="text-[12px] text-[#6d6d72] ml-4 mb-2 uppercase tracking-wide">聊天设置</div>
               <div className="bg-white rounded-[10px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
                  <SettingItem icon={ImageIcon} label="聊天背景" value={chatBg ? '已上传' : '未设置'} onClick={() => chatBgInputRef.current?.click()} />
+                 <SettingItem icon={Palette} label="我方气泡及已读颜色" value={chatBubbleColor} onChange={setChatBubbleColor} isColor={true} />
                  <SettingItem icon={Users} label="我方聊天头像" value={chatAvatar1 ? '已上传' : '未设置'} onClick={() => chatAvatar1InputRef.current?.click()} />
                  <SettingItem icon={Users} label="对方聊天头像" value={chatAvatar2 ? '已上传' : '未设置'} onClick={() => chatAvatar2InputRef.current?.click()} />
                  <SettingItem icon={Droplet} label="聊天气泡 CSS" value={chatCss ? '已上传' : '未设置'} onClick={() => cssInputRef.current?.click()} />
