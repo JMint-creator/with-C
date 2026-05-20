@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronLeft, Video, Settings, Smile, Hand, Plus, Image as ImageIcon, Send, X, PhoneCall, PhoneMissed, Phone, MicOff, CameraOff, MonitorPlay, Check, CheckCheck, MessageCircle } from 'lucide-react';
+import { ChevronLeft, Video, Settings, Smile, Hand, Plus, Image as ImageIcon, Send, X, PhoneCall, PhoneMissed, Phone, MicOff, CameraOff, MonitorPlay, Check, CheckCheck, MessageCircle, MoreHorizontal, Pointer } from 'lucide-react';
 import { useLocalState } from './utils';
 
 type Message = {
@@ -332,34 +332,38 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
   const customStyle = chatFont ? { fontFamily: 'CustomChatFont, sans-serif' } : {};
 
   return (
-    <div className="flex-1 w-full flex flex-col relative h-[100dvh] overflow-hidden" style={{ ...customStyle, backgroundColor: chatBg ? 'transparent' : themeConfig.bg, backgroundImage: chatBg ? `url(${chatBg})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center' }}>
+    <div className="fixed inset-0 w-full h-[100dvh] overflow-hidden z-50 bg-white" style={{ ...customStyle, backgroundColor: themeConfig.bg }}>
+      {chatBg && <img src={chatBg} alt="" className="absolute inset-0 w-full h-full object-cover z-0" />}
       {chatFont && <style dangerouslySetInnerHTML={{ __html: `@font-face { font-family: 'CustomChatFont'; src: url('${chatFont}'); }` }} />}
       {chatCss && <style dangerouslySetInnerHTML={{ __html: chatCss }} />}
       
       {/* Header */}
-      <div className="w-full flex items-center justify-between px-3 pb-3 pt-[max(1rem,env(safe-area-inset-top))] z-10" style={{ backgroundColor: themeConfig.bg ? themeConfig.bg + 'ee' : '#ffffffcc', backdropFilter: 'blur(12px)' }}>
-        <button onClick={onClose} className="w-[60px] flex items-center p-1" style={{ color: themeConfig.textSecondary }}>
+      <div className="absolute top-[max(0.5rem,env(safe-area-inset-top))] left-3 right-3 rounded-2xl flex items-center justify-between px-3 py-2 z-20 shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-white/50" style={{ backgroundColor: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(20px)' }}>
+        <button onClick={onClose} className="w-[70px] flex items-center p-1 text-black/60 active:opacity-50 transition-opacity">
           <ChevronLeft size={26} className="-ml-1" />
         </button>
-        <div className="flex-1 flex flex-col items-center justify-center">
-          <input 
-            value={charId}
-            onChange={e => setCharId(e.target.value)}
-            className="text-[17px] font-semibold text-center bg-transparent outline-none m-0 p-0"
-            style={{ color: themeConfig.textPrimary }}
-          />
-          <div className="text-[11px] mt-0.5" style={{ color: themeConfig.textSecondary }}>{dynamicStatus}</div>
-        </div>
-        <div className="w-[60px] flex items-center justify-end space-x-3 pr-1">
-          {mockVideo && (
-            <button onClick={initiateCall} style={{ color: themeConfig.textSecondary }}><Video size={20} /></button>
+        <div className="flex-1 flex items-center justify-center space-x-2">
+          {avatar2 && (
+            <div className="w-[34px] h-[34px] rounded-full overflow-hidden shadow-sm border border-black/5 shrink-0">
+              <img src={avatar2} alt="" className="w-full h-full object-cover" />
+            </div>
           )}
-          <button onClick={onOpenSettings} style={{ color: themeConfig.textSecondary }}><Settings size={20} /></button>
+          <div className="flex flex-col items-center justify-center">
+            <input 
+              value={charId}
+              onChange={e => setCharId(e.target.value)}
+              className="text-[15px] font-medium text-center bg-transparent outline-none m-0 p-0 text-black max-w-[120px]"
+            />
+            <div className="text-[10px] mt-0.5 text-black/40">{dynamicStatus}</div>
+          </div>
+        </div>
+        <div className="w-[70px] flex items-center justify-end pr-1">
+          <button onClick={onOpenSettings} className="text-black/60 active:opacity-50 transition-opacity p-1.5"><MoreHorizontal size={24} /></button>
         </div>
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-6 flex flex-col scrollbar-hide pb-20 z-0">
+      <div ref={scrollRef} className="absolute inset-0 overflow-y-auto px-4 pt-[calc(env(safe-area-inset-top)+80px)] pb-[calc(env(safe-area-inset-bottom)+120px)] flex flex-col scrollbar-hide z-0">
         {messages.map((msg, i) => {
           const isMe = msg.sender === 'me';
           const avatar = isMe ? (avatar1 || '') : (avatar2 || '');
@@ -415,8 +419,8 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
                   <div className="text-[48px] leading-none drop-shadow-sm">{msg.content}</div>
                 ) : (
                   <div 
-                    className={`chat-bubble px-4 py-2.5 rounded-[18px] text-[15px] leading-relaxed shadow-[0_2px_10px_rgba(0,0,0,0.02)] ${isMe ? 'bg-black text-white rounded-tr-[4px]' : 'bg-white rounded-tl-[4px]'}`}
-                    style={isMe ? {backgroundColor: primaryColor} : {}}
+                    className={`chat-bubble px-4 py-2.5 text-[15px] leading-relaxed shadow-[0_2px_10px_rgba(0,0,0,0.02)] ${isMe ? 'rounded-2xl rounded-tr-[4px]' : 'rounded-2xl rounded-tl-[4px]'}`}
+                    style={isMe ? {backgroundColor: primaryColor + '20', color: '#111'} : {backgroundColor: '#fff', color: '#111'}}
                   >
                     {msg.content}
                   </div>
@@ -427,7 +431,11 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
                     <span>{msg.time}</span>
                     {isMe && readReceipt && (
                       <span className="ml-1 flex items-center">
-                         {receiptStyle === 'text' ? (isRead ? '已读' : '送达') : (isRead ? <CheckCheck size={14} strokeWidth={2.5} className="opacity-60 text-blue-500" /> : <Check size={14} strokeWidth={2.5} className="opacity-40" />)}
+                         {receiptStyle === 'text' ? (
+                           <span style={{color: isRead ? primaryColor : 'inherit'}} className={isRead ? 'font-medium' : ''}>{isRead ? '已读' : '送达'}</span>
+                         ) : (
+                           isRead ? <CheckCheck size={16} strokeWidth={3} style={{color: primaryColor}} /> : <Check size={16} strokeWidth={3} className="opacity-40" />
+                         )}
                       </span>
                     )}
                   </div>
@@ -461,26 +469,26 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
       <AnimatePresence>
         {showPlusMenu && (
           <motion.div 
-            initial={{ opacity: 0, y: 100 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 100 }}
-            className="absolute bottom-[calc(4rem+env(safe-area-inset-bottom))] left-0 right-0 bg-white/95 backdrop-blur-md rounded-t-3xl p-6 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] border-t border-black/5 z-20 flex justify-between space-x-4"
+            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+            className="absolute bottom-[calc(4rem+env(safe-area-inset-bottom))] left-3 right-3 bg-white/90 backdrop-blur-xl rounded-2xl py-4 flex justify-around items-center z-20 shadow-[0_10px_40px_rgba(0,0,0,0.08)] border border-white/50"
           >
-             <button className="flex flex-col items-center gap-2 group" onClick={() => { initiateCall(); setShowPlusMenu(false); }}>
-                <div className="w-14 h-14 rounded-2xl bg-[#F2F2F7] flex items-center justify-center text-gray-700 group-active:scale-95 transition-transform"><Video size={28}/></div>
-                <span className="text-[12px] text-gray-500">视频通话</span>
+             <button className="flex flex-col items-center gap-2 group w-[60px]" onClick={() => { initiateCall(); setShowPlusMenu(false); }}>
+                <div className="w-[45px] h-[45px] rounded-[14px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: primaryColor + '15', color: primaryColor }}><Video size={24} strokeWidth={1.5} /></div>
+                <span className="text-[11px] text-black/50">视频通话</span>
              </button>
-             <div className="flex flex-col items-center gap-2 group cursor-pointer" onClick={() => imageInputRef.current?.click()}>
-                <div className="w-14 h-14 rounded-2xl bg-[#F2F2F7] flex items-center justify-center text-gray-700 group-active:scale-95 transition-transform"><ImageIcon size={28}/></div>
-                <span className="text-[12px] text-gray-500">图片</span>
+             <div className="flex flex-col items-center gap-2 group cursor-pointer w-[60px]" onClick={() => imageInputRef.current?.click()}>
+                <div className="w-[45px] h-[45px] rounded-[14px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: primaryColor + '15', color: primaryColor }}><ImageIcon size={24} strokeWidth={1.5} /></div>
+                <span className="text-[11px] text-black/50">图片</span>
              </div>
-             <div className="flex flex-col items-center gap-2 group cursor-pointer" onClick={() => stickerInputRef.current?.click()}>
-                <div className="w-14 h-14 rounded-2xl bg-[#F2F2F7] flex items-center justify-center text-gray-700 group-active:scale-95 transition-transform"><Smile size={28}/></div>
-                <span className="text-[12px] text-gray-500">表情包</span>
+             <div className="flex flex-col items-center gap-2 group cursor-pointer w-[60px]" onClick={() => stickerInputRef.current?.click()}>
+                <div className="w-[45px] h-[45px] rounded-[14px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: primaryColor + '15', color: primaryColor }}><Smile size={24} strokeWidth={1.5} /></div>
+                <span className="text-[11px] text-black/50">表情库</span>
              </div>
-             <button className="flex flex-col items-center gap-2 group" onClick={() => { handleNudge(); setShowPlusMenu(false); }}>
-                <div className="w-14 h-14 rounded-2xl bg-[#F2F2F7] flex items-center justify-center text-gray-700 group-active:scale-95 transition-transform"><Hand size={28}/></div>
-                <span className="text-[12px] text-gray-500">拍一拍</span>
+             <button className="flex flex-col items-center gap-2 group w-[60px]" onClick={() => { handleNudge(); setShowPlusMenu(false); }}>
+                <div className="w-[45px] h-[45px] rounded-[14px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: primaryColor + '15', color: primaryColor }}><Pointer size={24} strokeWidth={1.5} /></div>
+                <span className="text-[11px] text-black/50">拍一拍</span>
              </button>
              
              <input type="file" ref={imageInputRef} className="hidden" accept="image/*" onChange={(e) => handleImageUpload(e, false)} />
@@ -490,15 +498,15 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
       </AnimatePresence>
 
       {/* Input Area */}
-      <div className="w-full bg-white/95 backdrop-blur-xl border-t border-black/[0.05] p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] flex flex-col z-30 relative shadow-[0_-2px_20px_rgba(0,0,0,0.02)]">
-        <div className="flex items-end space-x-2.5">
-          <button className={`p-2 shrink-0 ${showPlusMenu ? 'text-black rotate-45' : 'text-black/40'} transition-all`} onClick={() => setShowPlusMenu(!showPlusMenu)}>
-            <Plus size={24} />
+      <div className="absolute bottom-[max(0.5rem,env(safe-area-inset-bottom))] left-3 right-3 rounded-2xl bg-white/85 backdrop-blur-xl border border-white/80 p-2 flex flex-col z-30 shadow-[0_8px_30px_rgba(0,0,0,0.06)]">
+        <div className="flex items-end space-x-1.5">
+          <button className={`w-9 h-9 flex items-center justify-center shrink-0 ${showPlusMenu ? 'rotate-45' : ''} transition-all active:scale-95`} style={{ color: primaryColor }} onClick={() => setShowPlusMenu(!showPlusMenu)}>
+            <Plus size={26} strokeWidth={1.5} />
           </button>
-          <div className="flex-1 bg-black/[0.04] rounded-[24px] min-h-[40px] flex items-center px-4 py-1.5 focus-within:bg-black/[0.06] transition-colors border border-black/[0.02]">
+          <div className="flex-1 min-h-[36px] rounded-[18px] flex items-center px-3 py-0.5 transition-colors border border-black/[0.03]" style={{ backgroundColor: primaryColor + '15' }}>
             <input 
               type="text"
-              className="flex-1 bg-transparent border-none outline-none text-[15px] p-1.5"
+              className="flex-1 bg-transparent border-none outline-none text-[15px] p-1.5 text-black placeholder-black/30"
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleSend()}
@@ -507,12 +515,12 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
             />
           </div>
           {input.trim() ? (
-            <button className="p-2.5 mb-0.5 shrink-0 bg-black text-white rounded-full shadow-md active:scale-95 transition-transform" style={{backgroundColor: primaryColor}} onClick={() => handleSend()}>
+            <button className="w-9 h-9 flex items-center justify-center shrink-0 text-white rounded-full shadow-md active:scale-95 transition-transform" style={{backgroundColor: primaryColor}} onClick={() => handleSend()}>
               <Send size={18} className="ml-0.5" />
             </button>
           ) : (
-            <button className="p-2 mb-1 shrink-0 text-gray-400 active:text-gray-600 transition-colors" onClick={() => simulateReply()}>
-               <MessageCircle size={24} />
+            <button className="w-9 h-9 flex items-center justify-center shrink-0 active:scale-95 transition-transform" style={{ color: primaryColor }} onClick={() => simulateReply()}>
+               <MessageCircle size={26} strokeWidth={1.5} />
             </button>
           )}
         </div>
