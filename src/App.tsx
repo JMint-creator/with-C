@@ -578,6 +578,11 @@ export default function App() {
     document.body.style.backgroundPosition = 'center';
     document.body.style.backgroundAttachment = 'fixed';
     
+    const themeColorMeta = document.getElementById('theme-color-meta');
+    if (themeColorMeta) {
+       themeColorMeta.setAttribute('content', bgColor);
+    }
+    
     return () => {
       document.documentElement.style.backgroundColor = '';
       document.body.style.backgroundColor = '';
@@ -1249,7 +1254,7 @@ export default function App() {
 
   return (
     <div 
-      className="flex-1 w-full text-[#333] font-sans flex flex-col items-center overflow-hidden selection:bg-[#DCD6CE]/50 transition-colors duration-500 relative h-[100dvh]"
+      className="flex-1 w-full text-[#333] font-sans flex flex-col items-center overflow-x-hidden selection:bg-[#DCD6CE]/50 transition-colors duration-500 relative min-h-[100dvh]"
       style={{
         color: currentThemeConfig.textPrimary
       }}
