@@ -8,27 +8,18 @@
     <title>My Google AI Studio App</title>
     <style>
       html, body {
-        height: 100%;
-        width: 100%;
+        min-height: 100vh;
+        min-height: -webkit-fill-available;
         margin: 0;
         padding: 0;
-        overflow: hidden;
-        position: fixed;
-        top: 0;
-        left: 0;
         overscroll-behavior-y: none;
         background-color: #EBE7DF; /* basic fallback */
-        -webkit-overflow-scrolling: auto;
       }
       #root {
-        height: 100%;
-        width: 100%;
+        min-height: 100vh;
+        min-height: -webkit-fill-available;
         display: flex;
         flex-direction: column;
-        overflow: hidden;
-      }
-      .scrollable-content {
-        -webkit-overflow-scrolling: touch;
       }
     </style>
   </head>

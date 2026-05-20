@@ -27,7 +27,7 @@ export const ChatSettingsView = ({ onClose, themeConfig }: { onClose: () => void
   const bgColor = themeConfig.bg || '#f9f9f9';
 
   return (
-    <div className="flex-1 w-full bg-[#f9f9fa] flex flex-col font-sans overflow-x-hidden overflow-y-auto relative h-full scrollable-content">
+    <div className="flex-1 w-full bg-[#f9f9fa] flex flex-col font-sans overflow-y-auto relative h-[100dvh]">
       <div className="bg-white/80 backdrop-blur-xl sticky top-0 z-20 pb-2">
         <div className="flex items-center pt-[max(1.5rem,env(safe-area-inset-top))] px-6 mb-4">
           <div className="w-9 h-9 rounded-[14px] bg-[#f2eef2] flex items-center justify-center mr-3">
@@ -37,7 +37,7 @@ export const ChatSettingsView = ({ onClose, themeConfig }: { onClose: () => void
         </div>
         
         {/* Tabs */}
-        <div className="flex px-6 space-x-6 border-b border-black/[0.04] overflow-x-auto scrollbar-hide scrollable-content">
+        <div className="flex px-6 space-x-6 border-b border-black/[0.04] overflow-x-auto scrollbar-hide">
           {['功能', '节奏', '音效', '显示', '昵称'].map(tab => (
             <button 
               key={tab}

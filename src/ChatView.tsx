@@ -363,7 +363,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
       {/* Messages */}
       <div 
         ref={scrollRef} 
-        className="flex-1 w-full overflow-y-auto px-4 pt-4 pb-4 flex flex-col scrollbar-hide z-10 relative scrollable-content"
+        className="flex-1 w-full overflow-y-auto px-4 pt-4 pb-4 flex flex-col scrollbar-hide z-10 relative"
       >
         {messages.map((msg, i) => {
           const isMe = msg.sender === 'me';
