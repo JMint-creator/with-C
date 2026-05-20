@@ -1,16 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronLeft, Video, Settings, Smile, Hand, Plus, Image as ImageIcon, Send, X, PhoneCall, PhoneMissed, Phone, MicOff, CameraOff, MonitorPlay } from 'lucide-react';
+import { ChevronLeft, Video, Settings, Smile, Hand, Plus, Image as ImageIcon, Send, X, PhoneCall, PhoneMissed, Phone, MicOff, CameraOff, MonitorPlay, Check, CheckCheck, MessageCircle } from 'lucide-react';
 import { useLocalState } from './utils';
 
 type Message = {
   id: string;
   sender: 'me' | 'them';
-  type: 'text' | 'nudge' | 'emoji' | 'call';
+  type: 'text' | 'nudge' | 'emoji' | 'call' | 'sticker';
   content: string;
   time: string;
   callState?: 'missed' | 'declined' | 'duration';
   callDuration?: number;
+  replyTo?: string;
 };
 
 export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
@@ -30,22 +31,104 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
   const [chatFont] = useLocalState('app_chatFont', '');
   
   const [mockVideo] = useLocalState('app_chatMockVideoCall', true);
-  const [replyCards] = useLocalState<any[]>('app_replyCards', []);
+  const [cardGroups] = useLocalState<any[]>('app_cardGroups', []);
+  const replyCards = cardGroups.flatMap(g => g.cards).map(content => ({ content }));
   const [statuses] = useLocalState<any[]>('app_atmosphereStatuses', []);
   const [receiptStyle] = useLocalState('app_chatReceiptStyle', 'graphic');
   const [readReceipt] = useLocalState('app_chatReadReceipt', true);
   const [readNoReply] = useLocalState('app_chatReadNoReply', false);
+  const [emojis] = useLocalState<string[]>('app_emojis', ['😀', '😂', '🥰', '👍', '🙏']);
+  const [stickers] = useLocalState<string[]>('app_stickers', []);
 
-  // Video Call State
-  const [videoCallState, setVideoCallState] = useState<'none' | 'calling' | 'connected'>('none');
+    // Video Call State
+  const [videoCallState, setVideoCallState] = useState<'none' | 'calling' | 'connected' | 'incoming'>('none');
   const [isMinimized, setIsMinimized] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
+  const [showPlusMenu, setShowPlusMenu] = useState(false);
+
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const stickerInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, isSticker: boolean) => {
+     if (e.target.files && e.target.files[0]) {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.onload = (e) => {
+           if (e.target?.result) {
+              const newMsg: Message = {
+                id: Date.now().toString(),
+                sender: 'me',
+                type: isSticker ? 'sticker' : 'sticker', // For now use sticker type for any image
+                content: e.target.result as string,
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              };
+              setMessages(prev => [...prev, newMsg]);
+              setShowPlusMenu(false);
+              
+              if (!readNoReply) {
+                 simulateReply();
+              }
+           }
+        };
+        reader.readAsDataURL(file);
+     }
+  };
 
   const [mixEmoji] = useLocalState('app_chatMixEmoji', true);
   const primaryColor = themeConfig.textPrimary || '#a894a7';
 
-  // Current status
-  const currentStatus = statuses.length > 0 ? statuses[Math.floor(Math.random() * statuses.length)].content : '在线';
+  const [dynamicStatus, setDynamicStatus] = useState('在线');
+
+  useEffect(() => {
+    if (statuses.length === 0) return;
+    setDynamicStatus(statuses[Math.floor(Math.random() * statuses.length)].content);
+    let timer: any;
+    const scheduleNextStatus = () => {
+      const waitHours = 1 + Math.random() * 7;
+      timer = setTimeout(() => {
+         setDynamicStatus(statuses[Math.floor(Math.random() * statuses.length)].content);
+         scheduleNextStatus();
+      }, Math.floor(waitHours * 3600 * 1000));
+    };
+    scheduleNextStatus();
+    return () => clearTimeout(timer);
+  }, [statuses]);
+
+  useEffect(() => {
+    let timer: any;
+    const scheduleNextCall = () => {
+      const waitMins = 15 + Math.random() * 45;
+      timer = setTimeout(() => {
+         if (Math.random() < 0.25 && videoCallState === 'none') {
+           setVideoCallState('incoming');
+           const pushNotify = window.localStorage.getItem('app_chatPushNotify');
+           if ((pushNotify ? JSON.parse(pushNotify) : true) && 'Notification' in window && window.Notification.permission === 'granted') {
+             new window.Notification(charId, { body: '收到新来电' });
+           }
+           // Auto missed call after 30 seconds if not answered
+           setTimeout(() => {
+             setVideoCallState(prev => {
+               if (prev === 'incoming') {
+                 setMessages(msgs => [...msgs, {
+                   id: Date.now().toString(),
+                   sender: 'them',
+                   type: 'call',
+                   content: '未接来电',
+                   callState: 'missed',
+                   time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                 }]);
+                 return 'none';
+               }
+               return prev;
+             });
+           }, 30000);
+         }
+         scheduleNextCall();
+      }, Math.floor(waitMins * 60 * 1000));
+    };
+    scheduleNextCall();
+    return () => clearTimeout(timer);
+  }, [videoCallState, charId, setMessages]);
 
   const [proactive] = useLocalState('app_chatProactive', false);
   const [proactiveInterval] = useLocalState('app_chatProactiveInterval', 20);
@@ -104,22 +187,83 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
     
     setTimeout(() => {
       setIsTyping(false);
-      const replyCount = Math.floor(Math.random() * 3) + 1; // 1 to 3 messages
       const newMsgs: Message[] = [];
+      let baseId = Date.now();
+
+      if (Math.random() < 0.03) {
+        newMsgs.push({
+          id: (++baseId).toString(),
+          sender: 'them',
+          type: 'nudge',
+          content: '拍了拍你',
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        });
+      }
+
+      const r = Math.random();
+      let replyCount = 1;
+      if (r > 0.95) replyCount = 3;
+      else if (r > 0.75) replyCount = 2;
       
       for(let i=0; i<replyCount; i++) {
         let content = '嗯嗯';
         if (replyCards.length > 0) {
            content = replyCards[Math.floor(Math.random() * replyCards.length)].content;
         }
+
+        let replyToMsg: string | undefined = undefined;
+        if (Math.random() < 0.3) {
+           const myMsgs = messages.filter(m => m.sender === 'me');
+           const recentMyMsgs = myMsgs.slice(-10);
+           if (recentMyMsgs.length > 0) {
+             replyToMsg = recentMyMsgs[Math.floor(Math.random() * recentMyMsgs.length)].content;
+           }
+        }
+        
+        let emojiContent = '';
+        let sendEmojiSeparate = false;
+        if (Math.random() < 0.2 && emojis.length > 0) {
+          const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+          if (mixEmoji) {
+             if (Math.random() < 0.5) content = emoji + content;
+             else content = content + emoji;
+          } else {
+             emojiContent = emoji;
+             sendEmojiSeparate = true;
+          }
+        }
+
         newMsgs.push({
-          id: Date.now().toString() + i,
+          id: (++baseId).toString(),
           sender: 'them',
           type: 'text',
           content,
+          replyTo: replyToMsg,
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         });
+
+        if (sendEmojiSeparate) {
+          newMsgs.push({
+            id: (++baseId).toString(),
+            sender: 'them',
+            type: 'emoji',
+            content: emojiContent,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          });
+        }
+
+        if (Math.random() < 0.2 && stickers.length > 0) {
+          const sticker = stickers[Math.floor(Math.random() * stickers.length)];
+          newMsgs.push({
+             id: (++baseId).toString(),
+             sender: 'them',
+             type: 'sticker',
+             content: sticker,
+             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          });
+        }
       }
+
       setMessages(prev => [...prev, ...newMsgs]);
       
       const pushNotify = window.localStorage.getItem('app_chatPushNotify');
@@ -139,7 +283,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
     setVideoCallState('calling');
     setCallDuration(0);
     setTimeout(() => {
-      if (Math.random() > 0.3) {
+      if (Math.random() > 0.35) {
         setVideoCallState('connected');
       } else {
         setVideoCallState('none');
@@ -168,15 +312,32 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
     }]);
   };
 
+  const acceptCall = () => {
+    setVideoCallState('connected');
+    setCallDuration(0);
+  };
+
+  const declineCall = () => {
+    setVideoCallState('none');
+    setMessages(prev => [...prev, {
+      id: Date.now().toString(),
+      sender: 'me',
+      type: 'call',
+      content: '已拒绝',
+      callState: 'declined',
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    }]);
+  };
+
   const customStyle = chatFont ? { fontFamily: 'CustomChatFont, sans-serif' } : {};
 
   return (
-    <div className="flex-1 w-full flex flex-col relative h-full overflow-hidden" style={{ ...customStyle, backgroundColor: chatBg ? 'transparent' : themeConfig.bg, backgroundImage: chatBg ? `url(${chatBg})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center' }}>
+    <div className="flex-1 w-full flex flex-col relative h-[100dvh] overflow-hidden" style={{ ...customStyle, backgroundColor: chatBg ? 'transparent' : themeConfig.bg, backgroundImage: chatBg ? `url(${chatBg})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center' }}>
       {chatFont && <style dangerouslySetInnerHTML={{ __html: `@font-face { font-family: 'CustomChatFont'; src: url('${chatFont}'); }` }} />}
       {chatCss && <style dangerouslySetInnerHTML={{ __html: chatCss }} />}
       
       {/* Header */}
-      <div className="w-full flex items-center justify-between px-3 pb-3 pt-[env(safe-area-inset-top)] mt-4 z-10" style={{ backgroundColor: themeConfig.bg ? themeConfig.bg + 'ee' : '#ffffffcc', backdropFilter: 'blur(12px)' }}>
+      <div className="w-full flex items-center justify-between px-3 pb-3 pt-[max(1rem,env(safe-area-inset-top))] z-10" style={{ backgroundColor: themeConfig.bg ? themeConfig.bg + 'ee' : '#ffffffcc', backdropFilter: 'blur(12px)' }}>
         <button onClick={onClose} className="w-[60px] flex items-center p-1" style={{ color: themeConfig.textSecondary }}>
           <ChevronLeft size={26} className="-ml-1" />
         </button>
@@ -187,7 +348,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
             className="text-[17px] font-semibold text-center bg-transparent outline-none m-0 p-0"
             style={{ color: themeConfig.textPrimary }}
           />
-          <div className="text-[11px] mt-0.5" style={{ color: themeConfig.textSecondary }}>{currentStatus}</div>
+          <div className="text-[11px] mt-0.5" style={{ color: themeConfig.textSecondary }}>{dynamicStatus}</div>
         </div>
         <div className="w-[60px] flex items-center justify-end space-x-3 pr-1">
           {mockVideo && (
@@ -198,14 +359,21 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-6 space-y-6 scrollbar-hide pb-20">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-6 flex flex-col scrollbar-hide pb-20 z-0">
         {messages.map((msg, i) => {
           const isMe = msg.sender === 'me';
           const avatar = isMe ? (avatar1 || '') : (avatar2 || '');
           
+          const nextMsg = messages[i + 1];
+          const isGroupedNext = nextMsg && nextMsg.sender === msg.sender && nextMsg.time === msg.time && nextMsg.type !== 'call' && nextMsg.type !== 'nudge' && msg.type !== 'call' && msg.type !== 'nudge';
+          const marginBottom = isGroupedNext ? 'mb-1' : 'mb-5';
+
+          // isRead if there's any message from them after this, or if it's the last message and readNoReply is true, or if simulating reply
+          const isRead = messages.slice(i + 1).some(m => m.sender === 'them') || (readNoReply && !isTyping);
+
           if (msg.type === 'nudge') {
             return (
-              <div key={msg.id} className="w-full flex justify-center my-4">
+              <div key={msg.id} className={`w-full flex justify-center ${marginBottom}`}>
                 <div className="px-3 py-1 rounded-full bg-black/[0.05] text-[12px] text-gray-500">
                   {isMe ? '我' : charId}{msg.content}
                 </div>
@@ -215,7 +383,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
 
           if (msg.type === 'call') {
             return (
-              <div key={msg.id} className="w-full flex justify-center my-4">
+              <div key={msg.id} className={`w-full flex justify-center ${marginBottom}`}>
                 <div className="px-4 py-2 rounded-2xl bg-black/[0.03] text-[13px] flex items-center space-x-2 text-gray-600">
                   {msg.callState === 'declined' || msg.callState === 'missed' ? <PhoneMissed size={14} className="text-red-400" /> : <PhoneCall size={14} />}
                   <span>{msg.content}</span>
@@ -225,31 +393,51 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
           }
 
           return (
-            <div key={msg.id} className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'}`}>
+            <div key={msg.id} className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'} ${marginBottom}`}>
               {!isMe && (
-                <div className="w-9 h-9 rounded-full bg-black/10 shrink-0 mr-3 overflow-hidden">
-                  {avatar ? <img src={avatar} alt="" className="w-full h-full object-cover" /> : null}
+                <div className="w-9 h-9 shrink-0 mr-3">
+                  {!isGroupedNext && <div className="w-full h-full rounded-full bg-black/10 overflow-hidden shadow-sm">
+                    {avatar ? <img src={avatar} alt="" className="w-full h-full object-cover" /> : null}
+                  </div>}
                 </div>
               )}
               <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} max-w-[70%]`}>
-                <div 
-                  className={`chat-bubble px-4 py-2.5 rounded-[18px] text-[15px] leading-relaxed shadow-sm ${isMe ? 'bg-black text-white rounded-tr-[4px]' : 'bg-white rounded-tl-[4px]'}`}
-                  style={isMe ? {backgroundColor: primaryColor} : {}}
-                >
-                  {msg.content}
-                </div>
-                <div className="text-[10px] text-black/30 mt-1 flex items-center space-x-1">
-                  <span>{msg.time}</span>
-                  {isMe && readReceipt && (
-                    <span className="text-black/20 ml-1">
-                       {receiptStyle === 'text' ? '已读' : <span className="text-[9px]">✓✓</span>}
-                    </span>
-                  )}
-                </div>
+                {msg.replyTo && (
+                  <div className={`text-[12px] px-3 py-1.5 mb-1 rounded-[12px] opacity-70 truncate max-w-full ${isMe ? 'bg-black/10 text-black' : 'bg-white/50 text-black/60'} border border-black/5`}>
+                    回复: {msg.replyTo}
+                  </div>
+                )}
+                {msg.type === 'sticker' ? (
+                  <div className="rounded-[18px] overflow-hidden bg-transparent shrink-0">
+                    <img src={msg.content} alt="sticker" className="max-w-[120px] max-h-[120px] object-contain" />
+                  </div>
+                ) : msg.type === 'emoji' ? (
+                  <div className="text-[48px] leading-none drop-shadow-sm">{msg.content}</div>
+                ) : (
+                  <div 
+                    className={`chat-bubble px-4 py-2.5 rounded-[18px] text-[15px] leading-relaxed shadow-[0_2px_10px_rgba(0,0,0,0.02)] ${isMe ? 'bg-black text-white rounded-tr-[4px]' : 'bg-white rounded-tl-[4px]'}`}
+                    style={isMe ? {backgroundColor: primaryColor} : {}}
+                  >
+                    {msg.content}
+                  </div>
+                )}
+                
+                {!isGroupedNext && (
+                  <div className={`text-[10px] mt-1 flex items-center space-x-1 ${isMe ? 'text-black/30' : 'text-black/20'}`}>
+                    <span>{msg.time}</span>
+                    {isMe && readReceipt && (
+                      <span className="ml-1 flex items-center">
+                         {receiptStyle === 'text' ? (isRead ? '已读' : '送达') : (isRead ? <CheckCheck size={14} strokeWidth={2.5} className="opacity-60 text-blue-500" /> : <Check size={14} strokeWidth={2.5} className="opacity-40" />)}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
               {isMe && (
-                <div className="w-9 h-9 rounded-full bg-black/10 shrink-0 ml-3 overflow-hidden">
-                  {avatar ? <img src={avatar} alt="" className="w-full h-full object-cover" /> : null}
+                <div className="w-9 h-9 shrink-0 ml-3">
+                  {!isGroupedNext && <div className="w-full h-full rounded-full bg-black/10 overflow-hidden shadow-sm">
+                    {avatar ? <img src={avatar} alt="" className="w-full h-full object-cover" /> : null}
+                  </div>}
                 </div>
               )}
             </div>
@@ -269,25 +457,65 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
         )}
       </div>
 
-      {/* Input Area */}
-      <div className="w-full bg-white/90 backdrop-blur-md border-t border-black/[0.04] p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] flex items-end space-x-3">
-        <button className="p-2 mb-1 text-black/40"><Plus size={24} /></button>
-        <div className="flex-1 bg-black/[0.04] rounded-[20px] min-h-[40px] flex items-center px-3 py-1">
-          <input 
-            type="text"
-            className="flex-1 bg-transparent border-none outline-none text-[15px] p-2"
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleSend()}
-          />
-          <button className="p-1.5 text-black/40" onClick={() => mixEmoji ? setInput(input + '😊') : handleSend('😊', 'emoji')}><Smile size={20} /></button>
-        </div>
-        <button className="p-2 mb-1 text-black/40" onClick={handleNudge}><Hand size={24} /></button>
-        {input.trim() && (
-          <button className="p-2 mb-1 bg-black text-white rounded-full shadow-sm" style={{backgroundColor: primaryColor}} onClick={() => handleSend()}>
-            <Send size={18} className="ml-0.5" />
-          </button>
+      {/* Plus Menu Overlay */}
+      <AnimatePresence>
+        {showPlusMenu && (
+          <motion.div 
+            initial={{ opacity: 0, y: 100 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 100 }}
+            className="absolute bottom-[calc(4rem+env(safe-area-inset-bottom))] left-0 right-0 bg-white/95 backdrop-blur-md rounded-t-3xl p-6 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] border-t border-black/5 z-20 flex justify-between space-x-4"
+          >
+             <button className="flex flex-col items-center gap-2 group" onClick={() => { initiateCall(); setShowPlusMenu(false); }}>
+                <div className="w-14 h-14 rounded-2xl bg-[#F2F2F7] flex items-center justify-center text-gray-700 group-active:scale-95 transition-transform"><Video size={28}/></div>
+                <span className="text-[12px] text-gray-500">视频通话</span>
+             </button>
+             <div className="flex flex-col items-center gap-2 group cursor-pointer" onClick={() => imageInputRef.current?.click()}>
+                <div className="w-14 h-14 rounded-2xl bg-[#F2F2F7] flex items-center justify-center text-gray-700 group-active:scale-95 transition-transform"><ImageIcon size={28}/></div>
+                <span className="text-[12px] text-gray-500">图片</span>
+             </div>
+             <div className="flex flex-col items-center gap-2 group cursor-pointer" onClick={() => stickerInputRef.current?.click()}>
+                <div className="w-14 h-14 rounded-2xl bg-[#F2F2F7] flex items-center justify-center text-gray-700 group-active:scale-95 transition-transform"><Smile size={28}/></div>
+                <span className="text-[12px] text-gray-500">表情包</span>
+             </div>
+             <button className="flex flex-col items-center gap-2 group" onClick={() => { handleNudge(); setShowPlusMenu(false); }}>
+                <div className="w-14 h-14 rounded-2xl bg-[#F2F2F7] flex items-center justify-center text-gray-700 group-active:scale-95 transition-transform"><Hand size={28}/></div>
+                <span className="text-[12px] text-gray-500">拍一拍</span>
+             </button>
+             
+             <input type="file" ref={imageInputRef} className="hidden" accept="image/*" onChange={(e) => handleImageUpload(e, false)} />
+             <input type="file" ref={stickerInputRef} className="hidden" accept="image/*" onChange={(e) => handleImageUpload(e, true)} />
+          </motion.div>
         )}
+      </AnimatePresence>
+
+      {/* Input Area */}
+      <div className="w-full bg-white/95 backdrop-blur-xl border-t border-black/[0.05] p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] flex flex-col z-30 relative shadow-[0_-2px_20px_rgba(0,0,0,0.02)]">
+        <div className="flex items-end space-x-2.5">
+          <button className={`p-2 shrink-0 ${showPlusMenu ? 'text-black rotate-45' : 'text-black/40'} transition-all`} onClick={() => setShowPlusMenu(!showPlusMenu)}>
+            <Plus size={24} />
+          </button>
+          <div className="flex-1 bg-black/[0.04] rounded-[24px] min-h-[40px] flex items-center px-4 py-1.5 focus-within:bg-black/[0.06] transition-colors border border-black/[0.02]">
+            <input 
+              type="text"
+              className="flex-1 bg-transparent border-none outline-none text-[15px] p-1.5"
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSend()}
+              placeholder="发送消息..."
+              onFocus={() => setShowPlusMenu(false)}
+            />
+          </div>
+          {input.trim() ? (
+            <button className="p-2.5 mb-0.5 shrink-0 bg-black text-white rounded-full shadow-md active:scale-95 transition-transform" style={{backgroundColor: primaryColor}} onClick={() => handleSend()}>
+              <Send size={18} className="ml-0.5" />
+            </button>
+          ) : (
+            <button className="p-2 mb-1 shrink-0 text-gray-400 active:text-gray-600 transition-colors" onClick={() => simulateReply()}>
+               <MessageCircle size={24} />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Video Call Overlay */}
@@ -322,17 +550,30 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
                 {!isMinimized && <div className="text-[28px] font-medium text-white mb-2">{charId}</div>}
                 
                 <div className={`${isMinimized ? 'text-[10px]' : 'text-[15px]'} text-white/50 tracking-widest`}>
-                  {videoCallState === 'calling' ? '正在等待接听...' : `${Math.floor(callDuration / 60).toString().padStart(2, '0')}:${(callDuration % 60).toString().padStart(2, '0')}`}
+                  {videoCallState === 'calling' ? '正在等待接听...' : videoCallState === 'incoming' ? '邀请你视频通话...' : `${Math.floor(callDuration / 60).toString().padStart(2, '0')}:${(callDuration % 60).toString().padStart(2, '0')}`}
                 </div>
               </div>
 
               {!isMinimized && (
                 <div className="pb-16 px-10 flex items-center justify-center space-x-8">
-                  <button className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center text-white/80 active:bg-white/20"><MicOff size={24} /></button>
-                  <button className="w-16 h-16 rounded-full bg-red-500 flex items-center justify-center text-white shadow-[0_4px_20px_rgba(239,68,68,0.4)] active:bg-red-600" onClick={endCall}>
-                    <Phone size={28} className="rotate-[135deg]" />
-                  </button>
-                  <button className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center text-white/80 active:bg-white/20"><CameraOff size={24} /></button>
+                  {videoCallState === 'incoming' ? (
+                     <>
+                        <button className="w-16 h-16 rounded-full bg-red-500 flex items-center justify-center text-white shadow-[0_4px_20px_rgba(239,68,68,0.4)] active:bg-red-600" onClick={declineCall}>
+                          <Phone size={28} className="rotate-[135deg]" />
+                        </button>
+                        <button className="w-16 h-16 rounded-full bg-green-500 flex items-center justify-center text-white shadow-[0_4px_20px_rgba(34,197,94,0.4)] active:bg-green-600" onClick={acceptCall}>
+                          <Phone size={28} />
+                        </button>
+                     </>
+                  ) : (
+                     <>
+                       <button className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center text-white/80 active:bg-white/20"><MicOff size={24} /></button>
+                       <button className="w-16 h-16 rounded-full bg-red-500 flex items-center justify-center text-white shadow-[0_4px_20px_rgba(239,68,68,0.4)] active:bg-red-600" onClick={endCall}>
+                         <Phone size={28} className="rotate-[135deg]" />
+                       </button>
+                       <button className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center text-white/80 active:bg-white/20"><CameraOff size={24} /></button>
+                     </>
+                  )}
                 </div>
               )}
             </div>
