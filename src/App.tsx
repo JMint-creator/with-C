@@ -1875,7 +1875,7 @@ export default function App() {
 
   return (
     <div
-      className="flex-1 w-full text-[#333] font-sans flex flex-col items-center overflow-x-hidden selection:bg-[#DCD6CE]/50 transition-colors duration-500 relative min-h-[100dvh]"
+      className="flex-1 w-full text-[#333] font-sans flex flex-col items-center overflow-hidden selection:bg-[#DCD6CE]/50 transition-colors duration-500 relative h-full"
       style={{
         color: currentThemeConfig.textPrimary,
       }}
@@ -1890,14 +1890,12 @@ export default function App() {
       )}
 
       <div
-        className="w-full max-w-[420px] mx-auto flex flex-col flex-1 gap-4 px-4 shrink-0"
+        className="w-full max-w-[420px] mx-auto flex flex-col justify-between flex-1 gap-4 px-4 shrink-0"
         style={{
           paddingBottom: "calc(0.5rem + env(safe-area-inset-bottom))",
-          paddingTop: "calc(0.5rem + env(safe-area-inset-top))",
+          paddingTop: "calc(1.5rem + env(safe-area-inset-top))",
         }}
       >
-        <div className="flex-1 min-h-[0px]" />
-
         {/* Profile Card */}
         <motion.div
           className="border border-white/60 rounded-[32px] flex flex-col items-center shadow-[0_8px_32px_-12px_rgba(0,0,0,0.06)] shrink-0 transition-colors duration-500 overflow-hidden w-full"
@@ -2109,7 +2107,7 @@ export default function App() {
 
         {/* Apps Grid */}
         <motion.div
-          className="grid grid-cols-4 gap-y-2.5 gap-x-3 pt-1 pb-1 shrink-0 px-1"
+          className="grid grid-cols-4 gap-y-2.5 gap-x-3 shrink-0 px-1"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
