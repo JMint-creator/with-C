@@ -316,36 +316,52 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
   const customStyle = chatFont ? { fontFamily: 'CustomChatFont, sans-serif' } : {};
 
   return (
-    <div className="fixed inset-0 overflow-hidden z-50 transition-colors" style={{ ...customStyle, backgroundColor: themeConfig.bg }}>
-      {chatBg && <img src={chatBg} alt="" className="absolute inset-0 object-cover pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 0 }} /> }
+    <div 
+      className="flex-1 w-full min-h-[100dvh] flex flex-col relative overflow-hidden transition-colors" 
+      style={{ 
+        ...customStyle, 
+        backgroundColor: themeConfig.bg,
+        backgroundImage: chatBg ? `url("${chatBg}")` : 'none',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat'
+      }}
+    >
       {chatFont && <style dangerouslySetInnerHTML={{ __html: `@font-face { font-family: 'CustomChatFont'; src: url('${chatFont}'); }` }} />}
       {chatCss && <style dangerouslySetInnerHTML={{ __html: chatCss }} />}
       
       {/* Header */}
-      <div className="absolute top-[max(0.5rem,env(safe-area-inset-top))] left-3 right-3 rounded-[12px] flex items-center justify-between px-3 py-2 z-20 shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-white/50" style={{ backgroundColor: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(20px)' }}>
-        <button onClick={onClose} className="w-[70px] flex items-center p-1 text-black/60 active:opacity-50 transition-opacity">
-          <ChevronLeft size={26} className="-ml-1" />
-        </button>
-        <div className="flex-1 flex items-center justify-center space-x-2 h-[38px]">
-          {avatar2 && (
-            <div className="w-[34px] h-[34px] rounded-full overflow-hidden shadow-sm border border-black/5 shrink-0 bg-white">
-              <img src={avatar2} alt="" className="w-full h-full object-cover" />
-            </div>
-          )}
-          <input 
-            value={charId}
-            onChange={e => setCharId(e.target.value)}
-            className="text-[18px] font-semibold text-center bg-transparent outline-none m-0 p-0 text-black leading-none"
-            style={{ width: `${Math.max(1, charId.length) * 1.1 + 0.5}em` }}
-          />
-        </div>
-        <div className="w-[70px] flex items-center justify-end pr-1">
-          <button onClick={onOpenSettings} className="text-black/60 active:opacity-50 transition-opacity p-1.5"><MoreHorizontal size={24} /></button>
+      <div 
+        className="w-full flex-shrink-0 px-3 pt-[max(0.5rem,env(safe-area-inset-top))] pb-1 z-20 relative"
+      >
+        <div className="rounded-[12px] flex items-center justify-between px-3 py-2 shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-white/50" style={{ backgroundColor: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(20px)' }}>
+          <button onClick={onClose} className="w-[70px] flex items-center p-1 text-black/60 active:opacity-50 transition-opacity">
+            <ChevronLeft size={26} className="-ml-1" />
+          </button>
+          <div className="flex-1 flex items-center justify-center space-x-2 h-[38px]">
+            {avatar2 && (
+              <div className="w-[34px] h-[34px] rounded-full overflow-hidden shadow-sm border border-black/5 shrink-0 bg-white">
+                <img src={avatar2} alt="" className="w-full h-full object-cover" />
+              </div>
+            )}
+            <input 
+              value={charId}
+              onChange={e => setCharId(e.target.value)}
+              className="text-[18px] font-semibold text-center bg-transparent outline-none m-0 p-0 text-black leading-none"
+              style={{ width: `${Math.max(1, charId.length) * 1.1 + 0.5}em` }}
+            />
+          </div>
+          <div className="w-[70px] flex items-center justify-end pr-1">
+            <button onClick={onOpenSettings} className="text-black/60 active:opacity-50 transition-opacity p-1.5"><MoreHorizontal size={24} /></button>
+          </div>
         </div>
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} className="absolute inset-0 overflow-y-auto px-4 pt-[calc(env(safe-area-inset-top)+80px)] pb-[calc(env(safe-area-inset-bottom)+120px)] flex flex-col scrollbar-hide z-10">
+      <div 
+        ref={scrollRef} 
+        className="flex-1 w-full overflow-y-auto px-4 pt-4 pb-4 flex flex-col scrollbar-hide z-10 relative"
+      >
         {messages.map((msg, i) => {
           const isMe = msg.sender === 'me';
           const avatar = isMe ? (avatar1 || '') : (avatar2 || '');
@@ -480,11 +496,14 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
       </AnimatePresence>
 
       {/* Input Area */}
-      <div className="absolute bottom-[max(0.5rem,env(safe-area-inset-bottom))] left-3 right-3 rounded-[16px] bg-white/70 backdrop-blur-xl border border-white/80 p-2 flex flex-col z-30 shadow-[0_8px_30px_rgba(0,0,0,0.06)]">
-        <div className="flex items-center space-x-1.5">
-          <button className={`w-9 h-9 flex items-center justify-center shrink-0 ${showPlusMenu ? 'rotate-45' : ''} transition-all active:scale-95`} style={{ color: primaryColor }} onClick={() => setShowPlusMenu(!showPlusMenu)}>
-            <Plus size={24} strokeWidth={2} />
-          </button>
+      <div 
+        className="w-full shrink-0 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] z-30 relative"
+      >
+        <div className="rounded-[16px] bg-white/70 backdrop-blur-xl border border-white/80 p-2 flex flex-col shadow-[0_8px_30px_rgba(0,0,0,0.06)]">
+          <div className="flex items-center space-x-1.5">
+            <button className={`w-9 h-9 flex items-center justify-center shrink-0 ${showPlusMenu ? 'rotate-45' : ''} transition-all active:scale-95`} style={{ color: primaryColor }} onClick={() => setShowPlusMenu(!showPlusMenu)}>
+              <Plus size={24} strokeWidth={2} />
+            </button>
           <div className="flex-1 min-h-[32px] rounded-[16px] flex items-center px-3 py-1 transition-colors border border-black/[0.03]" style={{ backgroundColor: themeConfig.cardBg }}>
             <input 
               type="text"
@@ -507,6 +526,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
           )}
         </div>
       </div>
+    </div>
 
       {/* Video Call Overlay */}
       <AnimatePresence>

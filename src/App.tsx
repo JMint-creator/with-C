@@ -1315,7 +1315,7 @@ export default function App() {
         </motion.div>
 
         {/* Widgets Row */}
-        <div className="grid grid-cols-2 gap-3 shrink-0">
+        <div className="grid grid-cols-2 gap-3 shrink-0 mt-1">
           {/* Music Widget */}
           <motion.div 
             className="backdrop-blur-xl border border-white/60 rounded-[24px] p-4 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.06)] flex flex-col transition-colors duration-500"
