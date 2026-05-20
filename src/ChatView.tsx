@@ -317,37 +317,44 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
 
   return (
     <div 
-      className="flex-1 w-full min-h-[100dvh] flex flex-col relative overflow-hidden transition-colors" 
+      className="fixed inset-0 flex flex-col z-50 overflow-hidden transition-colors" 
       style={{ 
         ...customStyle, 
         backgroundColor: themeConfig.bg,
-        backgroundImage: chatBg ? `url("${chatBg}")` : 'none',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat'
       }}
     >
+      {chatBg && (
+        <div 
+          className="absolute inset-0 w-full h-full pointer-events-none z-0" 
+          style={{
+            backgroundImage: `url(${chatBg})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat'
+          }}
+        />
+      )}
       {chatFont && <style dangerouslySetInnerHTML={{ __html: `@font-face { font-family: 'CustomChatFont'; src: url('${chatFont}'); }` }} />}
       {chatCss && <style dangerouslySetInnerHTML={{ __html: chatCss }} />}
       
       {/* Header */}
       <div 
-        className="w-full flex-shrink-0 px-3 pt-[max(0.5rem,env(safe-area-inset-top))] pb-1 z-20 relative"
+        className="w-full shrink-0 px-3 pt-[max(0.5rem,env(safe-area-inset-top))] pb-1 z-20 relative"
       >
         <div className="rounded-[12px] flex items-center justify-between px-3 py-2 shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-white/50" style={{ backgroundColor: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(20px)' }}>
           <button onClick={onClose} className="w-[70px] flex items-center p-1 text-black/60 active:opacity-50 transition-opacity">
             <ChevronLeft size={26} className="-ml-1" />
           </button>
-          <div className="flex-1 flex items-center justify-center space-x-2 h-[38px]">
+          <div className="flex-1 flex items-center justify-center space-x-2 h-[42px]">
             {avatar2 && (
-              <div className="w-[34px] h-[34px] rounded-full overflow-hidden shadow-sm border border-black/5 shrink-0 bg-white">
+              <div className="w-[40px] h-[40px] rounded-full overflow-hidden shadow-sm border border-black/5 shrink-0 bg-white">
                 <img src={avatar2} alt="" className="w-full h-full object-cover" />
               </div>
             )}
             <input 
               value={charId}
               onChange={e => setCharId(e.target.value)}
-              className="text-[18px] font-semibold text-center bg-transparent outline-none m-0 p-0 text-black leading-none"
+              className="text-[16px] font-medium text-center bg-transparent outline-none m-0 p-0 text-black leading-none"
               style={{ width: `${Math.max(1, charId.length) * 1.1 + 0.5}em` }}
             />
           </div>
