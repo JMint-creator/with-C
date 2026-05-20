@@ -572,16 +572,17 @@ export default function App() {
     if (view !== 'home' && view !== 'chat') bgColor = '#F2F2F7';
     
     document.documentElement.style.backgroundColor = bgColor;
-    document.body.style.backgroundColor = bgColor;
-    document.body.style.backgroundImage = bgImage;
-    document.body.style.backgroundSize = 'cover';
-    document.body.style.backgroundPosition = 'center';
-    document.body.style.backgroundAttachment = 'fixed';
+    document.documentElement.style.backgroundImage = bgImage;
+    document.documentElement.style.backgroundSize = 'cover';
+    document.documentElement.style.backgroundPosition = 'center';
+    
+    document.body.style.backgroundColor = 'transparent';
+    document.body.style.backgroundImage = 'none';
     
     return () => {
       document.documentElement.style.backgroundColor = '';
+      document.documentElement.style.backgroundImage = '';
       document.body.style.backgroundColor = '';
-      document.body.style.backgroundImage = '';
     };
   }, [currentThemeConfig.bg, view, wallpaper, chatBg]);
 
