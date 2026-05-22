@@ -1,3 +1,7 @@
+import { useState, useRef, useEffect } from 'react';
+import { ChevronLeft, X, Plus } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+
 const DecideView = ({ onClose }: { onClose: () => void }) => {
   const [tab, setTab] = useState<'tarot' | 'yesno' | 'custom'>('tarot');
   const [question, setQuestion] = useState('');

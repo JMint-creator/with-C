@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   MessageCircle, 
   Mail, 
@@ -31,17 +31,20 @@ import {
   SkipBack,
   SkipForward,
   Music,
-  ListMusic
+  ListMusic,
+  Aperture
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { ChatView } from './ChatView';
+import { MomentsView } from './MomentsView';
 import { ChatSettingsView } from './ChatSettingsView';
+import { compressImage } from './utils';
 
 const apps = [
   { name: '聊天', icon: MessageCircle },
   { name: '信箱', icon: Mail },
   { name: '查岗', icon: Radar },
-  { name: '日记本', icon: BookHeart },
+  { name: '朋友圈', icon: Aperture },
   { name: '心愿清单', icon: Gift },
   { name: '观影阅读', icon: Film },
   { name: 'Todo', icon: CheckSquare },
@@ -381,6 +384,11 @@ export default function App() {
   const [chatBg, setChatBg] = useLocalState('app_chatBg', '');
   const [chatAvatar1, setChatAvatar1] = useLocalState('app_chatAvatar1', '');
   const [chatAvatar2, setChatAvatar2] = useLocalState('app_chatAvatar2', '');
+  
+  // Social Settings
+  const [myNickname, setMyNickname] = useLocalState('app_myNickname', '我');
+  const [mjNickname, setMjNickname] = useLocalState('app_mjNickname', '梦角');
+  const [momentsBg, setMomentsBg] = useLocalState('app_moments_bg', '');
   const [chatCss, setChatCss] = useLocalState('app_chatCss', '');
   const [chatFont, setChatFont] = useLocalState('app_chatFont', '');
   const [chatKeepAlive] = useLocalState('app_chatKeepAlive', false);
@@ -407,18 +415,23 @@ export default function App() {
   };
 
   // Music Player State
-  const [musicList, setMusicList] = useLocalState<Array<{ id: string, name: string, artist: string, url: string }>>('app_musicList', []);
+  const [musicList, setMusicList] = useLocalState<Array<{ id: string, name: string, artist: string, url: string, category?: string }>>('app_musicList', []);
+  const [activePlaylist, setActivePlaylist] = useLocalState<string>('app_activePlaylist', '全部');
   const [currentMusicIndex, setCurrentMusicIndex] = useLocalState<number>('app_currentMusicIndex', 0);
   const [isMusicPlaying, setIsMusicPlaying] = useState(false);
   const [audioProgress, setAudioProgress] = useState(0);
 
+  const playQueue = React.useMemo(() => {
+     return activePlaylist === '全部' ? musicList : musicList.filter(m => (m.category || '默认') === activePlaylist);
+  }, [musicList, activePlaylist]);
+
   const nextMusicRef = useRef(() => {});
   nextMusicRef.current = () => {
-    if (musicList.length === 0) {
+    if (playQueue.length === 0) {
       setIsMusicPlaying(false);
       return;
     }
-    setCurrentMusicIndex(prev => (prev + 1) % musicList.length);
+    setCurrentMusicIndex((currentMusicIndex + 1) % playQueue.length);
   };
 
   useEffect(() => {
@@ -453,8 +466,9 @@ export default function App() {
   const lastPlayedUrlRef = useRef('');
 
   useEffect(() => {
-    if (musicList.length > 0 && musicList[currentMusicIndex]) {
-      const currentUrl = musicList[currentMusicIndex].url;
+    const safeIndex = currentMusicIndex >= playQueue.length ? 0 : currentMusicIndex;
+    if (playQueue.length > 0 && playQueue[safeIndex]) {
+      const currentUrl = playQueue[safeIndex].url;
       if (lastPlayedUrlRef.current !== currentUrl) {
          globalAudio.src = currentUrl;
          globalAudio.load();
@@ -480,20 +494,20 @@ export default function App() {
       }
       lastPlayedUrlRef.current = '';
     }
-  }, [musicList, currentMusicIndex, isMusicPlaying]);
+  }, [playQueue, currentMusicIndex, isMusicPlaying]);
 
   const toggleMusicPlay = () => {
-    if (musicList.length === 0) return;
+    if (playQueue.length === 0) return;
     setIsMusicPlaying(!isMusicPlaying);
   };
   const prevMusic = () => {
-    if (musicList.length === 0) return;
-    setCurrentMusicIndex(prev => (prev - 1 + musicList.length) % musicList.length);
+    if (playQueue.length === 0) return;
+    setCurrentMusicIndex((currentMusicIndex - 1 + playQueue.length) % playQueue.length);
     setIsMusicPlaying(true);
   };
   const nextMusic = () => {
-    if (musicList.length === 0) return;
-    setCurrentMusicIndex(prev => (prev + 1) % musicList.length);
+    if (playQueue.length === 0) return;
+    setCurrentMusicIndex((currentMusicIndex + 1) % playQueue.length);
     setIsMusicPlaying(true);
   };
 
@@ -520,19 +534,31 @@ export default function App() {
   const profileBgInputRef = useRef<HTMLInputElement>(null);
   const avatar1InputRef = useRef<HTMLInputElement>(null);
   const avatar2InputRef = useRef<HTMLInputElement>(null);
+  const momentsBgInputRef = useRef<HTMLInputElement>(null);
   const chatAvatar1InputRef = useRef<HTMLInputElement>(null);
   const chatAvatar2InputRef = useRef<HTMLInputElement>(null);
   const cssInputRef = useRef<HTMLInputElement>(null);
   const fontInputRef = useRef<HTMLInputElement>(null);
   const stickerInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, setter: (val: string) => void) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, setter: (val: string) => void) => {
     if (e.target.files && e.target.files[0]) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setter(event.target?.result as string);
-      };
-      reader.readAsDataURL(e.target.files[0]);
+      const file = e.target.files[0];
+      if (file.type.startsWith('image/')) {
+          try {
+              const dataUrl = await compressImage(file);
+              setter(dataUrl);
+          } catch (err) {
+              console.error(err);
+          }
+      } else {
+          // Fallback for non-images (like TTF fonts which are handled below but just in case)
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            setter(event.target?.result as string);
+          };
+          reader.readAsDataURL(file as Blob);
+      }
     }
     e.target.value = ''; // reset
   };
@@ -589,6 +615,12 @@ export default function App() {
   const [addMusicName, setAddMusicName] = useState('');
   const [addMusicArtist, setAddMusicArtist] = useState('');
   const [addMusicUrl, setAddMusicUrl] = useState('');
+  const [addMusicCategory, setAddMusicCategory] = useState('');
+
+  const allCategories = React.useMemo(() => {
+      const cats = musicList.map(m => m.category || '默认');
+      return Array.from(new Set(cats));
+  }, [musicList]);
 
   const renderOverlays = () => (
     <>
@@ -617,6 +649,17 @@ export default function App() {
                          onChange={e => setAddMusicUrl(e.target.value)}
                          className="w-full bg-white rounded-lg px-3 py-2 text-[13px] border border-black/5 h-[60px] resize-none focus:outline-none focus:border-black/20"
                        />
+                       <input 
+                         type="text" 
+                         placeholder="歌单分类 (选填)" 
+                         list="music-categories"
+                         value={addMusicCategory}
+                         onChange={e => setAddMusicCategory(e.target.value)}
+                         className="w-full bg-white rounded-lg px-3 py-2 text-[13px] border border-black/5 focus:outline-none focus:border-black/20"
+                       />
+                       <datalist id="music-categories">
+                          {allCategories.map(cat => <option key={cat} value={cat} />)}
+                       </datalist>
                        <span className="text-[10px] text-black/50 px-1 -mt-1 leading-tight">注意：必须是能够直接播放的原始音频链接。如果是普通网页或网盘分享链接将无法播放。</span>
                     </div>
                     <div className="flex w-full border-t border-[#3c3c43]/20">
@@ -630,11 +673,13 @@ export default function App() {
                                 id: Date.now().toString(),
                                 name: addMusicName,
                                 artist: addMusicArtist,
-                                url: addMusicUrl
+                                url: addMusicUrl,
+                                category: addMusicCategory || '默认'
                             }]);
                             setAddMusicName('');
                             setAddMusicArtist('');
                             setAddMusicUrl('');
+                            setAddMusicCategory('');
                             setShowAddMusicModal(false);
                             showToast('添加成功');
                         }}>添加</button>
@@ -837,11 +882,11 @@ export default function App() {
                                 input.type = 'file';
                                 input.accept = '.js,.json,text/plain';
                                 input.onchange = (e) => {
-                                    const file = e.target.files[0];
+                                    const file = (e.target as HTMLInputElement).files?.[0];
                                     if (!file) return;
                                     const reader = new FileReader();
                                     reader.onload = (event) => {
-                                        const content = event.target?.result;
+                                        const content = event.target?.result as string;
                                         try {
                                             let data = null;
                                             try {
@@ -1008,13 +1053,13 @@ export default function App() {
                           const files = e.target.files;
                           if (!files) return;
                           const newStickers = [...stickers];
-                          Array.from(files).forEach(file => {
+                          Array.from(files).forEach((file: any) => {
                               const reader = new FileReader();
                               reader.onload = (event) => {
                                   newStickers.push(event.target?.result as string);
                                   setStickers([...newStickers]);
                               };
-                              reader.readAsDataURL(file);
+                              reader.readAsDataURL(file as Blob);
                           });
                           e.target.value = ''; // reset
                       }} />
@@ -1129,28 +1174,47 @@ export default function App() {
         </div>
 
         <div className="px-4 py-4 max-w-2xl mx-auto w-full">
-          <div className="bg-white rounded-[10px] overflow-hidden">
-            {musicList.length === 0 ? (
+          <div className="mb-6">
+             <div className="text-[12px] text-[#6d6d72] ml-4 mb-2 uppercase tracking-wide">当前播放歌单</div>
+             <div className="bg-white rounded-[10px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)] px-3 relative">
+                <select 
+                    value={activePlaylist}
+                    onChange={(e) => {
+                        setActivePlaylist(e.target.value);
+                        setCurrentMusicIndex(0);
+                    }}
+                    className="w-full py-3 bg-transparent text-[15px] focus:outline-none appearance-none font-medium"
+                >
+                    <option value="全部">全部歌曲 ({musicList.length})</option>
+                    {allCategories.map(cat => (
+                        <option key={cat} value={cat}>{cat} ({musicList.filter(m => (m.category || '默认') === cat).length})</option>
+                    ))}
+                </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                    <ChevronLeft size={16} className="-rotate-90" />
+                </div>
+             </div>
+          </div>
+
+          <div className="text-[12px] text-[#6d6d72] ml-4 mb-2 uppercase tracking-wide">歌曲列表</div>
+          <div className="bg-white rounded-[10px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+            {playQueue.length === 0 ? (
               <div className="p-8 text-center text-[#8e8e93] text-[13px]">
                 暂无音乐，点击右上角添加
               </div>
             ) : (
-              musicList.map((music, idx) => (
-                <div key={music.id} className={`flex items-center justify-between p-3 ${idx !== musicList.length - 1 ? 'border-b border-[#c6c6c8]/30' : ''}`}>
+              playQueue.map((music, idx) => (
+                <div key={music.id} className={`flex items-center justify-between p-3 ${idx !== playQueue.length - 1 ? 'border-b border-[#c6c6c8]/30' : ''}`}>
                    <div className="flex flex-col flex-1 overflow-hidden pr-4">
                       <span className="font-medium text-black truncate">{music.name}</span>
-                      <span className="text-[12px] text-[#8e8e93] truncate">{music.artist}</span>
+                      <span className="text-[12px] text-[#8e8e93] truncate">
+                          {music.artist} 
+                          {activePlaylist === '全部' && <span className="bg-gray-100 text-gray-500 px-1.5 py-0.5 ml-2 rounded-sm text-[10px]">类别: {music.category || '默认'}</span>}
+                      </span>
                    </div>
                    <button onClick={() => {
-                       const newList = [...musicList];
-                       newList.splice(idx, 1);
+                       const newList = musicList.filter(m => m.id !== music.id);
                        setMusicList(newList);
-                       if (currentMusicIndex >= newList.length && newList.length > 0) {
-                           setCurrentMusicIndex(0);
-                       } else if (newList.length === 0) {
-                           setIsMusicPlaying(false);
-                           setCurrentMusicIndex(0);
-                       }
                    }} className="p-2 text-red-500 rounded-lg active:bg-red-50 transition-colors">
                        <Trash2 size={18} />
                    </button>
@@ -1204,7 +1268,7 @@ export default function App() {
                  <SettingItem icon={Palette} label="春日落樱" value={theme === 'sakura' ? '当前' : ''} onClick={() => setTheme('sakura')} />
                  <SettingItem icon={Palette} label="宁静海蓝" value={theme === 'blue' ? '当前' : ''} onClick={() => setTheme('blue')} />
                  <SettingItem icon={Palette} label="梦幻香芋" value={theme === 'purple' ? '当前' : ''} onClick={() => setTheme('purple')} />
-                 <SettingItem icon={Palette} label="枫叶绯红" value={theme === 'red' ? '当前' : ''} onClick={() => setTheme('red')} hideBorder={true}/>
+                 <SettingItem icon={Palette} label="枫叶绯红" value={(theme as string) === 'red' ? '当前' : ''} onClick={() => setTheme('red' as any)} hideBorder={true}/>
               </div>
            </div>
 
@@ -1220,6 +1284,16 @@ export default function App() {
                  <SettingItem icon={Type} label="聊天字体 TTF" value={chatFont ? '已上传' : '未设置'} onClick={() => fontInputRef.current?.click()} hideBorder={true}/>
               </div>
            </div>
+
+           {/* 4. 社交及全局设置 */}
+           <div className="mb-8">
+              <div className="text-[12px] text-[#6d6d72] ml-4 mb-2 uppercase tracking-wide">全局及社交设置</div>
+              <div className="bg-white rounded-[10px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+                 <SettingItem icon={Type} label="我方全局昵称" value={myNickname} onChange={setMyNickname} />
+                 <SettingItem icon={Type} label="梦角全局昵称" value={mjNickname} onChange={setMjNickname} />
+                 <SettingItem icon={ImageIcon} label="朋友圈背景图" value={momentsBg ? '已上传' : '未设置'} onClick={() => momentsBgInputRef.current?.click()} hideBorder={true} />
+              </div>
+           </div>
         </div>
 
         {/* Hidden inputs */}
@@ -1228,6 +1302,7 @@ export default function App() {
         <input type="file" ref={profileBgInputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setProfileBg)} />
         <input type="file" ref={avatar1InputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setAvatar1)} />
         <input type="file" ref={avatar2InputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setAvatar2)} />
+        <input type="file" ref={momentsBgInputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setMomentsBg)} />
         
         <input type="file" ref={chatAvatar1InputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setChatAvatar1)} />
         <input type="file" ref={chatAvatar2InputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setChatAvatar2)} />
@@ -1247,6 +1322,10 @@ export default function App() {
     return <ChatSettingsView onClose={() => setView('home')} themeConfig={currentThemeConfig} />;
   }
 
+  if (view === 'moments') {
+    return <MomentsView onClose={() => setView('home')} themeConfig={currentThemeConfig} cardGroups={cardGroups} avatar1={avatar1 || chatAvatar1} avatar2={avatar2 || chatAvatar2} name1={myNickname} name2={mjNickname} bgImage={momentsBg} />;
+  }
+
   return (
     <div 
       className="flex-1 w-full text-[#333] font-sans flex flex-col items-center overflow-x-hidden selection:bg-[#DCD6CE]/50 transition-colors duration-500 relative min-h-[100dvh]"
@@ -1258,9 +1337,9 @@ export default function App() {
       {chatFont && <style dangerouslySetInnerHTML={{ __html: `@font-face { font-family: 'CustomChatFont'; src: url('${chatFont}'); } * { font-family: 'CustomChatFont', sans-serif !important; }`}} />}
 
       <div 
-        className="w-full max-w-[420px] mx-auto flex flex-col justify-between flex-1 gap-2.5 px-4 shrink-0"
+        className="w-full max-w-[420px] mx-auto flex flex-col justify-between flex-1 gap-2 px-4 shrink-0"
         style={{
-          paddingBottom: 'env(safe-area-inset-bottom)',
+          paddingBottom: 'max(0px, calc(env(safe-area-inset-bottom) - 8px))',
           paddingTop: 'calc(0.5rem + env(safe-area-inset-top))'
         }}
       >
@@ -1314,29 +1393,32 @@ export default function App() {
           </div>
         </motion.div>
 
-        {/* Widgets Row */}
-        <div className="grid grid-cols-2 gap-3 shrink-0">
+        {/* Grouped Bottom Elements */}
+        <div className="flex flex-col gap-2 w-full shrink-0 mt-2 mb-[-4px]">
+          {/* Widgets Row */}
+          <div className="grid grid-cols-2 gap-3 shrink-0">
           {/* Music Widget */}
           <motion.div 
-            className="backdrop-blur-xl border border-white/60 rounded-[24px] p-4 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.06)] flex flex-col transition-colors duration-500"
+            className="backdrop-blur-xl border border-white/60 rounded-[24px] p-4 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.06)] flex flex-col transition-colors duration-500 relative"
             style={{ backgroundColor: currentThemeConfig.cardBg }}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
           >
             <div className="flex justify-between items-center mb-2">
-               <div className="text-[10px]" style={{color: currentThemeConfig.textSecondary}}>
-                 {musicList.length > 0 ? (isMusicPlaying ? '播放中' : '已暂停') : '未添加音乐'}
+               <div className="text-[10px] flex items-center gap-1" style={{color: currentThemeConfig.textSecondary}}>
+                 {playQueue.length > 0 ? (isMusicPlaying ? '播放中' : '已暂停') : '未添加音乐'}
+                 {activePlaylist !== '全部' && <span className="bg-black/5 px-1.5 py-0.5 rounded-sm">{activePlaylist}</span>}
                </div>
                <button onClick={() => setView('music_manager')} className="w-6 h-6 rounded-full bg-black/5 flex items-center justify-center hover:bg-black/10 active:scale-95 transition-all">
                   <ListMusic size={12} style={{color: currentThemeConfig.textSecondary}} />
                </button>
             </div>
-            <div className="font-medium text-[12px] mb-0.5 truncate text-[#333]">
-              {musicList.length > 0 ? musicList[currentMusicIndex].name : '无音乐'}
+            <div className="font-medium text-[12px] mb-0.5 truncate text-[#333]" style={{color: currentThemeConfig.textPrimary}}>
+              {playQueue.length > 0 ? playQueue[currentMusicIndex >= playQueue.length ? 0 : currentMusicIndex].name : '无音乐'}
             </div>
             <div className="text-[10px] mb-3 truncate" style={{color: currentThemeConfig.textSecondary}}>
-              {musicList.length > 0 ? musicList[currentMusicIndex].artist : 'No Artist'}
+              {playQueue.length > 0 ? playQueue[currentMusicIndex >= playQueue.length ? 0 : currentMusicIndex].artist : 'No Artist'}
             </div>
             
             <div className="w-full h-[3px] bg-black/5 rounded-full mb-4 relative mt-auto overflow-hidden">
@@ -1391,7 +1473,7 @@ export default function App() {
 
         {/* Apps Grid */}
         <motion.div 
-          className="grid grid-cols-4 gap-y-2.5 gap-x-3 pt-1 pb-1 shrink-0 px-1"
+          className="grid grid-cols-4 gap-y-1 gap-x-3 pt-1 pb-1 shrink-0 px-1"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
@@ -1403,6 +1485,7 @@ export default function App() {
               onClick={() => {
                 if (app.name === '帮我决定') setView('decide');
                 if (app.name === '聊天') setView('chat');
+                if (app.name === '朋友圈') setView('moments');
               }}
             >
               <div 
@@ -1445,6 +1528,8 @@ export default function App() {
             </div>
           ))}
         </motion.div>
+        
+        </div>
 
       </div>
       {renderOverlays()}

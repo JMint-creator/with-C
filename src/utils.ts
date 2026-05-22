@@ -1,6 +1,83 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef, Dispatch, SetStateAction } from 'react';
+import { get, set } from 'idb-keyval';
 
-export function useLocalState<T>(key: string, initialValue: T): [T, (val: T | ((prev: T) => T)) => void] {
+export function useIDBState<T>(key: string, initialValue: T): [T, Dispatch<SetStateAction<T>>] {
+  const [state, setState] = useState<T>(initialValue);
+  const isLoadedRef = useRef(false);
+  const hasModifiedRef = useRef(false);
+
+  useEffect(() => {
+    get(key).then((val) => {
+      if (hasModifiedRef.current) return;
+      if (val !== undefined) {
+        setState(val);
+      } else {
+        try {
+            const localVal = window.localStorage.getItem(key);
+            if (localVal) {
+                const parsed = JSON.parse(localVal);
+                setState(parsed);
+                set(key, parsed);
+            }
+        } catch(e) {}
+      }
+      isLoadedRef.current = true;
+    });
+  }, [key]);
+
+  const setValue = (value: SetStateAction<T>) => {
+    hasModifiedRef.current = true;
+    isLoadedRef.current = true;
+    setState(prev => {
+      try {
+        const valueToStore = value instanceof Function ? (value as any)(prev) : value;
+        set(key, valueToStore).catch(console.error);
+        return valueToStore;
+      } catch (error) {
+        console.error(error);
+        return prev;
+      }
+    });
+  };
+
+  return [state, setValue as Dispatch<SetStateAction<T>>];
+}
+
+export function compressImage(file: File, maxWidth = 800, maxHeight = 800, quality = 0.7): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        let { width, height } = img;
+        
+        if (width > maxWidth || height > maxHeight) {
+          const ratio = Math.min(maxWidth / width, maxHeight / height);
+          width = width * ratio;
+          height = height * ratio;
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const dataUrl = canvas.toDataURL('image/jpeg', quality);
+          resolve(dataUrl);
+        } else {
+          resolve(event.target?.result as string); // Fallback
+        }
+      };
+      img.onerror = (e) => reject(e);
+    };
+    reader.onerror = (e) => reject(e);
+  });
+}
+
+export function useLocalState<T>(key: string, initialValue: T): [T, Dispatch<SetStateAction<T>>] {
   const [state, setState] = useState<T>(() => {
     try {
       const item = window.localStorage.getItem(key);
@@ -10,9 +87,9 @@ export function useLocalState<T>(key: string, initialValue: T): [T, (val: T | ((
     }
   });
 
-  const setValue = (value: T | ((prev: T) => T)) => {
+  const setValue = (value: SetStateAction<T>) => {
     try {
-      const valueToStore = value instanceof Function ? value(state) : value;
+      const valueToStore = value instanceof Function ? (value as any)(state) : value;
       setState(valueToStore);
       window.localStorage.setItem(key, JSON.stringify(valueToStore));
     } catch (error) {
@@ -20,5 +97,5 @@ export function useLocalState<T>(key: string, initialValue: T): [T, (val: T | ((
     }
   };
 
-  return [state, setValue];
+  return [state, setValue as Dispatch<SetStateAction<T>>];
 }

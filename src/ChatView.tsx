@@ -18,7 +18,8 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
   const [messages, setMessages] = useLocalState<Message[]>('app_chatMessages', []);
   const [input, setInput] = useState('');
   
-  const [charId, setCharId] = useLocalState('app_charId', '梦角');
+  const [charId, setCharId] = useLocalState('app_mjNickname', '梦角');
+  const [myNickname] = useLocalState('app_myNickname', '我');
   
   const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -361,7 +362,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
             return (
               <div key={msg.id} className={`w-full flex justify-center ${marginBottom}`}>
                 <div className="px-3 py-1 rounded-full bg-black/[0.05] text-[12px] text-gray-500">
-                  {isMe ? '我' : charId}{msg.content}
+                  {isMe ? myNickname : charId}{msg.content}
                 </div>
               </div>
             );
