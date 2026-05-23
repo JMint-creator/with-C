@@ -37,6 +37,7 @@ import {
 import { motion } from 'motion/react';
 import { ChatView } from './ChatView';
 import { MomentsView } from './MomentsView';
+import { WishlistView } from './WishlistView';
 import { ChatSettingsView } from './ChatSettingsView';
 import { compressImage } from './utils';
 
@@ -389,6 +390,9 @@ export default function App() {
   const [myNickname, setMyNickname] = useLocalState('app_myNickname', '我');
   const [mjNickname, setMjNickname] = useLocalState('app_mjNickname', '梦角');
   const [momentsBg, setMomentsBg] = useLocalState('app_moments_bg', '');
+  const [wishlistBg, setWishlistBg] = useLocalState('app_wishlist_bg', '');
+  const [appOpacity, setAppOpacity] = useLocalState('app_home_icon_opacity', 40);
+  const [wishlistCardOpacity, setWishlistCardOpacity] = useLocalState('app_wishlist_card_opacity', 85);
   const [chatCss, setChatCss] = useLocalState('app_chatCss', '');
   const [chatFont, setChatFont] = useLocalState('app_chatFont', '');
   const [chatKeepAlive] = useLocalState('app_chatKeepAlive', false);
@@ -535,6 +539,7 @@ export default function App() {
   const avatar1InputRef = useRef<HTMLInputElement>(null);
   const avatar2InputRef = useRef<HTMLInputElement>(null);
   const momentsBgInputRef = useRef<HTMLInputElement>(null);
+  const wishlistBgInputRef = useRef<HTMLInputElement>(null);
   const chatAvatar1InputRef = useRef<HTMLInputElement>(null);
   const chatAvatar2InputRef = useRef<HTMLInputElement>(null);
   const cssInputRef = useRef<HTMLInputElement>(null);
@@ -1259,6 +1264,39 @@ export default function App() {
               </div>
            </div>
 
+           {/* 1.5. 透明度调节 */}
+           <div className="mb-8">
+              <div className="text-[12px] text-[#6d6d72] ml-4 mb-2 uppercase tracking-wide">透明度调节</div>
+              <div className="bg-white rounded-[10px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)] p-4 space-y-5">
+                  <div>
+                      <div className="flex justify-between text-[14px] text-[#333] mb-3">
+                          <span className="font-medium">主页图标背景</span>
+                          <span className="text-[#8e8e93]">{appOpacity}%</span>
+                      </div>
+                      <input 
+                          type="range" min="0" max="100" value={appOpacity} onChange={e => setAppOpacity(parseInt(e.target.value))} 
+                          className="w-full h-1.5 bg-[#e5e5ea] rounded-lg appearance-none cursor-pointer" 
+                          style={{
+                              background: `linear-gradient(to right, ${currentThemeConfig.textPrimary} 0%, ${currentThemeConfig.textPrimary} ${appOpacity}%, #e5e5ea ${appOpacity}%, #e5e5ea 100%)`
+                          }}
+                      />
+                  </div>
+                  <div>
+                      <div className="flex justify-between text-[14px] text-[#333] mb-3">
+                          <span className="font-medium">心愿清单卡片背景</span>
+                          <span className="text-[#8e8e93]">{wishlistCardOpacity}%</span>
+                      </div>
+                      <input 
+                          type="range" min="0" max="100" value={wishlistCardOpacity} onChange={e => setWishlistCardOpacity(parseInt(e.target.value))} 
+                          className="w-full h-1.5 bg-[#e5e5ea] rounded-lg appearance-none cursor-pointer"
+                          style={{
+                              background: `linear-gradient(to right, ${currentThemeConfig.textPrimary} 0%, ${currentThemeConfig.textPrimary} ${wishlistCardOpacity}%, #e5e5ea ${wishlistCardOpacity}%, #e5e5ea 100%)`
+                          }}
+                      />
+                  </div>
+              </div>
+           </div>
+
            {/* 2. 主题配色 */}
            <div className="mb-8">
               <div className="text-[12px] text-[#6d6d72] ml-4 mb-2 uppercase tracking-wide">主题配色</div>
@@ -1291,7 +1329,8 @@ export default function App() {
               <div className="bg-white rounded-[10px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
                  <SettingItem icon={Type} label="我方全局昵称" value={myNickname} onChange={setMyNickname} />
                  <SettingItem icon={Type} label="梦角全局昵称" value={mjNickname} onChange={setMjNickname} />
-                 <SettingItem icon={ImageIcon} label="朋友圈背景图" value={momentsBg ? '已上传' : '未设置'} onClick={() => momentsBgInputRef.current?.click()} hideBorder={true} />
+                 <SettingItem icon={ImageIcon} label="朋友圈背景图" value={momentsBg ? '已上传' : '未设置'} onClick={() => momentsBgInputRef.current?.click()} />
+                 <SettingItem icon={ImageIcon} label="心愿清单背景图" value={wishlistBg ? '已上传' : '未设置'} onClick={() => wishlistBgInputRef.current?.click()} hideBorder={true} />
               </div>
            </div>
         </div>
@@ -1303,6 +1342,7 @@ export default function App() {
         <input type="file" ref={avatar1InputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setAvatar1)} />
         <input type="file" ref={avatar2InputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setAvatar2)} />
         <input type="file" ref={momentsBgInputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setMomentsBg)} />
+        <input type="file" ref={wishlistBgInputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setWishlistBg)} />
         
         <input type="file" ref={chatAvatar1InputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setChatAvatar1)} />
         <input type="file" ref={chatAvatar2InputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setChatAvatar2)} />
@@ -1324,6 +1364,10 @@ export default function App() {
 
   if (view === 'moments') {
     return <MomentsView onClose={() => setView('home')} themeConfig={currentThemeConfig} cardGroups={cardGroups} avatar1={avatar1 || chatAvatar1} avatar2={avatar2 || chatAvatar2} name1={myNickname} name2={mjNickname} bgImage={momentsBg} />;
+  }
+
+  if (view === 'wishlist') {
+    return <WishlistView onClose={() => setView('home')} themeConfig={currentThemeConfig} cardGroups={cardGroups} myNickname={myNickname} mjNickname={mjNickname} wishlistCardOpacity={wishlistCardOpacity} />;
   }
 
   return (
@@ -1486,11 +1530,16 @@ export default function App() {
                 if (app.name === '帮我决定') setView('decide');
                 if (app.name === '聊天') setView('chat');
                 if (app.name === '朋友圈') setView('moments');
+                if (app.name === '心愿清单') setView('wishlist');
               }}
             >
               <div 
-                className="w-[66px] h-[66px] rounded-[22px] bg-white/40 backdrop-blur-md border border-white/40 shadow-[0_4px_20px_-6px_rgba(0,0,0,0.06)] flex items-center justify-center group-hover:bg-white/50 transition-all group-active:scale-95"
-                style={{ color: currentThemeConfig.textSecondary }}
+                className="w-[66px] h-[66px] rounded-[22px] backdrop-blur-md shadow-[0_4px_20px_-6px_rgba(0,0,0,0.06)] flex items-center justify-center transition-all group-active:scale-95"
+                style={{ 
+                   color: currentThemeConfig.textSecondary,
+                   backgroundColor: `rgba(255, 255, 255, ${appOpacity / 100})`,
+                   border: `1px solid rgba(255, 255, 255, ${appOpacity / 100})`
+                }}
               >
                 <app.icon size={28} strokeWidth={1.5} />
               </div>
