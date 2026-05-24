@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, Plus, Clock, Receipt, Ticket, CalendarHeart, Trash2, Check } from 'lucide-react';
-import { useLocalState, compressImage } from './utils';
+import { useLocalState, useIDBState, compressImage } from './utils';
 
 interface WishlistViewProps {
   onClose: () => void;
@@ -28,8 +28,8 @@ export interface WishlistItem {
 }
 
 export const WishlistView = ({ onClose, themeConfig, cardGroups, myNickname, mjNickname, wishlistCardOpacity = 85 }: WishlistViewProps) => {
-  const [items, setItems] = useLocalState<WishlistItem[]>('app_wishlist', []);
-  const [wishlistBg, setWishlistBg] = useLocalState<string>('app_wishlist_bg', '');
+  const [items, setItems] = useIDBState<WishlistItem[]>('app_wishlist', []);
+  const [wishlistBg, setWishlistBg] = useIDBState<string>('app_wishlist_bg', '');
   const [activeFilter, setActiveFilter] = useState<'all' | WishlistType>('all');
   
   const [showAddModal, setShowAddModal] = useState(false);

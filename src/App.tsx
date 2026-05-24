@@ -39,7 +39,7 @@ import { ChatView } from './ChatView';
 import { MomentsView } from './MomentsView';
 import { WishlistView } from './WishlistView';
 import { ChatSettingsView } from './ChatSettingsView';
-import { compressImage } from './utils';
+import { compressImage, useIDBState } from './utils';
 
 const apps = [
   { name: '聊天', icon: MessageCircle },
@@ -366,14 +366,14 @@ export default function App() {
 
   const [cardGroups, setCardGroups] = useLocalState<any[]>('app_cardGroups', [{ id: '1', name: '默认分组', cards: ['你好呀！', '在干嘛呢？'] }]);
   const [emojis, setEmojis] = useLocalState<string[]>('app_emojis', ['😀', '😂', '🥰', '👍', '🙏']);
-  const [stickers, setStickers] = useLocalState<string[]>('app_stickers', []);
+  const [stickers, setStickers] = useIDBState<string[]>('app_stickers', []);
   const [nudges, setNudges] = useLocalState<string[]>('app_nudges', ['拍了拍我的 脑袋', '拍了拍我的 肩膀']);
 
   // UI States
-  const [wallpaper, setWallpaper] = useLocalState('app_wallpaper', '');
-  const [profileBg, setProfileBg] = useLocalState('app_profileBg', '');
-  const [avatar1, setAvatar1] = useLocalState('app_avatar1', '');
-  const [avatar2, setAvatar2] = useLocalState('app_avatar2', '');
+  const [wallpaper, setWallpaper] = useIDBState('app_wallpaper', '');
+  const [profileBg, setProfileBg] = useIDBState('app_profileBg', '');
+  const [avatar1, setAvatar1] = useIDBState('app_avatar1', '');
+  const [avatar2, setAvatar2] = useIDBState('app_avatar2', '');
   const [name1, setName1] = useLocalState('app_name1', 'Yuli');
   const [name2, setName2] = useLocalState('app_name2', 'Milk');
   const [motto, setMotto] = useLocalState('app_motto', '沉睡中缠绵 · 清醒又幻灭');
@@ -382,20 +382,20 @@ export default function App() {
   const [theme, setTheme] = useLocalState<'warm' | 'mint' | 'sakura' | 'blue' | 'purple'>('app_theme', 'warm');
 
   // Chat Settings
-  const [chatBg, setChatBg] = useLocalState('app_chatBg', '');
-  const [chatAvatar1, setChatAvatar1] = useLocalState('app_chatAvatar1', '');
-  const [chatAvatar2, setChatAvatar2] = useLocalState('app_chatAvatar2', '');
+  const [chatBg, setChatBg] = useIDBState('app_chatBg', '');
+  const [chatAvatar1, setChatAvatar1] = useIDBState('app_chatAvatar1', '');
+  const [chatAvatar2, setChatAvatar2] = useIDBState('app_chatAvatar2', '');
   
   // Social Settings
   const [myNickname, setMyNickname] = useLocalState('app_myNickname', '我');
   const [mjNickname, setMjNickname] = useLocalState('app_mjNickname', '梦角');
-  const [momentsBg, setMomentsBg] = useLocalState('app_moments_bg', '');
-  const [wishlistBg, setWishlistBg] = useLocalState('app_wishlist_bg', '');
+  const [momentsBg, setMomentsBg] = useIDBState('app_moments_bg', '');
+  const [wishlistBg, setWishlistBg] = useIDBState('app_wishlist_bg', '');
   const [appOpacity, setAppOpacity] = useLocalState('app_home_icon_opacity', 40);
   const [wishlistCardOpacity, setWishlistCardOpacity] = useLocalState('app_wishlist_card_opacity', 85);
   const [momentsStyle, setMomentsStyle] = useLocalState<'wechat' | 'weibo'>('app_moments_style', 'wechat');
-  const [chatCss, setChatCss] = useLocalState('app_chatCss', '');
-  const [chatFont, setChatFont] = useLocalState('app_chatFont', '');
+  const [chatCss, setChatCss] = useIDBState('app_chatCss', '');
+  const [chatFont, setChatFont] = useIDBState('app_chatFont', '');
   const [chatKeepAlive] = useLocalState('app_chatKeepAlive', false);
   const [chatBubbleColor, setChatBubbleColor] = useLocalState('app_chatBubbleColor', '');
 
@@ -608,7 +608,7 @@ export default function App() {
     document.body.style.backgroundImage = bgImage;
     document.body.style.backgroundSize = 'cover';
     document.body.style.backgroundPosition = 'center';
-    document.body.style.backgroundAttachment = 'fixed';
+    // Removed backgroundAttachment fixed to fix iOS PWA safe area issue
     
     return () => {
       document.documentElement.style.backgroundColor = '';
@@ -1462,7 +1462,7 @@ export default function App() {
           <div className="grid grid-cols-2 gap-3 shrink-0">
           {/* Music Widget */}
           <motion.div 
-            className="backdrop-blur-xl border border-white/60 rounded-[24px] p-4 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.06)] flex flex-col transition-colors duration-500 relative"
+            className="backdrop-blur-xl border border-white/60 rounded-[24px] p-4 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.06)] flex flex-col transition-colors duration-500 relative -mt-[1px]"
             style={{ backgroundColor: currentThemeConfig.cardBg }}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -1503,7 +1503,7 @@ export default function App() {
 
           {/* Anniversary Widget */}
           <motion.div 
-            className="backdrop-blur-xl border border-white/60 rounded-[24px] py-5 px-4 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.06)] flex flex-col justify-between items-center transition-colors duration-500 relative overflow-hidden"
+            className="backdrop-blur-xl border border-white/60 rounded-[24px] py-5 px-4 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.06)] flex flex-col justify-between items-center transition-colors duration-500 relative overflow-hidden -mt-[1px]"
             style={{ backgroundColor: currentThemeConfig.cardBg }}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -1513,7 +1513,7 @@ export default function App() {
               <span>在一起已经</span>
             </div>
             
-            <div className="text-[46px] leading-[1] italic font-normal tracking-tight my-2" style={{color: currentThemeConfig.textPrimary, fontFamily: '"Playfair Display", "Georgia", "Times New Roman", serif'}}>
+            <div className="text-[46px] leading-[1] italic font-normal tracking-tight mb-2 mt-0" style={{color: currentThemeConfig.textPrimary, fontFamily: '"Playfair Display", "Georgia", "Times New Roman", serif'}}>
               {getDaysTogether()}
             </div>
             

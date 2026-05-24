@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, Video, Settings, Smile, Hand, Plus, Image as ImageIcon, Send, X, PhoneCall, PhoneMissed, Phone, MicOff, CameraOff, MonitorPlay, Check, CheckCheck, MessageCircle, MoreHorizontal, Heart, Sparkles } from 'lucide-react';
-import { useLocalState } from './utils';
+import { useLocalState, useIDBState } from './utils';
 
 type Message = {
   id: string;
@@ -15,7 +15,7 @@ type Message = {
 };
 
 export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
-  const [messages, setMessages] = useLocalState<Message[]>('app_chatMessages', []);
+  const [messages, setMessages] = useIDBState<Message[]>('app_chatMessages', []);
   const [input, setInput] = useState('');
   
   const [charId, setCharId] = useLocalState('app_mjNickname', '梦角');
@@ -25,11 +25,11 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   
   // States from appearance / settings
-  const [chatBg] = useLocalState('app_chatBg', '');
-  const [avatar1] = useLocalState('app_chatAvatar1', '');
-  const [avatar2] = useLocalState('app_chatAvatar2', '');
-  const [chatCss] = useLocalState('app_chatCss', '');
-  const [chatFont] = useLocalState('app_chatFont', '');
+  const [chatBg] = useIDBState('app_chatBg', '');
+  const [avatar1] = useIDBState('app_chatAvatar1', '');
+  const [avatar2] = useIDBState('app_chatAvatar2', '');
+  const [chatCss] = useIDBState('app_chatCss', '');
+  const [chatFont] = useIDBState('app_chatFont', '');
   
   const [mockVideo] = useLocalState('app_chatMockVideoCall', true);
   const [cardGroups] = useLocalState<any[]>('app_cardGroups', []);
@@ -38,7 +38,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
   const [readReceipt] = useLocalState('app_chatReadReceipt', true);
   const [readNoReply] = useLocalState('app_chatReadNoReply', false);
   const [emojis] = useLocalState<string[]>('app_emojis', ['😀', '😂', '🥰', '👍', '🙏']);
-  const [stickers] = useLocalState<string[]>('app_stickers', []);
+  const [stickers] = useIDBState<string[]>('app_stickers', []);
 
     // Video Call State
   const [videoCallState, setVideoCallState] = useState<'none' | 'calling' | 'connected' | 'incoming'>('none');

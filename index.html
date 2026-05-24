@@ -9,17 +9,19 @@
     <style>
       html, body {
         min-height: 100vh;
-        min-height: -webkit-fill-available;
+        min-height: 100dvh;
         margin: 0;
         padding: 0;
         overscroll-behavior-y: none;
-        background-color: #EBE7DF; /* basic fallback */
+        background-color: transparent;
       }
       #root {
         min-height: 100vh;
-        min-height: -webkit-fill-available;
+        min-height: 100dvh;
         display: flex;
         flex-direction: column;
+        position: relative;
+        z-index: 0;
       }
     </style>
   </head>
