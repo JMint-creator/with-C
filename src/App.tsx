@@ -393,6 +393,7 @@ export default function App() {
   const [wishlistBg, setWishlistBg] = useLocalState('app_wishlist_bg', '');
   const [appOpacity, setAppOpacity] = useLocalState('app_home_icon_opacity', 40);
   const [wishlistCardOpacity, setWishlistCardOpacity] = useLocalState('app_wishlist_card_opacity', 85);
+  const [momentsStyle, setMomentsStyle] = useLocalState<'wechat' | 'weibo'>('app_moments_style', 'wechat');
   const [chatCss, setChatCss] = useLocalState('app_chatCss', '');
   const [chatFont, setChatFont] = useLocalState('app_chatFont', '');
   const [chatKeepAlive] = useLocalState('app_chatKeepAlive', false);
@@ -1264,7 +1265,25 @@ export default function App() {
               </div>
            </div>
 
-           {/* 1.5. 透明度调节 */}
+           {/* 1.5. 样式切换 */}
+           <div className="mb-8">
+              <div className="text-[12px] text-[#6d6d72] ml-4 mb-2 uppercase tracking-wide">界面切换</div>
+              <div className="bg-white rounded-[10px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)] p-2 px-4 flex items-center justify-between">
+                 <span className="text-[14px] text-[#333]">朋友圈样式</span>
+                 <div className="flex bg-[#f2f2f7] rounded-[8px] p-0.5">
+                    <button 
+                       className={`px-3 py-1 text-[13px] rounded-[6px] transition-colors ${momentsStyle === 'wechat' ? 'bg-white shadow-sm font-medium text-black' : 'text-[#8e8e93]'}`}
+                       onClick={() => setMomentsStyle('wechat')}
+                    >微信</button>
+                    <button 
+                       className={`px-3 py-1 text-[13px] rounded-[6px] transition-colors ${momentsStyle === 'weibo' ? 'bg-white shadow-sm font-medium text-black' : 'text-[#8e8e93]'}`}
+                       onClick={() => setMomentsStyle('weibo')}
+                    >微博</button>
+                 </div>
+              </div>
+           </div>
+
+           {/* 1.6. 透明度调节 */}
            <div className="mb-8">
               <div className="text-[12px] text-[#6d6d72] ml-4 mb-2 uppercase tracking-wide">透明度调节</div>
               <div className="bg-white rounded-[10px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)] p-4 space-y-5">
@@ -1363,7 +1382,7 @@ export default function App() {
   }
 
   if (view === 'moments') {
-    return <MomentsView onClose={() => setView('home')} themeConfig={currentThemeConfig} cardGroups={cardGroups} avatar1={avatar1 || chatAvatar1} avatar2={avatar2 || chatAvatar2} name1={myNickname} name2={mjNickname} bgImage={momentsBg} />;
+    return <MomentsView onClose={() => setView('home')} themeConfig={currentThemeConfig} cardGroups={cardGroups} avatar1={avatar1 || chatAvatar1} avatar2={avatar2 || chatAvatar2} name1={myNickname} name2={mjNickname} bgImage={momentsBg} viewStyle={momentsStyle} />;
   }
 
   if (view === 'wishlist') {

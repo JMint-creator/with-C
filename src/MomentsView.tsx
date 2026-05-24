@@ -11,6 +11,7 @@ interface MomentsViewProps {
   name1: string;
   name2: string;
   bgImage: string;
+  viewStyle?: 'wechat' | 'weibo';
 }
 
 interface Comment {
@@ -44,7 +45,8 @@ export function MomentsView({
   avatar2,
   name1,
   name2,
-  bgImage
+  bgImage,
+  viewStyle = 'wechat'
 }: MomentsViewProps) {
   const getAuthorName = (oldName: string, type?: 'user' | 'mengjiao') => {
       if (type === 'user') return name1 || '我';
@@ -304,7 +306,7 @@ export function MomentsView({
   const visibleMoments = moments.filter(m => m.publishAt <= now).sort((a,b) => b.publishAt - a.publishAt);
 
   return (
-    <div className="absolute inset-0 bg-white z-50 flex flex-col overflow-hidden animate-in slide-in-from-right duration-300">
+    <div className={`absolute inset-0 z-50 flex flex-col overflow-hidden animate-in slide-in-from-right duration-300 ${viewStyle === 'weibo' ? 'bg-[#f2f2f2]' : 'bg-white'}`}>
       {/* Toast Notification */}
       {toastMessage && (
           <div className="absolute top-[80px] left-1/2 -translate-x-1/2 z-50 bg-black/75 text-white px-4 py-2 rounded-full text-[14px] shadow-lg animate-in slide-in-from-top fade-in duration-300">
@@ -326,29 +328,134 @@ export function MomentsView({
 
       <div className="flex-1 overflow-y-auto pb-safe">
           {/* Cover & Avatar */}
-          <div className="relative pb-10 bg-white">
-              <div 
-                className="w-full aspect-square max-h-[300px] bg-cover bg-center bg-gray-200"
-                style={{ backgroundImage: bgImage ? `url(${bgImage})` : 'none' }}
-              >
-                  {!bgImage && <div className="w-full h-full flex items-center justify-center text-gray-400">请前往外观设置设置背景</div>}
-              </div>
-              
-              <div className="absolute bottom-4 right-4 flex items-end">
-                  <span 
-                    className="text-white text-[18px] font-bold drop-shadow-md"
-                    style={{ marginRight: '16px', paddingBottom: '30px' }}
-                  >{name1 || '我'}</span>
-                  <div className="w-[72px] h-[72px] rounded-lg overflow-hidden border-2 border-white bg-gray-100 shadow-md">
-                      {avatar1 ? <img src={avatar1} className="w-full h-full object-cover" /> : <div className="w-full h-full" />}
+          {viewStyle === 'weibo' ? (
+              <div className="bg-[#f2f2f2] pb-2">
+                  <div 
+                      className="w-full h-[150px] bg-cover bg-center bg-gray-200"
+                      style={{ backgroundImage: bgImage ? `url(${bgImage})` : 'none' }}
+                  />
+                  <div className="bg-white relative -mt-3 rounded-t-[16px] px-4 pb-4 pt-1 flex shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+                      <div className="w-[84px] h-[84px] rounded-full overflow-hidden border-[3px] border-white bg-gray-100 shadow-sm shrink-0 -mt-8 relative z-10">
+                          {avatar1 ? <img src={avatar1} className="w-full h-full object-cover" /> : <div className="w-full h-full" />}
+                      </div>
+                      <div className="ml-4 flex flex-col pt-1">
+                          <div className="text-[20px] font-bold text-[#333] leading-none mb-1">
+                              {name1 || '我'}
+                          </div>
+                          <div className="flex gap-4 text-[13px] text-gray-500 mt-1">
+                             <div><span className="font-bold text-[#333] text-[15px]">1</span> 粉丝</div>
+                             <div><span className="font-bold text-[#333] text-[15px]">1</span> 关注</div>
+                          </div>
+                      </div>
                   </div>
               </div>
-          </div>
+          ) : (
+              <div className="relative pb-10 bg-white">
+                  <div 
+                    className="w-full aspect-square max-h-[300px] bg-cover bg-center bg-gray-200"
+                    style={{ backgroundImage: bgImage ? `url(${bgImage})` : 'none' }}
+                  >
+                      {!bgImage && <div className="w-full h-full flex items-center justify-center text-gray-400">请前往外观设置设置背景</div>}
+                  </div>
+                  
+                  <div className="absolute bottom-4 right-4 flex items-end">
+                      <span 
+                        className="text-white text-[18px] font-bold drop-shadow-md"
+                        style={{ marginRight: '16px', paddingBottom: '30px' }}
+                      >{name1 || '我'}</span>
+                      <div className="w-[72px] h-[72px] rounded-lg overflow-hidden border-2 border-white bg-gray-100 shadow-md">
+                          {avatar1 ? <img src={avatar1} className="w-full h-full object-cover" /> : <div className="w-full h-full" />}
+                      </div>
+                  </div>
+              </div>
+          )}
 
           {/* List */}
-          <div className="px-4 pb-20 mt-4">
+          <div className={viewStyle === 'wechat' ? "px-4 pb-20 mt-4" : "pb-20 pt-2"}>
               {visibleMoments.map(moment => {
                   const visibleComments = moment.comments.filter(c => c.publishAt <= now);
+                  
+                  if (viewStyle === 'weibo') {
+                     return (
+                         <div key={moment.id} className="bg-white mb-2 pt-4 pb-2 px-4 shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+                             {/* Weibo Header: Avatar + Info */}
+                             <div className="flex items-center gap-3 mb-2">
+                                 <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 shrink-0">
+                                     {getAuthorAvatar(moment.authorName, moment.authorAvatar, moment.type) && <img src={getAuthorAvatar(moment.authorName, moment.authorAvatar, moment.type)} className="w-full h-full object-cover"/>}
+                                 </div>
+                                 <div className="flex-1 flex flex-col justify-center">
+                                     <div className="font-semibold text-[15px] text-[#eb7350] leading-tight">{getAuthorName(moment.authorName, moment.type)}</div>
+                                     <div className="text-[11px] text-gray-400 mt-0.5">
+                                         {new Date(moment.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                     </div>
+                                 </div>
+                                 {moment.type === 'user' && (
+                                     <button onClick={() => handleDeleteMoment(moment.id)} className="text-gray-400 active:opacity-50"><X size={18}/></button>
+                                 )}
+                             </div>
+
+                             {/* Weibo Content */}
+                             <div className="text-[15px] text-[#333] whitespace-pre-wrap leading-relaxed mb-2">
+                                 {moment.content}
+                             </div>
+                             {moment.images.length > 0 && (
+                                 <div className="grid grid-cols-3 gap-1 mb-3 max-w-[280px]">
+                                     {moment.images.map((img, idx) => (
+                                         <div key={idx} className="aspect-square bg-gray-100 overflow-hidden rounded-[4px]">
+                                             <img src={img} className="w-full h-full object-cover" />
+                                         </div>
+                                     ))}
+                                 </div>
+                             )}
+
+                             {/* Weibo Interactions */}
+                             <div className="flex justify-between items-center border-t border-gray-100 mt-2 mx-[-16px] px-4 pt-2 pb-1">
+                                 <div className="flex-1 flex justify-center text-gray-500 text-[13px] gap-1 items-center">
+                                   <Send size={16} className="-scale-x-100"/> 转发
+                                 </div>
+                                 <div className="w-[1px] h-3 bg-gray-200"></div>
+                                 <button onClick={() => {
+                                     setReplyInputVisible(moment.id);
+                                     setReplyToUser(null);
+                                 }} className="flex-1 flex justify-center text-gray-500 text-[13px] gap-1 items-center active:bg-black/5 rounded-full py-1">
+                                   <MessageSquare size={16} /> {visibleComments.length || '评论'}
+                                 </button>
+                                 <div className="w-[1px] h-3 bg-gray-200"></div>
+                                 <button onClick={() => handleLike(moment.id)} className={`flex-1 flex justify-center text-[13px] gap-1 items-center active:bg-black/5 rounded-full py-1 ${moment.likes.some(n => getAuthorName(n) === (name1 || '我')) ? 'text-[#eb7350]' : 'text-gray-500'}`}>
+                                   <Heart size={16} className={moment.likes.some(n => getAuthorName(n) === (name1 || '我')) ? 'fill-[#eb7350]' : ''} /> {moment.likes.length || '赞'}
+                                 </button>
+                             </div>
+
+                             {/* Weibo Comments Preview */}
+                             {visibleComments.length > 0 && (
+                                 <div className="bg-[#f9f9f9] rounded-[4px] mt-2 p-3 text-[13px]">
+                                     {visibleComments.map(c => {
+                                         const resolvedAuthor = getAuthorName(c.authorName);
+                                         const resolvedTo = c.to ? getAuthorName(c.to) : undefined;
+                                         return (
+                                         <div 
+                                           key={c.id} 
+                                           className="break-all cursor-pointer active:bg-black/5 rounded-sm px-1 -mx-1 mb-1 last:mb-0"
+                                           onClick={() => {
+                                               if (resolvedAuthor !== (name1 || '我')) {
+                                                   setReplyInputVisible(moment.id);
+                                                   setReplyToUser(resolvedAuthor);
+                                               } else {
+                                                   handleDeleteComment(moment.id, c.id);
+                                               }
+                                           }}
+                                         >
+                                             <span className="text-[#eb7350]">{resolvedAuthor}</span>
+                                             {resolvedTo && <> <span className="text-gray-500 mx-1">回复</span> <span className="text-[#eb7350]">{resolvedTo}</span></>}
+                                             <span className="text-[#333]">：{c.content}</span>
+                                         </div>
+                                     )})}
+                                 </div>
+                             )}
+                         </div>
+                     );
+                  }
+
                   return (
                       <div key={moment.id} className="flex gap-3 mb-8 border-b border-gray-100 pb-4 last:border-b-0">
                           <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-200 shrink-0">
