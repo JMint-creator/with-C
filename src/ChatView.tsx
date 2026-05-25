@@ -1,23 +1,31 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronLeft, Video, Settings, Smile, Hand, Plus, Image as ImageIcon, Send, X, PhoneCall, PhoneMissed, Phone, MicOff, CameraOff, MonitorPlay, Check, CheckCheck, MessageCircle, MoreHorizontal, Heart, Sparkles } from 'lucide-react';
-import { useLocalState, useIDBState } from './utils';
+import { ChevronLeft, Video, Settings, Smile, Hand, Plus, Image as ImageIcon, Send, X, PhoneCall, PhoneMissed, Phone, MicOff, CameraOff, MonitorPlay, Check, CheckCheck, MessageCircle, MoreHorizontal, Heart, Sparkles, Camera } from 'lucide-react';
+import { useLocalState, useIDBState, compressImage } from './utils';
 
 type Message = {
   id: string;
   sender: 'me' | 'them';
-  type: 'text' | 'nudge' | 'emoji' | 'call' | 'sticker';
+  type: 'text' | 'nudge' | 'emoji' | 'call' | 'sticker' | 'check_in' | 'image';
   content: string;
   time: string;
   callState?: 'missed' | 'declined' | 'duration';
   callDuration?: number;
   replyTo?: string;
+  checkInStatus?: 'pending' | 'completed' | 'rejected';
 };
 
 export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
   const [messages, setMessages] = useIDBState<Message[]>('app_chatMessages', []);
+  const [checkIns, setCheckIns] = useIDBState<any[]>('app_checkins', []);
   const [input, setInput] = useState('');
   
+  const [checkInModalVisible, setCheckInModalVisible] = useState(false);
+  const [activeCheckInId, setActiveCheckInId] = useState('');
+  const [checkInText, setCheckInText] = useState('');
+  const [checkInImage, setCheckInImage] = useState('');
+  const checkInImgInputRef = useRef<HTMLInputElement>(null);
+
   const [charId, setCharId] = useLocalState('app_mjNickname', '梦角');
   const [myNickname] = useLocalState('app_myNickname', '我');
   
@@ -84,29 +92,46 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
     const scheduleNextCall = () => {
       const waitMins = 15 + Math.random() * 45;
       timer = setTimeout(() => {
-         if (Math.random() < 0.25 && videoCallState === 'none') {
-           setVideoCallState('incoming');
-           const pushNotify = window.localStorage.getItem('app_chatPushNotify');
-           if ((pushNotify ? JSON.parse(pushNotify) : true) && 'Notification' in window && window.Notification.permission === 'granted') {
-             new window.Notification(charId, { body: '收到新来电' });
+         if (Math.random() < 0.25) { // 25% chance of an event every ~30 mins
+           if (Math.random() < 0.5 && videoCallState === 'none') {
+             // 50% chance for video call
+             setVideoCallState('incoming');
+             const pushNotify = window.localStorage.getItem('app_chatPushNotify');
+             if ((pushNotify ? JSON.parse(pushNotify) : true) && 'Notification' in window && window.Notification.permission === 'granted') {
+               new window.Notification(charId, { body: '收到新来电' });
+             }
+             // Auto missed call after 30 seconds if not answered
+             setTimeout(() => {
+               setVideoCallState(prev => {
+                 if (prev === 'incoming') {
+                   setMessages(msgs => [...msgs, {
+                     id: Date.now().toString(),
+                     sender: 'them',
+                     type: 'call',
+                     content: '未接来电',
+                     callState: 'missed',
+                     time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                   }]);
+                   return 'none';
+                 }
+                 return prev;
+               });
+             }, 30000);
+           } else {
+             // 50% chance for check-in
+             setMessages(msgs => [...msgs, {
+               id: Date.now().toString(),
+               sender: 'them',
+               type: 'check_in',
+               content: `${charId} 想知道你在干什么`,
+               checkInStatus: 'pending',
+               time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+             }]);
+             const pushNotify = window.localStorage.getItem('app_chatPushNotify');
+             if ((pushNotify ? JSON.parse(pushNotify) : true) && 'Notification' in window && window.Notification.permission === 'granted') {
+               new window.Notification(charId, { body: `${charId} 想知道你在干什么` });
+             }
            }
-           // Auto missed call after 30 seconds if not answered
-           setTimeout(() => {
-             setVideoCallState(prev => {
-               if (prev === 'incoming') {
-                 setMessages(msgs => [...msgs, {
-                   id: Date.now().toString(),
-                   sender: 'them',
-                   type: 'call',
-                   content: '未接来电',
-                   callState: 'missed',
-                   time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                 }]);
-                 return 'none';
-               }
-               return prev;
-             });
-           }, 30000);
          }
          scheduleNextCall();
       }, Math.floor(waitMins * 60 * 1000));
@@ -166,6 +191,52 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
   const [minWait] = useLocalState('app_chatMinWait', 10);
   const [maxWait] = useLocalState('app_chatMaxWait', 50);
 
+  const declineCheckIn = (id: string) => {
+     setMessages(msgs => msgs.map(m => m.id === id ? { ...m, checkInStatus: 'rejected' } : m));
+  };
+
+  const openCheckInModal = (id: string) => {
+     setActiveCheckInId(id);
+     setCheckInText('');
+     setCheckInImage('');
+     setCheckInModalVisible(true);
+  };
+  
+  const submitCheckIn = () => {
+     if (!checkInText && !checkInImage) return;
+
+     setCheckIns(prev => [...prev, {
+        id: Date.now().toString(),
+        timestamp: Date.now(),
+        text: checkInText,
+        imageUrl: checkInImage
+     }]);
+     
+     setMessages(msgs => msgs.map(m => m.id === activeCheckInId ? { ...m, checkInStatus: 'completed' } : m));
+     
+     if (checkInImage) {
+        setMessages(msgs => [...msgs, {
+          id: Date.now().toString(),
+          sender: 'me',
+          type: 'image',
+          content: checkInImage,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }]);
+     }
+     
+     if (checkInText) {
+        setMessages(msgs => [...msgs, {
+          id: (Date.now() + 1).toString(),
+          sender: 'me',
+          type: 'text',
+          content: checkInText,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }]);
+     }
+
+     setCheckInModalVisible(false);
+  };
+
   const simulateReply = () => {
     setIsTyping(true);
     const delay = Math.random() * (maxWait - minWait) * 1000 + minWait * 1000;
@@ -181,6 +252,17 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
           sender: 'them',
           type: 'nudge',
           content: '拍了拍你',
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        });
+      }
+
+      if (Math.random() < 0.05) {
+        newMsgs.push({
+          id: (++baseId).toString(),
+          sender: 'them',
+          type: 'check_in',
+          content: `${charId} 想知道你在干什么`,
+          checkInStatus: 'pending',
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         });
       }
@@ -316,6 +398,17 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
 
   const customStyle = chatFont ? { fontFamily: 'CustomChatFont, sans-serif' } : {};
 
+  const handleCheckInImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+     if (e.target.files && e.target.files[0]) {
+        try {
+           const dataUrl = await compressImage(e.target.files[0]);
+           setCheckInImage(dataUrl);
+        } catch (err) {
+           console.error(err);
+        }
+     }
+  };
+
   return (
     <div className="fixed inset-0 overflow-hidden z-50 transition-colors" style={{ ...customStyle, backgroundColor: themeConfig.bg }}>
       {chatBg && <img src={chatBg} alt="" className="absolute inset-0 object-cover pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 0 }} /> }
@@ -379,6 +472,40 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
             );
           }
 
+          if (msg.type === 'check_in') {
+             return (
+               <div key={msg.id} className={`w-full flex justify-center ${marginBottom} px-4`}>
+                 <div className="bg-white/95 backdrop-blur-xl rounded-[24px] p-5 shadow-[0_8px_30px_rgba(0,0,0,0.06)] w-full max-w-[320px] flex flex-col items-center border border-white/50 relative overflow-hidden">
+                   <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-400 to-indigo-500"></div>
+                   <div className="w-12 h-12 bg-blue-50/50 rounded-full flex items-center justify-center mb-3">
+                      <Camera size={24} className="text-blue-500" />
+                   </div>
+                   <div className="text-[16px] text-[#333] font-semibold mb-1 tracking-wide">{msg.content}</div>
+                   <div className="text-[12px] text-black/40 mb-4">{msg.time} · 互动查岗</div>
+                   
+                   {msg.checkInStatus === 'pending' ? (
+                     <div className="flex space-x-4 w-full">
+                        <button className="flex-1 h-11 rounded-full bg-[#f2f2f7] flex items-center justify-center text-[#ff3b30] font-medium active:scale-95 transition-transform" onClick={() => declineCheckIn(msg.id)}>
+                           <X size={18} strokeWidth={2.5} className="mr-1.5"/> 忽略
+                        </button>
+                        <button className="flex-1 h-11 rounded-full bg-[#007AFF] shadow-md shadow-[#007AFF]/20 flex items-center justify-center text-white font-medium active:scale-95 transition-transform" onClick={() => openCheckInModal(msg.id)}>
+                           <Check size={18} strokeWidth={2.5} className="mr-1.5"/> 汇报
+                        </button>
+                     </div>
+                   ) : msg.checkInStatus === 'rejected' ? (
+                     <div className="w-full py-2.5 rounded-[12px] bg-[#f2f2f7] text-[#8e8e93] text-center text-[13px] font-medium">
+                        已忽略
+                     </div>
+                   ) : (
+                     <div className="w-full py-2.5 rounded-[12px] bg-green-50 text-green-600 text-center text-[13px] font-medium border border-green-100/50">
+                        已完成汇报
+                     </div>
+                   )}
+                 </div>
+               </div>
+             );
+          }
+
           return (
             <div key={msg.id} className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'} ${marginBottom}`}>
               {!isMe && (
@@ -397,6 +524,10 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
                 {msg.type === 'sticker' ? (
                   <div className="rounded-[18px] overflow-hidden bg-transparent shrink-0">
                     <img src={msg.content} alt="sticker" className="max-w-[120px] max-h-[120px] object-contain" />
+                  </div>
+                ) : msg.type === 'image' ? (
+                  <div className="rounded-[18px] overflow-hidden shrink-0 border border-black/5 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
+                    <img src={msg.content} alt="image" className="max-w-[180px] max-h-[250px] object-cover" />
                   </div>
                 ) : msg.type === 'emoji' ? (
                   <div className="text-[48px] leading-none drop-shadow-sm">{msg.content}</div>
@@ -472,6 +603,20 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
              <button className="flex flex-col items-center gap-2 group w-[64px]" onClick={() => { handleNudge(); setShowPlusMenu(false); }}>
                 <div className="w-[50px] h-[50px] rounded-[16px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><Heart size={24} strokeWidth={1.5} /></div>
                 <span className="text-[11px] text-black/50">拍一拍</span>
+             </button>
+             <button className="flex flex-col items-center gap-2 group w-[64px]" onClick={() => { 
+                setShowPlusMenu(false);
+                setMessages(msgs => [...msgs, {
+                  id: Date.now().toString(),
+                  sender: 'them',
+                  type: 'check_in',
+                  content: `${charId} 想知道你在干什么`,
+                  checkInStatus: 'pending',
+                  time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                }]);
+             }}>
+                <div className="w-[50px] h-[50px] rounded-[16px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><CheckCheck size={24} strokeWidth={1.5} /></div>
+                <span className="text-[11px] text-black/50">查岗(测试)</span>
              </button>
              
              <input type="file" ref={imageInputRef} className="hidden" accept="image/*" onChange={(e) => handleImageUpload(e, false)} />
@@ -575,6 +720,81 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
                  {avatar1 ? <img src={avatar1} alt="" className="w-full h-full object-cover opacity-80" /> : <div className="w-full h-full flex items-center justify-center text-white/30"><MonitorPlay size={24}/></div>}
               </div>
             )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Check In Modal Overlay */}
+      <AnimatePresence>
+        {checkInModalVisible && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex justify-center p-4 pt-32"
+          >
+            <motion.div 
+              initial={{ y: 50, scale: 0.95 }}
+              animate={{ y: 0, scale: 1 }}
+              exit={{ y: 20, scale: 0.95 }}
+              className="bg-white rounded-[24px] shadow-2xl p-6 w-full max-w-[360px] h-max relative overflow-hidden"
+            >
+              <button 
+                onClick={() => setCheckInModalVisible(false)} 
+                className="absolute right-4 top-4 w-8 h-8 flex items-center justify-center rounded-full bg-[#f2f2f7] text-[#8e8e93] active:scale-95 transition-transform z-10"
+              >
+                <X size={18} strokeWidth={2.5} />
+              </button>
+              
+              <div className="flex flex-col items-center mb-6 mt-2 relative z-10">
+                 <div className="w-14 h-14 bg-gradient-to-tr from-blue-400 to-indigo-500 rounded-full flex items-center justify-center text-white mb-3 shadow-lg shadow-blue-500/30">
+                    <Camera size={24} strokeWidth={2}/>
+                 </div>
+                 <h3 className="text-[19px] font-semibold text-[#333] tracking-wide">{charId}正在查岗</h3>
+                 <p className="text-[13px] text-[#8e8e93] mt-1 text-center">拍张照或者写点什么，让他知道你的状态吧</p>
+              </div>
+              
+              <div className="space-y-4 relative z-10">
+                {checkInImage ? (
+                  <div className="relative w-full h-[220px] bg-[#f2f2f7] rounded-[16px] border border-black/5 overflow-hidden shadow-sm">
+                    <img src={checkInImage} alt="" className="w-full h-full object-cover" />
+                    <button 
+                      onClick={() => setCheckInImage('')}
+                      className="absolute top-3 right-3 bg-black/50 text-white rounded-full p-1.5 backdrop-blur-md active:scale-95"
+                    >
+                      <X size={16} strokeWidth={2.5}/>
+                    </button>
+                  </div>
+                ) : (
+                   <button 
+                     onClick={() => checkInImgInputRef.current?.click()}
+                     className="w-full h-[140px] rounded-[16px] border-2 border-dashed border-[#c6c6c8] bg-[#fcfcfc] text-[#8e8e93] flex flex-col items-center justify-center space-y-2 active:bg-[#f2f2f7] transition-colors"
+                   >
+                     <div className="w-10 h-10 rounded-full bg-[#f2f2f7] flex items-center justify-center text-[#007AFF] mb-1">
+                        <Camera size={20} strokeWidth={2.5} />
+                     </div>
+                     <span className="text-[14px] font-medium">拍摄或从相册选择</span>
+                   </button>
+                )}
+                <input type="file" ref={checkInImgInputRef} className="hidden" accept="image/*" onChange={handleCheckInImageUpload} />
+
+                <textarea
+                  value={checkInText}
+                  onChange={(e) => setCheckInText(e.target.value)}
+                  placeholder="文字描述：正在做什么..."
+                  className="w-full bg-[#f2f2f7] rounded-[16px] p-4 text-[15px] outline-none resize-none h-[110px] text-[#333] placeholder:text-[#8e8e93]"
+                />
+
+                <button 
+                  onClick={submitCheckIn}
+                  className={`w-full py-4 rounded-[16px] font-medium text-[16px] text-white transition-all duration-300 mt-2 ${
+                    !checkInText && !checkInImage ? 'bg-[#c6c6c8] text-white/80 cursor-not-allowed shadow-none' : 'bg-[#007AFF] shadow-lg shadow-[#007AFF]/30 active:scale-95 hover:bg-[#0066d6]'
+                  }`}
+                >
+                  发送汇报
+                </button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

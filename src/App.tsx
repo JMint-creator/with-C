@@ -39,6 +39,7 @@ import { ChatView } from './ChatView';
 import { MomentsView } from './MomentsView';
 import { WishlistView } from './WishlistView';
 import { ChatSettingsView } from './ChatSettingsView';
+import { CheckInsView } from './CheckInsView';
 import { compressImage, useIDBState } from './utils';
 
 const apps = [
@@ -391,6 +392,7 @@ export default function App() {
   const [mjNickname, setMjNickname] = useLocalState('app_mjNickname', '梦角');
   const [momentsBg, setMomentsBg] = useIDBState('app_moments_bg', '');
   const [wishlistBg, setWishlistBg] = useIDBState('app_wishlist_bg', '');
+  const [checkinsBg, setCheckinsBg] = useIDBState('app_checkins_bg', '');
   const [appOpacity, setAppOpacity] = useLocalState('app_home_icon_opacity', 40);
   const [wishlistCardOpacity, setWishlistCardOpacity] = useLocalState('app_wishlist_card_opacity', 85);
   const [momentsStyle, setMomentsStyle] = useLocalState<'wechat' | 'weibo'>('app_moments_style', 'wechat');
@@ -541,6 +543,7 @@ export default function App() {
   const avatar2InputRef = useRef<HTMLInputElement>(null);
   const momentsBgInputRef = useRef<HTMLInputElement>(null);
   const wishlistBgInputRef = useRef<HTMLInputElement>(null);
+  const checkinsBgInputRef = useRef<HTMLInputElement>(null);
   const chatAvatar1InputRef = useRef<HTMLInputElement>(null);
   const chatAvatar2InputRef = useRef<HTMLInputElement>(null);
   const cssInputRef = useRef<HTMLInputElement>(null);
@@ -1349,7 +1352,8 @@ export default function App() {
                  <SettingItem icon={Type} label="我方全局昵称" value={myNickname} onChange={setMyNickname} />
                  <SettingItem icon={Type} label="梦角全局昵称" value={mjNickname} onChange={setMjNickname} />
                  <SettingItem icon={ImageIcon} label="朋友圈背景图" value={momentsBg ? '已上传' : '未设置'} onClick={() => momentsBgInputRef.current?.click()} />
-                 <SettingItem icon={ImageIcon} label="心愿清单背景图" value={wishlistBg ? '已上传' : '未设置'} onClick={() => wishlistBgInputRef.current?.click()} hideBorder={true} />
+                 <SettingItem icon={ImageIcon} label="心愿清单背景图" value={wishlistBg ? '已上传' : '未设置'} onClick={() => wishlistBgInputRef.current?.click()} />
+                 <SettingItem icon={ImageIcon} label="查岗背景图" value={checkinsBg ? '已上传' : '未设置'} onClick={() => checkinsBgInputRef.current?.click()} hideBorder={true} />
               </div>
            </div>
         </div>
@@ -1362,6 +1366,7 @@ export default function App() {
         <input type="file" ref={avatar2InputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setAvatar2)} />
         <input type="file" ref={momentsBgInputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setMomentsBg)} />
         <input type="file" ref={wishlistBgInputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setWishlistBg)} />
+        <input type="file" ref={checkinsBgInputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setCheckinsBg)} />
         
         <input type="file" ref={chatAvatar1InputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setChatAvatar1)} />
         <input type="file" ref={chatAvatar2InputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setChatAvatar2)} />
@@ -1387,6 +1392,10 @@ export default function App() {
 
   if (view === 'wishlist') {
     return <WishlistView onClose={() => setView('home')} themeConfig={currentThemeConfig} cardGroups={cardGroups} myNickname={myNickname} mjNickname={mjNickname} wishlistCardOpacity={wishlistCardOpacity} />;
+  }
+
+  if (view === 'check_in') {
+    return <CheckInsView onClose={() => setView('home')} themeConfig={currentThemeConfig} checkinsBg={checkinsBg} />;
   }
 
   return (
@@ -1550,6 +1559,7 @@ export default function App() {
                 if (app.name === '聊天') setView('chat');
                 if (app.name === '朋友圈') setView('moments');
                 if (app.name === '心愿清单') setView('wishlist');
+                if (app.name === '查岗') setView('check_in');
               }}
             >
               <div 
