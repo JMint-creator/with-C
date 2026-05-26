@@ -1,6 +1,8 @@
 {
   "name": "Transmitter Home",
   "description": "A minimalist, aesthetic dashboard for the Transmission app featuring widgets and app grids.",
-  "requestFramePermissions": [],
+  "requestFramePermissions": [
+    "microphone"
+  ],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

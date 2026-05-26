@@ -124,7 +124,14 @@ const SettingItem = ({ icon: Icon, label, value, onClick, onChange, isTextarea =
               onChange={(e) => onChange(e.target.value)} 
               className="w-8 h-8 rounded shrink-0 cursor-pointer p-0 border-0 bg-transparent"
             />
-          ) : onChange && !isTextarea ? (
+          ) : onChange && isTextarea ? (
+            <textarea 
+              value={value} 
+              onChange={(e) => onChange(e.target.value)} 
+              className="text-[13px] text-[#888] text-right bg-transparent outline-none max-w-[150px] resize-none h-16"
+              placeholder="输入..."
+            />
+          ) : onChange ? (
             <input 
               type="text" 
               value={value} 
@@ -132,7 +139,7 @@ const SettingItem = ({ icon: Icon, label, value, onClick, onChange, isTextarea =
               className="text-[13px] text-[#888] text-right bg-transparent outline-none max-w-[150px]"
               placeholder="输入..."
             />
-          ) : !isTextarea && (
+          ) : (
              <span className="text-[13px] text-[#888] truncate max-w-[120px]">{value}</span>
           )}
           {!onChange && <ChevronRight size={18} className="text-[#C7C7CC]" />}
@@ -352,6 +359,7 @@ const globalAudio = new Audio();
 
 export default function App() {
   const [view, setView] = useState<'home' | 'appearance' | 'data' | 'library' | 'decide' | 'chat' | 'chat_settings' | 'music_manager'>('home');
+  const [appearanceTab, setAppearanceTab] = useState<'global' | 'chat' | 'component' | 'wallpaper' | 'other'>('global');
 
   // Library States
   const [replySubTab, setReplySubTab] = useState<'cards' | 'emoji' | 'stickers' | 'nudge'>('cards');
@@ -400,6 +408,7 @@ export default function App() {
   const [chatFont, setChatFont] = useIDBState('app_chatFont', '');
   const [chatKeepAlive] = useLocalState('app_chatKeepAlive', false);
   const [chatBubbleColor, setChatBubbleColor] = useLocalState('app_chatBubbleColor', '');
+  const [chatBubbleStyle, setChatBubbleStyle] = useLocalState<'glass'|'system'>('app_chatBubbleStyle', 'glass');
 
   // Anniversary Settings
   const [anniversaryDate, setAnniversaryDate] = useLocalState('app_anniversaryDate', '2024-10-28');
@@ -1239,11 +1248,11 @@ export default function App() {
 
   if (view === 'appearance') {
     return (
-      <div className="flex-1 w-full bg-[#F2F2F7] flex flex-col min-h-[100dvh] overflow-x-hidden relative text-[11px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
+      <div className="flex-1 w-full bg-[#F2F2F7] min-h-[100dvh] relative text-[11px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
         
         {/* Header */}
         <div 
-          className="w-full flex items-center justify-between px-3 pb-3 bg-[#F2F2F7] sticky top-0 z-10 border-b border-[#c6c6c8]/50 shadow-sm"
+          className="w-full flex items-center justify-between px-3 pb-3 bg-[#F2F2F7] fixed top-0 left-0 right-0 z-50 shadow-[0_1px_3px_rgba(0,0,0,0.05)]"
           style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))' }}
         >
           <button onClick={() => setView('home')} className="text-[#007AFF] text-[14px] flex items-center active:opacity-50 transition-opacity">
@@ -1253,109 +1262,177 @@ export default function App() {
           <div className="w-[60px]"></div>
         </div>
 
-        <div className="w-full max-w-md mx-auto px-4 pb-12 pt-6">
-           {/* 1. 界面美化 */}
-           <div className="mb-8">
-              <div className="text-[12px] text-[#6d6d72] ml-4 mb-2 uppercase tracking-wide">界面美化</div>
-              <div className="bg-white rounded-[10px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
-                 <SettingItem icon={ImageIcon} label="上传主壁纸" value={wallpaper ? '已上传 (重新上传)' : '未设置'} onClick={() => wallpaperInputRef.current?.click()} />
-                 <SettingItem icon={ImageIcon} label="上传顶部卡片图" value={profileBg ? '已上传' : '未设置'} onClick={() => profileBgInputRef.current?.click()} />
-                 <SettingItem icon={User} label="顶部头像 1" value={avatar1 ? '已上传' : '未设置'} onClick={() => avatar1InputRef.current?.click()} />
-                 <SettingItem icon={User} label="顶部头像 2" value={avatar2 ? '已上传' : '未设置'} onClick={() => avatar2InputRef.current?.click()} />
-                 <SettingItem icon={Type} label="顶部昵称 1" value={name1} onChange={setName1} />
-                 <SettingItem icon={Type} label="顶部昵称 2" value={name2} onChange={setName2} />
-                 <SettingItem icon={MessageCircle} label="顶部宣言" value={motto} onChange={setMotto} isTextarea={true} hideBorder={true}/>
-              </div>
-           </div>
+        {/* Categories Tabs */}
+        <div 
+          className="w-full flex px-4 space-x-6 bg-[#F2F2F7]/95 backdrop-blur-md fixed left-0 right-0 z-40 border-b border-[#c6c6c8]/30 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] pt-2 pb-0"
+          style={{ top: 'calc(3rem + env(safe-area-inset-top))' }}
+        >
+           {[
+             { id: 'global', name: '全局设置' },
+             { id: 'chat', name: '聊天设置' },
+             { id: 'component', name: '组件美化' },
+             { id: 'wallpaper', name: '壁纸上传' },
+             { id: 'other', name: '其他美化' }
+           ].map(tab => (
+              <button 
+                key={tab.id}
+                onClick={() => setAppearanceTab(tab.id as any)}
+                className={`pb-3 text-[13px] font-medium transition-colors relative whitespace-nowrap ${appearanceTab === tab.id ? 'text-black' : 'text-[#8e8e93]'}`}
+              >
+                {tab.name}
+                {appearanceTab === tab.id && (
+                  <div className="absolute bottom-[-1px] left-0 right-0 h-[2px] rounded-t-full bg-[#007AFF]" />
+                )}
+              </button>
+           ))}
+        </div>
 
-           {/* 1.5. 样式切换 */}
-           <div className="mb-8">
-              <div className="text-[12px] text-[#6d6d72] ml-4 mb-2 uppercase tracking-wide">界面切换</div>
-              <div className="bg-white rounded-[10px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)] p-2 px-4 flex items-center justify-between">
-                 <span className="text-[14px] text-[#333]">朋友圈样式</span>
-                 <div className="flex bg-[#f2f2f7] rounded-[8px] p-0.5">
-                    <button 
-                       className={`px-3 py-1 text-[13px] rounded-[6px] transition-colors ${momentsStyle === 'wechat' ? 'bg-white shadow-sm font-medium text-black' : 'text-[#8e8e93]'}`}
-                       onClick={() => setMomentsStyle('wechat')}
-                    >微信</button>
-                    <button 
-                       className={`px-3 py-1 text-[13px] rounded-[6px] transition-colors ${momentsStyle === 'weibo' ? 'bg-white shadow-sm font-medium text-black' : 'text-[#8e8e93]'}`}
-                       onClick={() => setMomentsStyle('weibo')}
-                    >微博</button>
-                 </div>
-              </div>
-           </div>
+        <div className="w-full max-w-md mx-auto px-4 pb-12 pt-[calc(6rem+env(safe-area-inset-top))]">
+           {appearanceTab === 'global' && (
+             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                <div>
+                   <div className="text-[12px] text-[#6d6d72] ml-4 mb-2 uppercase tracking-wide">基本信息</div>
+                   <div className="bg-white rounded-[10px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+                      <SettingItem icon={Type} label="我方全局昵称" value={myNickname} onChange={setMyNickname} />
+                      <SettingItem icon={Type} label="梦角全局昵称" value={mjNickname} onChange={setMjNickname} hideBorder={true} />
+                   </div>
+                </div>
+                <div>
+                   <div className="text-[12px] text-[#6d6d72] ml-4 mb-2 uppercase tracking-wide">主题配色</div>
+                   <div className="bg-white rounded-[10px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+                      <SettingItem icon={Palette} label="暖冬麦色" value={theme === 'warm' ? '当前' : ''} onClick={() => setTheme('warm')} />
+                      <SettingItem icon={Palette} label="薄荷微风" value={theme === 'mint' ? '当前' : ''} onClick={() => setTheme('mint')} />
+                      <SettingItem icon={Palette} label="春日落樱" value={theme === 'sakura' ? '当前' : ''} onClick={() => setTheme('sakura')} />
+                      <SettingItem icon={Palette} label="宁静海蓝" value={theme === 'blue' ? '当前' : ''} onClick={() => setTheme('blue')} />
+                      <SettingItem icon={Palette} label="梦幻香芋" value={theme === 'purple' ? '当前' : ''} onClick={() => setTheme('purple')} />
+                      <SettingItem icon={Palette} label="枫叶绯红" value={(theme as string) === 'red' ? '当前' : ''} onClick={() => setTheme('red' as any)} hideBorder={true}/>
+                   </div>
+                </div>
+             </motion.div>
+           )}
 
-           {/* 1.6. 透明度调节 */}
-           <div className="mb-8">
-              <div className="text-[12px] text-[#6d6d72] ml-4 mb-2 uppercase tracking-wide">透明度调节</div>
-              <div className="bg-white rounded-[10px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)] p-4 space-y-5">
-                  <div>
-                      <div className="flex justify-between text-[14px] text-[#333] mb-3">
-                          <span className="font-medium">主页图标背景</span>
-                          <span className="text-[#8e8e93]">{appOpacity}%</span>
+           {appearanceTab === 'chat' && (
+             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                <div>
+                   <div className="text-[12px] text-[#6d6d72] ml-4 mb-2 uppercase tracking-wide">气泡样式</div>
+                   <div className="bg-white rounded-[10px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)] mb-3 p-2 px-4 flex items-center justify-between">
+                      <span className="text-[14px] text-[#333] flex items-center"><MessageCircle size={18} className="mr-3 text-[#007AFF]" /> 气泡样式</span>
+                      <div className="flex bg-[#f2f2f7] rounded-[8px] p-0.5">
+                         <button 
+                            className={`px-3 py-1 text-[13px] rounded-[6px] transition-colors ${chatBubbleStyle === 'glass' ? 'bg-white shadow-sm font-medium text-black' : 'text-[#8e8e93]'}`}
+                            onClick={() => setChatBubbleStyle('glass')}
+                         >液态玻璃</button>
+                         <button 
+                            className={`px-3 py-1 text-[13px] rounded-[6px] transition-colors ${chatBubbleStyle === 'system' ? 'bg-white shadow-sm font-medium text-black' : 'text-[#8e8e93]'}`}
+                            onClick={() => setChatBubbleStyle('system')}
+                         >系统气泡</button>
                       </div>
-                      <input 
-                          type="range" min="0" max="100" value={appOpacity} onChange={e => setAppOpacity(parseInt(e.target.value))} 
-                          className="w-full h-1.5 bg-[#e5e5ea] rounded-lg appearance-none cursor-pointer" 
-                          style={{
-                              background: `linear-gradient(to right, ${currentThemeConfig.textPrimary} 0%, ${currentThemeConfig.textPrimary} ${appOpacity}%, #e5e5ea ${appOpacity}%, #e5e5ea 100%)`
-                          }}
-                      />
-                  </div>
-                  <div>
-                      <div className="flex justify-between text-[14px] text-[#333] mb-3">
-                          <span className="font-medium">心愿清单卡片背景</span>
-                          <span className="text-[#8e8e93]">{wishlistCardOpacity}%</span>
+                   </div>
+                   <div className="bg-white rounded-[10px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+                      <SettingItem icon={Palette} label="我方气泡及已读颜色" value={chatBubbleColor} onChange={setChatBubbleColor} isColor={true} hideBorder={true} />
+                   </div>
+                </div>
+                <div>
+                   <div className="text-[12px] text-[#6d6d72] ml-4 mb-2 uppercase tracking-wide">聊天资源</div>
+                   <div className="bg-white rounded-[10px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+                      <SettingItem icon={ImageIcon} label="聊天壁纸" value={chatBg ? '已上传' : '未设置'} onClick={() => chatBgInputRef.current?.click()} />
+                      <SettingItem icon={Users} label="我方聊天头像" value={chatAvatar1 ? '已上传' : '未设置'} onClick={() => chatAvatar1InputRef.current?.click()} />
+                      <SettingItem icon={Users} label="对方聊天头像" value={chatAvatar2 ? '已上传' : '未设置'} onClick={() => chatAvatar2InputRef.current?.click()} hideBorder={true} />
+                   </div>
+                </div>
+             </motion.div>
+           )}
+
+           {appearanceTab === 'component' && (
+             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                <div>
+                   <div className="text-[12px] text-[#6d6d72] ml-4 mb-2 uppercase tracking-wide">主页顶部卡片</div>
+                   <div className="bg-white rounded-[10px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+                      <SettingItem icon={ImageIcon} label="顶部卡片图" value={profileBg ? '已上传' : '未设置'} onClick={() => profileBgInputRef.current?.click()} />
+                      <SettingItem icon={User} label="顶部头像 1" value={avatar1 ? '已上传' : '未设置'} onClick={() => avatar1InputRef.current?.click()} />
+                      <SettingItem icon={User} label="顶部头像 2" value={avatar2 ? '已上传' : '未设置'} onClick={() => avatar2InputRef.current?.click()} />
+                      <SettingItem icon={Type} label="顶部昵称 1" value={name1} onChange={setName1} />
+                      <SettingItem icon={Type} label="顶部昵称 2" value={name2} onChange={setName2} />
+                      <SettingItem icon={MessageCircle} label="顶部宣言" value={motto} onChange={setMotto} isTextarea={true} hideBorder={true}/>
+                   </div>
+                </div>
+             </motion.div>
+           )}
+
+           {appearanceTab === 'wallpaper' && (
+             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                <div>
+                   <div className="text-[12px] text-[#6d6d72] ml-4 mb-2 uppercase tracking-wide">各界面壁纸</div>
+                   <div className="bg-white rounded-[10px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+                      <SettingItem icon={ImageIcon} label="主界面壁纸" value={wallpaper ? '已上传' : '未设置'} onClick={() => wallpaperInputRef.current?.click()} />
+                      <SettingItem icon={ImageIcon} label="朋友圈背景图" value={momentsBg ? '已上传' : '未设置'} onClick={() => momentsBgInputRef.current?.click()} />
+                      <SettingItem icon={ImageIcon} label="查岗背景图" value={checkinsBg ? '已上传' : '未设置'} onClick={() => checkinsBgInputRef.current?.click()} />
+                      <SettingItem icon={ImageIcon} label="心愿清单背景图" value={wishlistBg ? '已上传' : '未设置'} onClick={() => wishlistBgInputRef.current?.click()} hideBorder={true}/>
+                   </div>
+                </div>
+             </motion.div>
+           )}
+
+           {appearanceTab === 'other' && (
+             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                <div>
+                   <div className="text-[12px] text-[#6d6d72] ml-4 mb-2 uppercase tracking-wide">界面切换</div>
+                   <div className="bg-white rounded-[10px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)] p-2 px-4 flex items-center justify-between">
+                      <span className="text-[14px] text-[#333]">朋友圈样式</span>
+                      <div className="flex bg-[#f2f2f7] rounded-[8px] p-0.5">
+                         <button 
+                            className={`px-3 py-1 text-[13px] rounded-[6px] transition-colors ${momentsStyle === 'wechat' ? 'bg-white shadow-sm font-medium text-black' : 'text-[#8e8e93]'}`}
+                            onClick={() => setMomentsStyle('wechat')}
+                         >微信</button>
+                         <button 
+                            className={`px-3 py-1 text-[13px] rounded-[6px] transition-colors ${momentsStyle === 'weibo' ? 'bg-white shadow-sm font-medium text-black' : 'text-[#8e8e93]'}`}
+                            onClick={() => setMomentsStyle('weibo')}
+                         >微博</button>
                       </div>
-                      <input 
-                          type="range" min="0" max="100" value={wishlistCardOpacity} onChange={e => setWishlistCardOpacity(parseInt(e.target.value))} 
-                          className="w-full h-1.5 bg-[#e5e5ea] rounded-lg appearance-none cursor-pointer"
-                          style={{
-                              background: `linear-gradient(to right, ${currentThemeConfig.textPrimary} 0%, ${currentThemeConfig.textPrimary} ${wishlistCardOpacity}%, #e5e5ea ${wishlistCardOpacity}%, #e5e5ea 100%)`
-                          }}
-                      />
-                  </div>
-              </div>
-           </div>
+                   </div>
+                </div>
 
-           {/* 2. 主题配色 */}
-           <div className="mb-8">
-              <div className="text-[12px] text-[#6d6d72] ml-4 mb-2 uppercase tracking-wide">主题配色</div>
-              <div className="bg-white rounded-[10px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
-                 <SettingItem icon={Palette} label="暖冬麦色" value={theme === 'warm' ? '当前' : ''} onClick={() => setTheme('warm')} />
-                 <SettingItem icon={Palette} label="薄荷微风" value={theme === 'mint' ? '当前' : ''} onClick={() => setTheme('mint')} />
-                 <SettingItem icon={Palette} label="春日落樱" value={theme === 'sakura' ? '当前' : ''} onClick={() => setTheme('sakura')} />
-                 <SettingItem icon={Palette} label="宁静海蓝" value={theme === 'blue' ? '当前' : ''} onClick={() => setTheme('blue')} />
-                 <SettingItem icon={Palette} label="梦幻香芋" value={theme === 'purple' ? '当前' : ''} onClick={() => setTheme('purple')} />
-                 <SettingItem icon={Palette} label="枫叶绯红" value={(theme as string) === 'red' ? '当前' : ''} onClick={() => setTheme('red' as any)} hideBorder={true}/>
-              </div>
-           </div>
+                <div>
+                   <div className="text-[12px] text-[#6d6d72] ml-4 mb-2 uppercase tracking-wide">透明度调节</div>
+                   <div className="bg-white rounded-[10px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)] p-4 space-y-5">
+                       <div>
+                           <div className="flex justify-between text-[14px] text-[#333] mb-3">
+                               <span className="font-medium">主页图标背景</span>
+                               <span className="text-[#8e8e93]">{appOpacity}%</span>
+                           </div>
+                           <input 
+                               type="range" min="0" max="100" value={appOpacity} onChange={e => setAppOpacity(parseInt(e.target.value))} 
+                               className="w-full h-1.5 bg-[#e5e5ea] rounded-lg appearance-none cursor-pointer" 
+                               style={{
+                                   background: `linear-gradient(to right, ${currentThemeConfig.textPrimary} 0%, ${currentThemeConfig.textPrimary} ${appOpacity}%, #e5e5ea ${appOpacity}%, #e5e5ea 100%)`
+                               }}
+                           />
+                       </div>
+                       <div>
+                           <div className="flex justify-between text-[14px] text-[#333] mb-3">
+                               <span className="font-medium">心愿清单卡片背景</span>
+                               <span className="text-[#8e8e93]">{wishlistCardOpacity}%</span>
+                           </div>
+                           <input 
+                               type="range" min="0" max="100" value={wishlistCardOpacity} onChange={e => setWishlistCardOpacity(parseInt(e.target.value))} 
+                               className="w-full h-1.5 bg-[#e5e5ea] rounded-lg appearance-none cursor-pointer"
+                               style={{
+                                   background: `linear-gradient(to right, ${currentThemeConfig.textPrimary} 0%, ${currentThemeConfig.textPrimary} ${wishlistCardOpacity}%, #e5e5ea ${wishlistCardOpacity}%, #e5e5ea 100%)`
+                               }}
+                           />
+                       </div>
+                   </div>
+                </div>
 
-           {/* 3. 聊天设置 */}
-           <div className="mb-8">
-              <div className="text-[12px] text-[#6d6d72] ml-4 mb-2 uppercase tracking-wide">聊天设置</div>
-              <div className="bg-white rounded-[10px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
-                 <SettingItem icon={ImageIcon} label="聊天背景" value={chatBg ? '已上传' : '未设置'} onClick={() => chatBgInputRef.current?.click()} />
-                 <SettingItem icon={Palette} label="我方气泡及已读颜色" value={chatBubbleColor} onChange={setChatBubbleColor} isColor={true} />
-                 <SettingItem icon={Users} label="我方聊天头像" value={chatAvatar1 ? '已上传' : '未设置'} onClick={() => chatAvatar1InputRef.current?.click()} />
-                 <SettingItem icon={Users} label="对方聊天头像" value={chatAvatar2 ? '已上传' : '未设置'} onClick={() => chatAvatar2InputRef.current?.click()} />
-                 <SettingItem icon={Droplet} label="聊天气泡 CSS" value={chatCss ? '已上传' : '未设置'} onClick={() => cssInputRef.current?.click()} />
-                 <SettingItem icon={Type} label="聊天字体 TTF" value={chatFont ? '已上传' : '未设置'} onClick={() => fontInputRef.current?.click()} hideBorder={true}/>
-              </div>
-           </div>
-
-           {/* 4. 社交及全局设置 */}
-           <div className="mb-8">
-              <div className="text-[12px] text-[#6d6d72] ml-4 mb-2 uppercase tracking-wide">全局及社交设置</div>
-              <div className="bg-white rounded-[10px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
-                 <SettingItem icon={Type} label="我方全局昵称" value={myNickname} onChange={setMyNickname} />
-                 <SettingItem icon={Type} label="梦角全局昵称" value={mjNickname} onChange={setMjNickname} />
-                 <SettingItem icon={ImageIcon} label="朋友圈背景图" value={momentsBg ? '已上传' : '未设置'} onClick={() => momentsBgInputRef.current?.click()} />
-                 <SettingItem icon={ImageIcon} label="心愿清单背景图" value={wishlistBg ? '已上传' : '未设置'} onClick={() => wishlistBgInputRef.current?.click()} />
-                 <SettingItem icon={ImageIcon} label="查岗背景图" value={checkinsBg ? '已上传' : '未设置'} onClick={() => checkinsBgInputRef.current?.click()} hideBorder={true} />
-              </div>
-           </div>
+                <div>
+                   <div className="text-[12px] text-[#6d6d72] ml-4 mb-2 uppercase tracking-wide">进阶设置 (高阶玩家专用)</div>
+                   <div className="bg-white rounded-[10px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+                      <SettingItem icon={Droplet} label="聊天气泡 CSS" value={chatCss ? '已上传' : '未设置'} onClick={() => cssInputRef.current?.click()} />
+                      <SettingItem icon={Type} label="聊天字体 TTF" value={chatFont ? '已上传' : '未设置'} onClick={() => fontInputRef.current?.click()} hideBorder={true}/>
+                   </div>
+                </div>
+             </motion.div>
+           )}
         </div>
 
         {/* Hidden inputs */}

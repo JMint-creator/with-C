@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { ChevronLeft, MessageCircle, RotateCcw, CheckSquare, EyeOff, Keyboard, Clock, Phone, Send, Smile, Volume2, Bell } from 'lucide-react';
+import { ChevronLeft, MessageCircle, RotateCcw, CheckSquare, EyeOff, Keyboard, Clock, Phone, Send, Smile, Volume2, Bell, MessageSquare } from 'lucide-react';
 import { useLocalState } from './utils';
 
 export const ChatSettingsView = ({ onClose, themeConfig }: { onClose: () => void, themeConfig: any }) => {
@@ -19,6 +19,7 @@ export const ChatSettingsView = ({ onClose, themeConfig }: { onClose: () => void
   const [proactiveInterval, setProactiveInterval] = useLocalState('app_chatProactiveInterval', 20);
   const [mixEmoji, setMixEmoji] = useLocalState('app_chatMixEmoji', true);
   const [mockVideo, setMockVideo] = useLocalState('app_chatMockVideoCall', true);
+  const [chatBubbleStyle, setChatBubbleStyle] = useLocalState<'glass'|'system'>('app_chatBubbleStyle', 'glass');
   
   const [keepAlive, setKeepAlive] = useLocalState('app_chatKeepAlive', false);
   const [pushNotify, setPushNotify] = useLocalState('app_chatPushNotify', true);
@@ -262,6 +263,43 @@ export const ChatSettingsView = ({ onClose, themeConfig }: { onClose: () => void
               </div>
             </div>
 
+          </motion.div>
+        )}
+
+        {activeTab === '显示' && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+            {/* 气泡样式 */}
+            <div>
+              <div className="text-[13px] text-[#8e8e93] mb-3 ml-1 font-medium">气泡样式</div>
+              <div className="bg-white rounded-[20px] shadow-[0_2px_12px_rgba(0,0,0,0.02)] border border-black/[0.02] overflow-hidden">
+                <button 
+                  onClick={() => setChatBubbleStyle('system')}
+                  className="w-full flex items-center justify-between px-5 py-4 border-b border-black/[0.03] active:bg-gray-50 transition-colors"
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 rounded-xl bg-[#f2eef2] flex items-center justify-center text-[#a894a7]"><MessageSquare size={16} /></div>
+                    <div className="text-left">
+                      <div className="text-[15px] text-[#333]">系统气泡</div>
+                      <div className="text-[11px] text-[#8e8e93] mt-0.5">默认的实色纯色质感</div>
+                    </div>
+                  </div>
+                  {chatBubbleStyle === 'system' && <CheckSquare size={20} color={primaryColor} />}
+                </button>
+                <button 
+                  onClick={() => setChatBubbleStyle('glass')}
+                  className="w-full flex items-center justify-between px-5 py-4 active:bg-gray-50 transition-colors"
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 rounded-xl bg-[#f2eef2] flex items-center justify-center text-[#a894a7]"><RotateCcw size={16} /></div>
+                    <div className="text-left">
+                      <div className="text-[15px] text-[#333]">液态玻璃</div>
+                      <div className="text-[11px] text-[#8e8e93] mt-0.5">半透明的磨砂毛玻璃质感</div>
+                    </div>
+                  </div>
+                  {chatBubbleStyle === 'glass' && <CheckSquare size={20} color={primaryColor} />}
+                </button>
+              </div>
+            </div>
           </motion.div>
         )}
 

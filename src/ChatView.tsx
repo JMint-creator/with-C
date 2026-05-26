@@ -1,24 +1,103 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronLeft, Video, Settings, Smile, Hand, Plus, Image as ImageIcon, Send, X, PhoneCall, PhoneMissed, Phone, MicOff, CameraOff, MonitorPlay, Check, CheckCheck, MessageCircle, MoreHorizontal, Heart, Sparkles, Camera } from 'lucide-react';
+import { ChevronLeft, Video, Settings, Smile, Hand, Plus, Image as ImageIcon, Send, X, PhoneCall, PhoneMissed, Phone, MicOff, Mic, CameraOff, MonitorPlay, Check, CheckCheck, MessageCircle, MoreHorizontal, Heart, Sparkles, Camera } from 'lucide-react';
 import { useLocalState, useIDBState, compressImage } from './utils';
 
 type Message = {
   id: string;
   sender: 'me' | 'them';
-  type: 'text' | 'nudge' | 'emoji' | 'call' | 'sticker' | 'check_in' | 'image';
+  type: 'text' | 'nudge' | 'emoji' | 'call' | 'sticker' | 'check_in' | 'image' | 'voice';
   content: string;
   time: string;
   callState?: 'missed' | 'declined' | 'duration';
   callDuration?: number;
   replyTo?: string;
   checkInStatus?: 'pending' | 'completed' | 'rejected';
+  audioUrl?: string;
+  voiceDuration?: number;
 };
 
 export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
   const [messages, setMessages] = useIDBState<Message[]>('app_chatMessages', []);
   const [checkIns, setCheckIns] = useIDBState<any[]>('app_checkins', []);
   const [input, setInput] = useState('');
+  
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingTimerRef = useRef<any>(null);
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          audioChunksRef.current.push(e.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const audioUrl = URL.createObjectURL(audioBlob);
+        stream.getTracks().forEach(track => track.stop());
+        handleSendVoice(audioUrl, recordingTime);
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingTime(0);
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+    } catch (err) {
+      console.error(err);
+      alert('无法访问麦克风');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      clearInterval(recordingTimerRef.current);
+    }
+  };
+
+  const cancelRecording = () => {
+     if (mediaRecorderRef.current && isRecording) {
+        // override onstop so it doesn't send
+        mediaRecorderRef.current.onstop = () => {
+           mediaRecorderRef.current?.stream.getTracks().forEach(track => track.stop());
+        };
+        mediaRecorderRef.current.stop();
+        setIsRecording(false);
+        clearInterval(recordingTimerRef.current);
+     }
+  };
+
+  const handleSendVoice = (audioUrl: string, duration: number) => {
+    if (duration === 0) duration = 1;
+    const newMsg: Message = {
+      id: Date.now().toString(),
+      sender: 'me',
+      type: 'voice',
+      content: '',
+      audioUrl,
+      voiceDuration: duration,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+    setMessages(msgs => [...msgs, newMsg]);
+    setIsTyping(true);
+    setTimeout(() => {
+      simulateReply();
+    }, 1000);
+  };
+
   
   const [checkInModalVisible, setCheckInModalVisible] = useState(false);
   const [activeCheckInId, setActiveCheckInId] = useState('');
@@ -40,6 +119,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
   const [chatFont] = useIDBState('app_chatFont', '');
   
   const [mockVideo] = useLocalState('app_chatMockVideoCall', true);
+  const [chatBubbleStyle] = useLocalState<'glass'|'system'>('app_chatBubbleStyle', 'glass');
   const [cardGroups] = useLocalState<any[]>('app_cardGroups', []);
   const replyCards = cardGroups.flatMap(g => g.cards).map(content => ({ content }));
   const [receiptStyle] = useLocalState('app_chatReceiptStyle', 'graphic');
@@ -416,26 +496,26 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
       {chatCss && <style dangerouslySetInnerHTML={{ __html: chatCss }} />}
       
       {/* Header */}
-      <div className="absolute top-[max(0.5rem,env(safe-area-inset-top))] left-3 right-3 rounded-[12px] flex items-center justify-between px-3 py-2 z-20 shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-white/50" style={{ backgroundColor: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(20px)' }}>
-        <button onClick={onClose} className="w-[70px] flex items-center p-1 text-black/60 active:opacity-50 transition-opacity">
-          <ChevronLeft size={26} className="-ml-1" />
+      <div className="absolute top-[max(1rem,env(safe-area-inset-top))] left-4 right-4 flex items-start justify-between z-20">
+        <button onClick={onClose} className="w-[42px] h-[42px] rounded-full flex items-center justify-center bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_2px_12px_rgba(0,0,0,0.06),inset_0_2px_4px_rgba(255,255,255,0.3)] active:scale-95 transition-transform" style={{ color: themeConfig.textPrimary || '#333' }}>
+          <ChevronLeft size={22} strokeWidth={2.5} className="-ml-0.5" />
         </button>
-        <div className="flex-1 flex items-center justify-center space-x-2 h-[38px]">
-          {avatar2 && (
-            <div className="w-[34px] h-[34px] rounded-full overflow-hidden shadow-sm border border-black/5 shrink-0 bg-white">
-              <img src={avatar2} alt="" className="w-full h-full object-cover" />
-            </div>
-          )}
-          <input 
-            value={charId}
-            onChange={e => setCharId(e.target.value)}
-            className="text-[18px] font-semibold text-center bg-transparent outline-none m-0 p-0 text-black leading-none"
-            style={{ width: `${Math.max(1, charId.length) * 1.1 + 0.5}em` }}
-          />
+        <div className="flex flex-col items-center">
+           <div className="w-[52px] h-[52px] rounded-full bg-black/10 overflow-hidden shadow-[0_4px_12px_rgba(0,0,0,0.1)] border border-white/30 z-10 -mb-3.5 relative">
+               {avatar2 ? <img src={avatar2} alt="" className="w-full h-full object-cover" /> : null}
+           </div>
+           <div className="bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_4px_16px_rgba(0,0,0,0.06),inset_0_2px_4px_rgba(255,255,255,0.4)] px-6 pt-5 pb-2 rounded-[20px] text-center min-w-[120px]">
+               <input 
+                 value={charId}
+                 onChange={e => setCharId(e.target.value)}
+                 className="text-[15px] font-bold text-center bg-transparent outline-none m-0 p-0 leading-none"
+                 style={{ width: `${Math.max(1, charId.length) * 1.05 + 0.5}em`, color: themeConfig.textPrimary || '#111' }}
+               />
+           </div>
         </div>
-        <div className="w-[70px] flex items-center justify-end pr-1">
-          <button onClick={onOpenSettings} className="text-black/60 active:opacity-50 transition-opacity p-1.5"><MoreHorizontal size={24} /></button>
-        </div>
+        <button onClick={() => onOpenSettings(themeConfig)} className="w-[42px] h-[42px] rounded-full flex items-center justify-center bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_2px_12px_rgba(0,0,0,0.06),inset_0_2px_4px_rgba(255,255,255,0.3)] active:scale-95 transition-transform" style={{ color: themeConfig.textPrimary || '#333' }}>
+          <MoreHorizontal size={22} strokeWidth={2.5} />
+        </button>
       </div>
 
       {/* Messages */}
@@ -475,30 +555,29 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
           if (msg.type === 'check_in') {
              return (
                <div key={msg.id} className={`w-full flex justify-center ${marginBottom} px-4`}>
-                 <div className="bg-white/95 backdrop-blur-xl rounded-[24px] p-5 shadow-[0_8px_30px_rgba(0,0,0,0.06)] w-full max-w-[320px] flex flex-col items-center border border-white/50 relative overflow-hidden">
-                   <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-400 to-indigo-500"></div>
-                   <div className="w-12 h-12 bg-blue-50/50 rounded-full flex items-center justify-center mb-3">
-                      <Camera size={24} className="text-blue-500" />
+                 <div className="bg-white/15 backdrop-blur-3xl rounded-[24px] p-5 shadow-[0_8px_32px_rgba(0,0,0,0.08),inset_0_2px_4px_rgba(255,255,255,0.4)] w-full max-w-[320px] flex flex-col items-center border border-white/40 relative overflow-hidden">
+                   <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mb-3 shadow-[inset_0_2px_4px_rgba(255,255,255,0.3)] border border-white/30 text-white">
+                      <Camera size={22} />
                    </div>
-                   <div className="text-[16px] text-[#333] font-semibold mb-1 tracking-wide">{msg.content}</div>
-                   <div className="text-[12px] text-black/40 mb-4">{msg.time} · 互动查岗</div>
+                   <div className="text-[16px] text-white font-semibold mb-1 tracking-wide drop-shadow-sm">{msg.content}</div>
+                   <div className="text-[12px] text-white/70 mb-4">{msg.time} · 互动查岗</div>
                    
                    {msg.checkInStatus === 'pending' ? (
-                     <div className="flex space-x-4 w-full">
-                        <button className="flex-1 h-11 rounded-full bg-[#f2f2f7] flex items-center justify-center text-[#ff3b30] font-medium active:scale-95 transition-transform" onClick={() => declineCheckIn(msg.id)}>
-                           <X size={18} strokeWidth={2.5} className="mr-1.5"/> 忽略
+                     <div className="flex space-x-3 w-full">
+                        <button className="flex-1 py-2.5 rounded-[12px] bg-black/20 backdrop-blur-md shadow-[0_2px_10px_rgba(0,0,0,0.1)] flex items-center justify-center text-white/90 font-medium active:scale-95 transition-transform border border-white/20" onClick={() => declineCheckIn(msg.id)}>
+                           忽略
                         </button>
-                        <button className="flex-1 h-11 rounded-full bg-[#007AFF] shadow-md shadow-[#007AFF]/20 flex items-center justify-center text-white font-medium active:scale-95 transition-transform" onClick={() => openCheckInModal(msg.id)}>
-                           <Check size={18} strokeWidth={2.5} className="mr-1.5"/> 汇报
+                        <button className="flex-1 py-2.5 rounded-[12px] bg-white/30 backdrop-blur-md shadow-[inset_0_2px_4px_rgba(255,255,255,0.4),0_2px_10px_rgba(0,0,0,0.1)] flex items-center justify-center text-white font-medium active:scale-95 transition-transform border border-white/40" onClick={() => openCheckInModal(msg.id)}>
+                           查岗汇报
                         </button>
                      </div>
                    ) : msg.checkInStatus === 'rejected' ? (
-                     <div className="w-full py-2.5 rounded-[12px] bg-[#f2f2f7] text-[#8e8e93] text-center text-[13px] font-medium">
+                     <div className="w-full py-2.5 rounded-[12px] bg-black/10 backdrop-blur-md text-white/70 text-center text-[13px] font-medium border border-white/10">
                         已忽略
                      </div>
                    ) : (
-                     <div className="w-full py-2.5 rounded-[12px] bg-green-50 text-green-600 text-center text-[13px] font-medium border border-green-100/50">
-                        已完成汇报
+                     <div className="w-full py-2.5 rounded-[12px] bg-white/20 backdrop-blur-md shadow-[inset_0_1px_3px_rgba(255,255,255,0.3)] text-white text-center text-[13px] font-medium border border-white/30">
+                        {charId}收到了
                      </div>
                    )}
                  </div>
@@ -509,8 +588,8 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
           return (
             <div key={msg.id} className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'} ${marginBottom}`}>
               {!isMe && (
-                <div className="w-9 h-9 shrink-0 mr-3">
-                  {!isGroupedNext && <div className="w-full h-full rounded-full bg-black/10 overflow-hidden shadow-sm">
+                <div className="w-[38px] h-[38px] shrink-0 mr-2.5">
+                  {!isGroupedNext && <div className="w-full h-full rounded-full bg-black/10 overflow-hidden shadow-sm border border-white/20">
                     {avatar ? <img src={avatar} alt="" className="w-full h-full object-cover" /> : null}
                   </div>}
                 </div>
@@ -529,12 +608,53 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
                   <div className="rounded-[18px] overflow-hidden shrink-0 border border-black/5 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
                     <img src={msg.content} alt="image" className="max-w-[180px] max-h-[250px] object-cover" />
                   </div>
+                ) : msg.type === 'voice' ? (
+                  <div 
+                    className={chatBubbleStyle === 'system' ? 
+                      `flex items-center space-x-2 px-4 py-2.5 ${isMe ? 'rounded-[20px] rounded-tr-[4px]' : 'rounded-[20px] rounded-tl-[4px]'}` : 
+                      `flex items-center space-x-2 px-4 py-2.5 shadow-[0_4px_16px_rgba(0,0,0,0.06),inset_0_1px_3px_rgba(255,255,255,0.4)] backdrop-blur-3xl ${isMe ? 'border border-white/30' : 'border border-white/40'} ${isMe ? 'rounded-[20px] rounded-tr-[4px]' : 'rounded-[20px] rounded-tl-[4px]'}`
+                    }
+                    style={chatBubbleStyle === 'system' ? {
+                      backgroundColor: isMe ? bubbleColor : '#E9E9EB',
+                      color: isMe ? '#fff' : '#000',
+                      minWidth: `${Math.min(200, 80 + (msg.voiceDuration || 1) * 5)}px`
+                    } : {
+                      backgroundColor: isMe ? `${bubbleColor}66` : 'rgba(255,255,255,0.15)',
+                      color: '#fff',
+                      textShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                      minWidth: `${Math.min(200, 80 + (msg.voiceDuration || 1) * 5)}px`
+                    }}
+                    onClick={() => {
+                       if (msg.audioUrl) {
+                          const audio = new Audio(msg.audioUrl);
+                          audio.play();
+                       }
+                    }}
+                  >
+                    {isMe ? <span className="text-[14px]">{msg.voiceDuration}s</span> : <Mic size={18} />}
+                    <div className="flex-1 flex justify-center space-x-1">
+                      {Array.from({ length: Math.min(10, Math.max(3, (msg.voiceDuration || 1))) }).map((_, i) => (
+                        <div key={i} className={`w-1 rounded-full animate-pulse ${chatBubbleStyle === 'system' && !isMe ? 'bg-black/40' : 'bg-white/70'}`} style={{ height: `${Math.random() * 12 + 4}px`, animationDelay: `${i * 0.1}s` }}></div>
+                      ))}
+                    </div>
+                    {isMe ? <Mic size={18} /> : <span className="text-[14px]">{msg.voiceDuration}s</span>}
+                  </div>
                 ) : msg.type === 'emoji' ? (
                   <div className="text-[48px] leading-none drop-shadow-sm">{msg.content}</div>
                 ) : (
                   <div 
-                    className={`chat-bubble px-4 py-2.5 text-[15px] leading-relaxed shadow-[0_2px_10px_rgba(0,0,0,0.02)] ${isMe ? 'rounded-2xl rounded-tr-[4px]' : 'rounded-2xl rounded-tl-[4px]'}`}
-                    style={isMe ? {backgroundColor: bubbleColor, color: '#fff'} : {backgroundColor: '#fff', color: '#111'}}
+                    className={chatBubbleStyle === 'system' ? 
+                      `chat-bubble px-4 py-2.5 text-[15px] leading-relaxed ${isMe ? 'rounded-[20px] rounded-tr-[4px]' : 'rounded-[20px] rounded-tl-[4px]'}` :
+                      `chat-bubble px-4 py-2.5 text-[15px] leading-relaxed shadow-[0_4px_16px_rgba(0,0,0,0.06),inset_0_1px_3px_rgba(255,255,255,0.4)] backdrop-blur-3xl ${isMe ? 'border border-white/30' : 'border border-white/40'} ${isMe ? 'rounded-[20px] rounded-tr-[4px]' : 'rounded-[20px] rounded-tl-[4px]'}`
+                    }
+                    style={chatBubbleStyle === 'system' ? {
+                      backgroundColor: isMe ? bubbleColor : '#E9E9EB',
+                      color: isMe ? '#fff' : '#000'
+                    } : {
+                      backgroundColor: isMe ? `${bubbleColor}66` : 'rgba(255,255,255,0.15)',
+                      color: '#fff',
+                      textShadow: '0 1px 2px rgba(0,0,0,0.1)'
+                    }}
                   >
                     {msg.content}
                   </div>
@@ -556,8 +676,8 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
                 )}
               </div>
               {isMe && (
-                <div className="w-9 h-9 shrink-0 ml-3">
-                  {!isGroupedNext && <div className="w-full h-full rounded-full bg-black/10 overflow-hidden shadow-sm">
+                <div className="w-[38px] h-[38px] shrink-0 ml-2.5">
+                  {!isGroupedNext && <div className="w-full h-full rounded-full bg-black/10 overflow-hidden shadow-sm border border-white/20">
                     {avatar ? <img src={avatar} alt="" className="w-full h-full object-cover" /> : null}
                   </div>}
                 </div>
@@ -567,13 +687,16 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
         })}
         {isTyping && (
            <div className="flex w-full justify-start">
-             <div className="w-9 h-9 rounded-full bg-black/10 shrink-0 mr-3 overflow-hidden">
+             <div className="w-[38px] h-[38px] rounded-full bg-black/10 shrink-0 mr-2.5 overflow-hidden border border-white/20">
                 {avatar2 ? <img src={avatar2} alt="" className="w-full h-full object-cover" /> : null}
               </div>
-              <div className="chat-bubble px-4 py-3 rounded-[18px] bg-white rounded-tl-[4px] shadow-sm flex space-x-1 items-center">
-                <motion.div className="w-1.5 h-1.5 bg-gray-400 rounded-full" animate={{y: [0, -4, 0]}} transition={{repeat: Infinity, duration: 0.8}} />
-                <motion.div className="w-1.5 h-1.5 bg-gray-400 rounded-full" animate={{y: [0, -4, 0]}} transition={{repeat: Infinity, duration: 0.8, delay: 0.2}} />
-                <motion.div className="w-1.5 h-1.5 bg-gray-400 rounded-full" animate={{y: [0, -4, 0]}} transition={{repeat: Infinity, duration: 0.8, delay: 0.4}} />
+              <div className={chatBubbleStyle === 'system' ? 
+                `chat-bubble px-4 py-3 rounded-[20px] rounded-tl-[4px] bg-[#E9E9EB] flex space-x-1.5 items-center` :
+                `chat-bubble px-4 py-3 rounded-[20px] rounded-tl-[4px] bg-white/15 backdrop-blur-3xl border border-white/40 shadow-[0_4px_16px_rgba(0,0,0,0.06),inset_0_1px_3px_rgba(255,255,255,0.4)] flex space-x-1.5 items-center`
+              }>
+                <motion.div className={`w-1.5 h-1.5 rounded-full ${chatBubbleStyle === 'system' ? 'bg-black/40' : 'bg-white/80'}`} animate={{y: [0, -4, 0]}} transition={{repeat: Infinity, duration: 0.8}} />
+                <motion.div className={`w-1.5 h-1.5 rounded-full ${chatBubbleStyle === 'system' ? 'bg-black/40' : 'bg-white/80'}`} animate={{y: [0, -4, 0]}} transition={{repeat: Infinity, duration: 0.8, delay: 0.2}} />
+                <motion.div className={`w-1.5 h-1.5 rounded-full ${chatBubbleStyle === 'system' ? 'bg-black/40' : 'bg-white/80'}`} animate={{y: [0, -4, 0]}} transition={{repeat: Infinity, duration: 0.8, delay: 0.4}} />
               </div>
            </div>
         )}
@@ -626,30 +749,59 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
       </AnimatePresence>
 
       {/* Input Area */}
-      <div className="absolute bottom-[max(0.5rem,env(safe-area-inset-bottom))] left-3 right-3 rounded-[16px] bg-white/70 backdrop-blur-xl border border-white/80 p-2 flex flex-col z-30 shadow-[0_8px_30px_rgba(0,0,0,0.06)]">
-        <div className="flex items-center space-x-1.5">
-          <button className={`w-9 h-9 flex items-center justify-center shrink-0 ${showPlusMenu ? 'rotate-45' : ''} transition-all active:scale-95`} style={{ color: primaryColor }} onClick={() => setShowPlusMenu(!showPlusMenu)}>
-            <Plus size={24} strokeWidth={2} />
-          </button>
-          <div className="flex-1 min-h-[32px] rounded-[16px] flex items-center px-3 py-1 transition-colors border border-black/[0.03]" style={{ backgroundColor: themeConfig.cardBg }}>
+      <div className="absolute bottom-[max(0.5rem,env(safe-area-inset-bottom))] left-3 right-3 flex items-center space-x-2 z-30">
+        <button 
+          className={`w-[42px] h-[42px] rounded-full flex items-center justify-center shrink-0 border border-white/20 text-white shadow-[0_4px_12px_rgba(0,0,0,0.1),inset_0_2px_4px_rgba(255,255,255,0.3)] active:scale-95 transition-all ${showPlusMenu ? 'rotate-45' : ''}`}
+          style={{ backgroundColor: bubbleColor }}
+          onClick={() => setShowPlusMenu(!showPlusMenu)}
+        >
+          <Plus size={22} strokeWidth={2.5} />
+        </button>
+        <div className={`flex-1 h-[42px] rounded-full flex items-center px-4 bg-white/20 backdrop-blur-3xl border ${isRecording ? 'border-red-400/50 shadow-[0_0_20px_rgba(239,68,68,0.2)]' : 'border-white/40 shadow-[0_4px_16px_rgba(0,0,0,0.06),inset_0_2px_4px_rgba(255,255,255,0.3)]'} overflow-hidden relative transition-all duration-300`}>
+          {isRecording ? (
+            <div className="flex-1 flex items-center justify-between text-white font-medium text-[15px] animate-in fade-in">
+               <div className="flex items-center space-x-2">
+                 <div className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
+                 <span>正在录音 {Math.floor(recordingTime / 60).toString().padStart(2, '0')}:{(recordingTime % 60).toString().padStart(2, '0')}</span>
+               </div>
+               <button onClick={cancelRecording} className="text-white/70 hover:text-white shrink-0 ml-4"><X size={18} /></button>
+            </div>
+          ) : (
             <input 
               type="text"
-              className="flex-1 bg-transparent border-none outline-none text-[15px] p-0.5 text-black placeholder-black/30"
+              className="flex-1 bg-transparent border-none outline-none text-[15px] p-0 text-white placeholder-white/70"
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleSend()}
               placeholder="发送消息..."
               onFocus={() => setShowPlusMenu(false)}
             />
-          </div>
-          {input.trim() ? (
-            <button className="w-9 h-9 flex items-center justify-center shrink-0 text-white rounded-full shadow-md active:scale-95 transition-transform" style={{backgroundColor: primaryColor}} onClick={() => handleSend()}>
-              <Send size={18} strokeWidth={1.5} className="-ml-0.5 mt-0.5" />
-            </button>
-          ) : (
-            <button className="w-9 h-9 flex items-center justify-center shrink-0 active:scale-95 transition-transform" style={{ color: primaryColor }} onClick={() => simulateReply()}>
-               <Sparkles size={24} strokeWidth={1.25} />
-            </button>
+          )}
+
+          {!isRecording && (
+             <div className="flex items-center space-x-3 ml-2 pr-1">
+                {!input.trim() ? (
+                  <>
+                    <button onClick={() => simulateReply()} className="active:scale-95 transition-transform" style={{ color: bubbleColor }}>
+                       <Sparkles size={20} strokeWidth={2} />
+                    </button>
+                    <button 
+                      onMouseDown={startRecording}
+                      onMouseUp={stopRecording}
+                      onTouchStart={startRecording}
+                      onTouchEnd={stopRecording}
+                      className="active:scale-95 transition-transform"
+                      style={{ color: bubbleColor }}
+                    >
+                       <Mic size={20} strokeWidth={2} />
+                    </button>
+                  </>
+                ) : (
+                  <button onClick={() => handleSend()} className="active:scale-95 transition-transform w-[28px] h-[28px] rounded-full flex items-center justify-center shadow-sm text-white" style={{ backgroundColor: bubbleColor }}>
+                     <Send size={15} strokeWidth={2.5} className="-ml-0.5 mt-0.5" />
+                  </button>
+                )}
+             </div>
           )}
         </div>
       </div>
@@ -737,30 +889,30 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
               initial={{ y: 50, scale: 0.95 }}
               animate={{ y: 0, scale: 1 }}
               exit={{ y: 20, scale: 0.95 }}
-              className="bg-white rounded-[24px] shadow-2xl p-6 w-full max-w-[360px] h-max relative overflow-hidden"
+              className="bg-white/20 backdrop-blur-3xl border border-white/40 shadow-[0_16px_40px_rgba(0,0,0,0.2),inset_0_2px_4px_rgba(255,255,255,0.4)] rounded-[32px] p-6 w-full max-w-[360px] h-max relative overflow-hidden"
             >
               <button 
                 onClick={() => setCheckInModalVisible(false)} 
-                className="absolute right-4 top-4 w-8 h-8 flex items-center justify-center rounded-full bg-[#f2f2f7] text-[#8e8e93] active:scale-95 transition-transform z-10"
+                className="absolute right-5 top-5 w-8 h-8 flex items-center justify-center rounded-full bg-white/20 border border-white/30 text-white active:scale-95 transition-transform z-10 shadow-[inset_0_1px_3px_rgba(255,255,255,0.4)]"
               >
                 <X size={18} strokeWidth={2.5} />
               </button>
               
-              <div className="flex flex-col items-center mb-6 mt-2 relative z-10">
-                 <div className="w-14 h-14 bg-gradient-to-tr from-blue-400 to-indigo-500 rounded-full flex items-center justify-center text-white mb-3 shadow-lg shadow-blue-500/30">
-                    <Camera size={24} strokeWidth={2}/>
+              <div className="flex flex-col items-center mb-6 mt-2 relative z-10 text-white">
+                 <div className="w-14 h-14 bg-white/20 border border-white/30 shadow-[inset_0_2px_4px_rgba(255,255,255,0.4)] rounded-full flex items-center justify-center text-white mb-3">
+                    <Camera size={24} strokeWidth={2.5}/>
                  </div>
-                 <h3 className="text-[19px] font-semibold text-[#333] tracking-wide">{charId}正在查岗</h3>
-                 <p className="text-[13px] text-[#8e8e93] mt-1 text-center">拍张照或者写点什么，让他知道你的状态吧</p>
+                 <h3 className="text-[19px] font-semibold tracking-wide drop-shadow-sm">{charId}正在查岗</h3>
+                 <p className="text-[13px] text-white/80 mt-1 text-center">拍张照或者写点什么，让他知道你的状态吧</p>
               </div>
               
               <div className="space-y-4 relative z-10">
                 {checkInImage ? (
-                  <div className="relative w-full h-[220px] bg-[#f2f2f7] rounded-[16px] border border-black/5 overflow-hidden shadow-sm">
+                  <div className="relative w-full h-[220px] bg-black/10 rounded-[20px] border border-white/20 overflow-hidden shadow-inner">
                     <img src={checkInImage} alt="" className="w-full h-full object-cover" />
                     <button 
                       onClick={() => setCheckInImage('')}
-                      className="absolute top-3 right-3 bg-black/50 text-white rounded-full p-1.5 backdrop-blur-md active:scale-95"
+                      className="absolute top-3 right-3 bg-black/50 text-white rounded-full p-1.5 backdrop-blur-md active:scale-95 border border-white/20"
                     >
                       <X size={16} strokeWidth={2.5}/>
                     </button>
@@ -768,12 +920,12 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
                 ) : (
                    <button 
                      onClick={() => checkInImgInputRef.current?.click()}
-                     className="w-full h-[140px] rounded-[16px] border-2 border-dashed border-[#c6c6c8] bg-[#fcfcfc] text-[#8e8e93] flex flex-col items-center justify-center space-y-2 active:bg-[#f2f2f7] transition-colors"
+                     className="w-full h-[140px] rounded-[20px] border border-white/30 bg-white/10 shadow-[inset_0_2px_10px_rgba(0,0,0,0.05)] text-white/90 flex flex-col items-center justify-center space-y-2 active:bg-white/20 transition-colors"
                    >
-                     <div className="w-10 h-10 rounded-full bg-[#f2f2f7] flex items-center justify-center text-[#007AFF] mb-1">
+                     <div className="w-10 h-10 rounded-full bg-white/20 shadow-[inset_0_1px_2px_rgba(255,255,255,0.4)] flex items-center justify-center text-white mb-1 border border-white/20">
                         <Camera size={20} strokeWidth={2.5} />
                      </div>
-                     <span className="text-[14px] font-medium">拍摄或从相册选择</span>
+                     <span className="text-[14px] font-medium drop-shadow-sm">拍摄或从相册选择</span>
                    </button>
                 )}
                 <input type="file" ref={checkInImgInputRef} className="hidden" accept="image/*" onChange={handleCheckInImageUpload} />
@@ -782,16 +934,17 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
                   value={checkInText}
                   onChange={(e) => setCheckInText(e.target.value)}
                   placeholder="文字描述：正在做什么..."
-                  className="w-full bg-[#f2f2f7] rounded-[16px] p-4 text-[15px] outline-none resize-none h-[110px] text-[#333] placeholder:text-[#8e8e93]"
+                  className="w-full h-[110px] bg-white/10 border border-white/30 rounded-[20px] p-4 text-[15px] outline-none resize-none text-white placeholder-white/60 shadow-[inset_0_2px_10px_rgba(0,0,0,0.05)] focus:bg-white/20 transition-colors"
                 />
 
                 <button 
                   onClick={submitCheckIn}
-                  className={`w-full py-4 rounded-[16px] font-medium text-[16px] text-white transition-all duration-300 mt-2 ${
-                    !checkInText && !checkInImage ? 'bg-[#c6c6c8] text-white/80 cursor-not-allowed shadow-none' : 'bg-[#007AFF] shadow-lg shadow-[#007AFF]/30 active:scale-95 hover:bg-[#0066d6]'
-                  }`}
+                  disabled={!checkInText && !checkInImage}
+                  className="w-full py-4 rounded-[20px] font-medium text-[16px] text-white transition-all duration-300 mt-2 flex items-center justify-center space-x-2 border shadow-[0_4px_12px_rgba(0,0,0,0.1),inset_0_2px_4px_rgba(255,255,255,0.4)] disabled:opacity-50 disabled:shadow-none bg-white/20 border-white/40 active:scale-95"
+                  style={{ backgroundColor: (checkInText.trim() || checkInImage) ? bubbleColor : 'rgba(255,255,255,0.2)' }}
                 >
-                  发送汇报
+                  <Send size={18} />
+                  <span>发送汇报</span>
                 </button>
               </div>
             </motion.div>
