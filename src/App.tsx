@@ -620,7 +620,14 @@ export default function App() {
     document.body.style.backgroundImage = bgImage;
     document.body.style.backgroundSize = 'cover';
     document.body.style.backgroundPosition = 'center';
-    // Removed backgroundAttachment fixed to fix iOS PWA safe area issue
+
+    let metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    if (!metaThemeColor) {
+      metaThemeColor = document.createElement('meta');
+      metaThemeColor.setAttribute('name', 'theme-color');
+      document.head.appendChild(metaThemeColor);
+    }
+    metaThemeColor.setAttribute('content', bgColor);
     
     return () => {
       document.documentElement.style.backgroundColor = '';

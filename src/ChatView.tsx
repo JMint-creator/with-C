@@ -27,11 +27,20 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<any>(null);
+  const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
+  const audioObjRef = useRef<HTMLAudioElement | null>(null);
+  const recordingStartTimeRef = useRef<number>(0);
 
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      let options: MediaRecorderOptions | undefined = undefined;
+      if (MediaRecorder.isTypeSupported('audio/mp4')) {
+         options = { mimeType: 'audio/mp4' };
+      } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+         options = { mimeType: 'audio/webm' };
+      }
+      const mediaRecorder = new MediaRecorder(stream, options);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
@@ -42,13 +51,21 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
       };
 
       mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        const audioUrl = URL.createObjectURL(audioBlob);
-        stream.getTracks().forEach(track => track.stop());
-        handleSendVoice(audioUrl, recordingTime);
+        let mimeType = mediaRecorder.mimeType || audioChunksRef.current[0]?.type || 'audio/webm';
+        mimeType = mimeType.split(';')[0]; // Remove codecs to prevent data URL corruption
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+        const reader = new FileReader();
+        reader.onloadend = () => {
+           const audioUrl = reader.result as string;
+           stream.getTracks().forEach(track => track.stop());
+           const actualDuration = Math.round((Date.now() - recordingStartTimeRef.current) / 1000);
+           handleSendVoice(audioUrl, actualDuration);
+        };
+        reader.readAsDataURL(audioBlob);
       };
 
       mediaRecorder.start();
+      recordingStartTimeRef.current = Date.now();
       setIsRecording(true);
       setRecordingTime(0);
       recordingTimerRef.current = setInterval(() => {
@@ -625,16 +642,49 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
                       minWidth: `${Math.min(200, 80 + (msg.voiceDuration || 1) * 5)}px`
                     }}
                     onClick={() => {
-                       if (msg.audioUrl) {
-                          const audio = new Audio(msg.audioUrl);
-                          audio.play();
+                       if (msg.audioUrl && playingVoiceId !== msg.id) {
+                          if (audioObjRef.current) {
+                             audioObjRef.current.pause();
+                          }
+                          let playUrl = msg.audioUrl;
+                          if (playUrl.startsWith('data:audio/')) {
+                             const match = playUrl.match(/^data:(audio\/[^;,]+)(?:;codecs=[^;,]+)?(;base64,.*)$/);
+                             if (match) {
+                                playUrl = 'data:' + match[1] + match[2];
+                             }
+                          }
+                          const audio = new Audio(playUrl);
+                          audioObjRef.current = audio;
+                          setPlayingVoiceId(msg.id);
+
+                          audio.onended = () => {
+                             setPlayingVoiceId(null);
+                             audioObjRef.current = null;
+                          };
+                          audio.onerror = () => {
+                             setPlayingVoiceId(null);
+                             audioObjRef.current = null;
+                          };
+
+                          audio.play().catch(e => {
+                             console.error('Audio play failed:', e);
+                             alert('播放失败：该音频已过期或格式不支持');
+                             setPlayingVoiceId(null);
+                             audioObjRef.current = null;
+                          });
+                       } else if (playingVoiceId === msg.id) {
+                          if (audioObjRef.current) {
+                             audioObjRef.current.pause();
+                          }
+                          setPlayingVoiceId(null);
+                          audioObjRef.current = null;
                        }
                     }}
                   >
                     {isMe ? <span className="text-[14px]">{msg.voiceDuration}s</span> : <Mic size={18} />}
                     <div className="flex-1 flex justify-center space-x-1">
                       {Array.from({ length: Math.min(10, Math.max(3, (msg.voiceDuration || 1))) }).map((_, i) => (
-                        <div key={i} className={`w-1 rounded-full animate-pulse ${chatBubbleStyle === 'system' && !isMe ? 'bg-black/40' : 'bg-white/70'}`} style={{ height: `${Math.random() * 12 + 4}px`, animationDelay: `${i * 0.1}s` }}></div>
+                        <div key={i} className={`w-1 rounded-full ${playingVoiceId === msg.id ? 'animate-pulse' : ''} ${chatBubbleStyle === 'system' && !isMe ? 'bg-black/40' : 'bg-white/70'}`} style={{ height: `${Math.random() * 12 + 4}px`, animationDelay: `${i * 0.1}s` }}></div>
                       ))}
                     </div>
                     {isMe ? <Mic size={18} /> : <span className="text-[14px]">{msg.voiceDuration}s</span>}
@@ -757,14 +807,17 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
         >
           <Plus size={22} strokeWidth={2.5} />
         </button>
-        <div className={`flex-1 h-[42px] rounded-full flex items-center px-4 bg-white/20 backdrop-blur-3xl border ${isRecording ? 'border-red-400/50 shadow-[0_0_20px_rgba(239,68,68,0.2)]' : 'border-white/40 shadow-[0_4px_16px_rgba(0,0,0,0.06),inset_0_2px_4px_rgba(255,255,255,0.3)]'} overflow-hidden relative transition-all duration-300`}>
+        <div className={`flex-1 h-[42px] rounded-full flex items-center px-4 bg-white/20 backdrop-blur-3xl border ${isRecording ? 'border-primary shadow-[0_0_20px_rgba(0,122,255,0.2)] bg-white/30' : 'border-white/40 shadow-[0_4px_16px_rgba(0,0,0,0.06),inset_0_2px_4px_rgba(255,255,255,0.3)]'} overflow-hidden relative transition-all duration-300`}>
           {isRecording ? (
             <div className="flex-1 flex items-center justify-between text-white font-medium text-[15px] animate-in fade-in">
                <div className="flex items-center space-x-2">
                  <div className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
                  <span>正在录音 {Math.floor(recordingTime / 60).toString().padStart(2, '0')}:{(recordingTime % 60).toString().padStart(2, '0')}</span>
                </div>
-               <button onClick={cancelRecording} className="text-white/70 hover:text-white shrink-0 ml-4"><X size={18} /></button>
+               <div className="flex items-center space-x-4">
+                 <button onClick={cancelRecording} className="text-white/70 hover:text-white shrink-0 flex items-center text-[13px]"><X size={16} className="mr-0.5"/>取消</button>
+                 <button onClick={stopRecording} className="text-white shrink-0 flex items-center text-[13px] active:scale-95 bg-[#007AFF] px-2 py-1 rounded-full shadow-sm"><Send size={14} className="mr-1"/>发送</button>
+               </div>
             </div>
           ) : (
             <input 
@@ -786,10 +839,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
                        <Sparkles size={20} strokeWidth={2} />
                     </button>
                     <button 
-                      onMouseDown={startRecording}
-                      onMouseUp={stopRecording}
-                      onTouchStart={startRecording}
-                      onTouchEnd={stopRecording}
+                      onClick={() => isRecording ? stopRecording() : startRecording()}
                       className="active:scale-95 transition-transform"
                       style={{ color: bubbleColor }}
                     >
