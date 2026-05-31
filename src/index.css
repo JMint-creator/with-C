@@ -7,11 +7,11 @@
 
 html, body, #root {
   width: 100%;
-  height: 100%;
+  height: 100dvh;
   margin: 0;
   padding: 0;
   overflow: hidden;
   overscroll-behavior-y: none;
-  background-color: #F2F2F7;
+  background-color: transparent;
   -webkit-tap-highlight-color: transparent;
 }

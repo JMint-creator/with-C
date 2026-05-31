@@ -51,14 +51,7 @@ export const CheckInsView = ({ onClose, themeConfig, checkinsBg }: any) => {
   }, [checkIns]);
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col overflow-hidden animate-in slide-in-from-right duration-300 text-[14px]" style={{ 
-        backgroundColor: checkinsBg ? (themeConfig.bg || '#f2f2f7') : 'transparent',
-        backgroundImage: checkinsBg ? `url(${checkinsBg})` : 'none',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backdropFilter: checkinsBg ? 'none' : 'blur(24px)',
-        color: themeConfig.textPrimary || '#333'
-    }}>
+    <div className="fixed inset-0 z-50 flex flex-col overflow-hidden animate-in slide-in-from-right duration-300 text-[14px]" style={{ color: themeConfig.textPrimary || '#333' }}>
       {/* Background Graphic overlay if no image */}
       {!checkinsBg && (
         <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden opacity-50">

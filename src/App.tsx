@@ -360,20 +360,23 @@ const DecideView = ({ onClose, themeConfig, onStartDecide, isDeciding }: { onClo
 
 const globalAudio = new Audio();
 
-const BackgroundLayer = ({ bg, image }: { bg: string, image: string }) => (
-  <div style={{
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: bg,
-    backgroundImage: image !== 'none' ? image : 'none',
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-    zIndex: -1,
-  }} />
-);
+const BackgroundLayer = ({ bg, image, show }: { bg: string, image: string, show: boolean }) => {
+  if (!show) return null;
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: bg,
+      backgroundImage: image !== 'none' ? image : 'none',
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      zIndex: -1,
+    }} />
+  );
+};
 
 export default function App() {
   const [view, setView] = useState<'home' | 'appearance' | 'data' | 'library' | 'decide' | 'chat' | 'chat_settings' | 'music_manager'>('home');
@@ -627,20 +630,16 @@ export default function App() {
 
   useEffect(() => {
     let bgColor = currentThemeConfig.bg;
-    let bgImage = 'none';
     
-    if (view === 'home' && wallpaper) bgImage = `url(${wallpaper})`;
-    if (view === 'chat' && chatBg) bgImage = `url(${chatBg})`;
-    
-    if (view !== 'home' && view !== 'chat' && view !== 'moments' && view !== 'wishlist') bgColor = '#F2F2F7';
+    // For iOS settings style pages, use the iOS grey background. For other pages use theme color
+    if (['appearance', 'library', 'data', 'chat_settings', 'music_manager', 'moments'].includes(view)) {
+       bgColor = '#F2F2F7';
+    }
 
     document.documentElement.style.backgroundColor = bgColor;
     document.body.style.backgroundColor = bgColor;
-    document.body.style.backgroundImage = bgImage;
-    document.body.style.backgroundSize = 'cover';
-    document.body.style.backgroundPosition = 'center';
-    document.body.style.backgroundAttachment = 'fixed';
-
+    document.body.style.backgroundImage = 'none';
+    
     let metaThemeColor = document.querySelector('meta[name="theme-color"]');
     if (!metaThemeColor) {
       metaThemeColor = document.createElement('meta');
@@ -1536,7 +1535,7 @@ export default function App() {
           {chatFont && <style dangerouslySetInnerHTML={{ __html: `@font-face { font-family: 'CustomChatFont'; src: url('${chatFont}'); } * { font-family: 'CustomChatFont', sans-serif !important; }`}} />}
 
           <div 
-            className="w-full max-w-[420px] mx-auto flex flex-col justify-start flex-1 gap-4 px-4 shrink-0 relative"
+            className="w-full max-w-[420px] mx-auto flex flex-col justify-start flex-1 gap-3 px-4 shrink-0 relative"
             style={{
               paddingBottom: 'max(16px, env(safe-area-inset-bottom))',
               paddingTop: 'max(12px, env(safe-area-inset-top))'
@@ -1560,40 +1559,40 @@ export default function App() {
           
           {/* Bottom Frosted Container */}
           <div 
-            className="w-full relative pt-[42px] pb-3 px-4 flex flex-col items-center backdrop-blur-xl"
+            className="w-full relative pt-[36px] pb-4 px-4 flex flex-col items-center backdrop-blur-xl"
             style={{ backgroundColor: currentThemeConfig.cardBg }}
           >
             {/* Avatars */}
-            <div className="absolute -top-[32px] flex justify-center items-center w-full">
+            <div className="absolute -top-[28px] flex justify-center items-center w-full">
               <div className="relative flex items-center justify-center">
                 <div 
-                  className="w-[64px] h-[64px] rounded-full border-2 overflow-hidden flex items-center justify-center shadow-sm transition-transform hover:scale-105 cursor-pointer z-10 -mr-3"
+                  className="w-[56px] h-[56px] rounded-full border-2 overflow-hidden flex items-center justify-center shadow-sm transition-transform hover:scale-105 cursor-pointer z-10 -mr-2.5"
                   style={{ borderColor: currentThemeConfig.bg, backgroundColor: currentThemeConfig.bg, color: currentThemeConfig.textSecondary }}
                   onClick={() => avatar1InputRef.current?.click()}
                 >
-                  {avatar1 ? <img src={avatar1} className="w-full h-full object-cover" /> : <Cat size={26} strokeWidth={1.5} />}
+                  {avatar1 ? <img src={avatar1} className="w-full h-full object-cover" /> : <Cat size={22} strokeWidth={1.5} />}
                 </div>
                 <div 
-                  className="w-[64px] h-[64px] rounded-full border-2 overflow-hidden flex items-center justify-center shadow-sm transition-transform hover:scale-105 cursor-pointer z-0"
+                  className="w-[56px] h-[56px] rounded-full border-2 overflow-hidden flex items-center justify-center shadow-sm transition-transform hover:scale-105 cursor-pointer z-0"
                   style={{ borderColor: currentThemeConfig.bg, backgroundColor: currentThemeConfig.bg, color: currentThemeConfig.textSecondary }}
                   onClick={() => avatar2InputRef.current?.click()}
                 >
-                  {avatar2 ? <img src={avatar2} className="w-full h-full object-cover" /> : <Cat size={26} strokeWidth={1.5} />}
+                  {avatar2 ? <img src={avatar2} className="w-full h-full object-cover" /> : <Cat size={22} strokeWidth={1.5} />}
                 </div>
               </div>
             </div>
             
-            <div className="flex items-center justify-center gap-2 mb-1.5 mt-1">
-              <h1 className="text-[17px] font-medium tracking-wide text-[#333]" style={{color: currentThemeConfig.textPrimary}}>{name1}</h1>
-              <span className="text-[13px] font-light" style={{color: currentThemeConfig.textSecondary}}>&</span>
-              <h1 className="text-[17px] font-medium tracking-wide text-[#333]" style={{color: currentThemeConfig.textPrimary}}>{name2}</h1>
+            <div className="flex items-center justify-center gap-1.5 mb-1.5">
+              <h1 className="text-[15px] font-semibold tracking-tight text-[#333]" style={{color: currentThemeConfig.textPrimary}}>{name1}</h1>
+              <span className="text-[12px] opacity-70" style={{color: currentThemeConfig.textSecondary}}>&</span>
+              <h1 className="text-[15px] font-semibold tracking-tight text-[#333]" style={{color: currentThemeConfig.textPrimary}}>{name2}</h1>
             </div>
-            <p className="text-[12px] leading-relaxed text-center whitespace-pre-line px-2" style={{color: currentThemeConfig.textSecondary}}>{motto}</p>
+            <p className="text-[11px] leading-snug text-center whitespace-pre-line px-4 max-w-[85%] mx-auto opacity-80" style={{color: currentThemeConfig.textSecondary}}>{motto}</p>
           </div>
         </motion.div>
 
         {/* Grouped Bottom Elements */}
-        <div className="flex flex-col w-full shrink-0 gap-4">
+        <div className="flex flex-col w-full shrink-0 gap-3">
           {/* Widgets Row */}
           <div className="grid grid-cols-2 gap-3 shrink-0">
           {/* Music Widget */}
@@ -1672,7 +1671,7 @@ export default function App() {
 
         {/* Apps Grid */}
         <motion.div 
-          className="grid grid-cols-4 gap-y-4 gap-x-3 pt-1 pb-1 shrink-0 px-1"
+          className="grid grid-cols-4 gap-y-3 gap-x-3 pt-1 pb-1 shrink-0 px-1"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
@@ -1752,9 +1751,32 @@ export default function App() {
     return null;
   }; // end renderContent
 
+  let currentBgImage = 'none';
+  let showBackgroundLayer = false;
+
+  if (view === 'home' && wallpaper) {
+    currentBgImage = `url(${wallpaper})`;
+    showBackgroundLayer = true;
+  } else if (view === 'chat' && chatBg) {
+    currentBgImage = `url(${chatBg})`;
+    showBackgroundLayer = true;
+  } else if (view === 'wishlist' && wishlistBg) {
+    currentBgImage = `url(${wishlistBg})`;
+    showBackgroundLayer = true;
+  } else if (view === 'check_in' && checkinsBg) {
+    currentBgImage = `url(${checkinsBg})`;
+    showBackgroundLayer = true;
+  } else if (['home', 'chat', 'wishlist', 'check_in'].includes(view)) {
+    showBackgroundLayer = true; // Show solid theme background if no wallpaper is set for these views
+  }
+
   return (
     <>
-      <BackgroundLayer bg={currentThemeConfig.bg} image={wallpaper ? `url(${wallpaper})` : 'none'} />
+      <BackgroundLayer 
+        bg={currentThemeConfig.bg || '#F2F2F7'} 
+        image={currentBgImage} 
+        show={showBackgroundLayer} 
+      />
       {renderContent()}
     </>
   );
