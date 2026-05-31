@@ -16,6 +16,7 @@ type Message = {
   checkInStatus?: 'pending' | 'completed' | 'rejected';
   audioUrl?: string;
   voiceDuration?: number;
+  isIgnored?: boolean;
 };
 
 export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
@@ -100,6 +101,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
 
   const handleSendVoice = (audioUrl: string, duration: number) => {
     if (duration === 0) duration = 1;
+    const ignored = readNoReply && Math.random() < 0.05;
     const newMsg: Message = {
       id: Date.now().toString(),
       sender: 'me',
@@ -107,13 +109,16 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
       content: '',
       audioUrl,
       voiceDuration: duration,
-      time: getFormatTime()
+      time: getFormatTime(),
+      isIgnored: ignored
     };
     setMessages(msgs => [...msgs, newMsg]);
-    setIsTyping(true);
-    setTimeout(() => {
-      simulateReply();
-    }, 1000);
+    if (!ignored) {
+      setIsTyping(true);
+      setTimeout(() => {
+        simulateReply();
+      }, 1000);
+    }
   };
 
   
@@ -160,17 +165,19 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
         const reader = new FileReader();
         reader.onload = (e) => {
            if (e.target?.result) {
+              const ignored = readNoReply && Math.random() < 0.05;
               const newMsg: Message = {
                 id: Date.now().toString(),
                 sender: 'me',
                 type: isSticker ? 'sticker' : 'sticker', // For now use sticker type for any image
                 content: e.target.result as string,
-                time: getFormatTime()
+                time: getFormatTime(),
+                isIgnored: ignored
               };
               setMessages(prev => [...prev, newMsg]);
               setShowPlusMenu(false);
               
-              if (!(readNoReply && Math.random() < 0.15)) {
+              if (!ignored) {
                  simulateReply();
               }
            }
@@ -272,20 +279,20 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
   const handleSend = (text: string = input, type: 'text'|'nudge'|'emoji' = 'text') => {
     if (!text.trim() && type === 'text') return;
     
+    const ignored = readNoReply && Math.random() < 0.05;
     const newMsg: Message = {
       id: Date.now().toString(),
       sender: 'me',
       type,
       content: text,
-      time: getFormatTime()
+      time: getFormatTime(),
+      isIgnored: ignored
     };
     
     setMessages([...messages, newMsg]);
     setInput('');
     
-    if (readNoReply && Math.random() < 0.15) {
-      // 15% chance to do nothing (read no reply)
-    } else {
+    if (!ignored) {
       simulateReply();
     }
   };
@@ -450,7 +457,13 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
     }, waitBeforeTyping);
   };
 
-  const handleNudge = () => handleSend('拍了拍对方', 'nudge');
+  const handleNudge = () => {
+    const defaultNudgePrefix = '拍了拍对方';
+    const nudgeContent = window.localStorage.getItem('app_chatNudgeText') 
+      ? JSON.parse(window.localStorage.getItem('app_chatNudgeText') as string)
+      : defaultNudgePrefix;
+    handleSend(nudgeContent, 'nudge');
+  };
 
   const initiateCall = () => {
     setVideoCallState('calling');
@@ -543,7 +556,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} className="absolute inset-0 overflow-y-auto px-4 pt-[calc(env(safe-area-inset-top)+80px)] pb-[calc(env(safe-area-inset-bottom)+120px)] flex flex-col scrollbar-hide z-10">
+      <div ref={scrollRef} className="absolute inset-0 overflow-y-auto px-4 pt-[calc(env(safe-area-inset-top)+80px)] pb-[calc(env(safe-area-inset-bottom)+85px)] flex flex-col scrollbar-hide z-10">
         {messages.map((msg, i) => {
           const isMe = msg.sender === 'me';
           const avatar = isMe ? (avatar1 || '') : (avatar2 || '');
@@ -552,8 +565,8 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
           const isGroupedNext = nextMsg && nextMsg.sender === msg.sender && nextMsg.time === msg.time && nextMsg.type !== 'call' && nextMsg.type !== 'nudge' && msg.type !== 'call' && msg.type !== 'nudge';
           const marginBottom = isGroupedNext ? 'mb-1' : 'mb-5';
 
-          // isRead if there's any message from them after this, or if it's the last message and readNoReply is true, or if simulating reply
-          const isRead = messages.slice(i + 1).some(m => m.sender === 'them') || (readNoReply && !isTyping);
+          // isRead if there's any message from them after this, or if it was marked as ignored
+          const isRead = messages.slice(i + 1).some(m => m.sender === 'them') || msg.isIgnored;
 
           if (msg.type === 'nudge') {
             return (
@@ -784,20 +797,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
                 <div className="w-[50px] h-[50px] rounded-[16px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><Heart size={24} strokeWidth={1.5} /></div>
                 <span className="text-[11px] text-black/50">拍一拍</span>
              </button>
-             <button className="flex flex-col items-center gap-2 group w-[64px]" onClick={() => { 
-                setShowPlusMenu(false);
-                setMessages(msgs => [...msgs, {
-                  id: Date.now().toString(),
-                  sender: 'them',
-                  type: 'check_in',
-                  content: `${charId} 想知道你在干什么`,
-                  checkInStatus: 'pending',
-                  time: getFormatTime()
-                }]);
-             }}>
-                <div className="w-[50px] h-[50px] rounded-[16px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><CheckCheck size={24} strokeWidth={1.5} /></div>
-                <span className="text-[11px] text-black/50">查岗(测试)</span>
-             </button>
+             
              
              <input type="file" ref={imageInputRef} className="hidden" accept="image/*" onChange={(e) => handleImageUpload(e, false)} />
              <input type="file" ref={stickerInputRef} className="hidden" accept="image/*" onChange={(e) => handleImageUpload(e, true)} />

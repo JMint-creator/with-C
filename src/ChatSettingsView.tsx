@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { ChevronLeft, MessageCircle, RotateCcw, CheckSquare, EyeOff, Keyboard, Clock, Phone, Send, Smile, Volume2, Bell, MessageSquare } from 'lucide-react';
+import { ChevronLeft, MessageCircle, RotateCcw, CheckSquare, EyeOff, Keyboard, Clock, Phone, Send, Smile, Volume2, Bell, MessageSquare, Hand } from 'lucide-react';
 import { useLocalState } from './utils';
 
 export const ChatSettingsView = ({ onClose, themeConfig }: { onClose: () => void, themeConfig: any }) => {
@@ -11,6 +11,7 @@ export const ChatSettingsView = ({ onClose, themeConfig }: { onClose: () => void
   const [receiptStyle, setReceiptStyle] = useLocalState<'graphic'|'text'>('app_chatReceiptStyle', 'graphic');
   const [readNoReply, setReadNoReply] = useLocalState('app_chatReadNoReply', false);
   const [typing, setTyping] = useLocalState('app_chatTyping', true);
+  const [nudgeText, setNudgeText] = useLocalState('app_chatNudgeText', '拍了拍对方');
   const [timestampStyle, setTimestampStyle] = useLocalState<'short'|'long'>('app_chatTimestampStyle', 'short');
   
   const [minWait, setMinWait] = useLocalState('app_chatMinWait', 10);
@@ -102,6 +103,21 @@ export const ChatSettingsView = ({ onClose, themeConfig }: { onClose: () => void
                     <span className="text-[14px] text-[#333]">正在输入</span>
                   </div>
                   <Switch checked={typing} onChange={setTyping} color={primaryColor} />
+                </div>
+                <div className="px-4 py-3 flex items-center justify-between border-t border-[#E5E5EA]">
+                  <div className="flex items-center space-x-3 w-full">
+                    <div className="w-[30px] h-[30px] rounded-[8px] flex items-center justify-center shrink-0" style={{ backgroundColor: `${primaryColor}20`, color: primaryColor }}><Hand size={16} /></div>
+                    <div className="flex-1">
+                      <div className="text-[14px] text-[#333]">拍一拍文案</div>
+                      <input 
+                        type="text" 
+                        value={nudgeText} 
+                        onChange={(e) => setNudgeText(e.target.value)}
+                        placeholder="拍了拍对方"
+                        className="text-[12px] text-[#8e8e93] w-full bg-transparent outline-none mt-0.5"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
