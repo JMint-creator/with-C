@@ -65,6 +65,7 @@ export function MomentsView({
   };
 
   const [moments, setMoments] = useIDBState<Moment[]>('app_moments', []);
+  const [stickers] = useIDBState<string[]>('app_stickers', []);
   
   const [postContent, setPostContent] = useState('');
   const [showConfirm, setShowConfirm] = useState<{title: string, onConfirm: () => void} | null>(null);
@@ -128,20 +129,36 @@ export function MomentsView({
             const delayHours = 1 + Math.random() * 2;
             const delayMs = delayHours * 60 * 60 * 1000;
             
-            const newMoment: Moment = {
-                id: Date.now().toString(),
-                authorName: name2 || '梦角',
-                authorAvatar: avatar2,
-                type: 'mengjiao',
-                content,
-                images: [],
-                timestamp: current + delayMs,
-                publishAt: current + delayMs,
-                likes: [],
-                comments: []
-            };
-            setMoments(prev => [newMoment, ...prev]);
-            setLastMengjiaoPostTime(current);
+            import('idb-keyval').then(({ get }) => {
+                get('app_stickers').then((loadedStickers: string[] | undefined) => {
+                    let st = loadedStickers || [];
+                    if (st.length === 0) {
+                        try {
+                           const localVal = window.localStorage.getItem('app_stickers');
+                           if (localVal) st = JSON.parse(localVal) || [];
+                        } catch(e) {}
+                    }
+                    let postImages: string[] = [];
+                    if (Math.random() < 0.25 && st.length > 0) {
+                        postImages = [st[Math.floor(Math.random() * st.length)]];
+                    }
+                    
+                    const newMoment: Moment = {
+                        id: Date.now().toString(),
+                        authorName: name2 || '梦角',
+                        authorAvatar: avatar2,
+                        type: 'mengjiao',
+                        content,
+                        images: postImages,
+                        timestamp: current + delayMs,
+                        publishAt: current + delayMs,
+                        likes: [],
+                        comments: []
+                    };
+                    setMoments(prev => [newMoment, ...prev]);
+                    setLastMengjiaoPostTime(current);
+                });
+            });
         } else {
             // Even if no post, update time so we don't keep firing 30% chance every render
             setLastMengjiaoPostTime(current);

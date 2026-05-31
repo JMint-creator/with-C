@@ -32,7 +32,8 @@ import {
   SkipForward,
   Music,
   ListMusic,
-  Aperture
+  Aperture,
+  Search
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { ChatView } from './ChatView';
@@ -40,6 +41,7 @@ import { MomentsView } from './MomentsView';
 import { WishlistView } from './WishlistView';
 import { ChatSettingsView } from './ChatSettingsView';
 import { CheckInsView } from './CheckInsView';
+import { DataView } from './DataView';
 import { compressImage, useIDBState } from './utils';
 import { VideoCallOverlay } from './VideoCallOverlay';
 
@@ -363,6 +365,7 @@ export default function App() {
   const [appearanceTab, setAppearanceTab] = useState<'global' | 'chat' | 'component' | 'wallpaper' | 'other'>('global');
 
   // Library States
+  const [librarySearchQuery, setLibrarySearchQuery] = useState('');
   const [replySubTab, setReplySubTab] = useState<'cards' | 'emoji' | 'stickers' | 'nudge'>('cards');
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
   const [importModalData, setImportModalData] = useState<{name: string, data: any} | null>(null);
@@ -843,33 +846,7 @@ export default function App() {
   }
 
   if (view === 'data') {
-    return (
-      <div className="flex-1 w-full bg-[#F2F2F7] flex flex-col min-h-[100dvh] overflow-x-hidden relative text-[12px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
-        
-        <div 
-          className="w-full flex items-center justify-between px-3 pb-3 bg-[#F2F2F7] sticky top-0 z-10 border-b border-[#c6c6c8]/50 shadow-sm"
-          style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))' }}
-        >
-          <button onClick={() => setView('home')} className="text-[#007AFF] text-[15px] flex items-center active:opacity-50 transition-opacity">
-            <ChevronLeft size={24} className="-ml-1.5" />返回
-          </button>
-          <span className="text-[15px] font-semibold text-black">数据管理</span>
-          <div className="w-[60px]"></div>
-        </div>
-        <div className="w-full max-w-md mx-auto px-4 pb-12 pt-6">
-           <div className="mb-8">
-              <div className="text-[11px] text-[#6d6d72] ml-4 mb-2 uppercase tracking-wide">本地数据</div>
-              <div className="bg-white rounded-[10px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
-                 <SettingItem icon={Database} label="清除所有本地数据" value="" onClick={clearData} hideBorder={true} />
-              </div>
-              <p className="text-[11px] text-[#8e8e93] mt-3 ml-4 leading-relaxed">
-                * 操作不可逆，将清除壁纸、头像、文本等所有设置。
-              </p>
-           </div>
-        </div>
-        {renderOverlays()}
-      </div>
-    );
+    return <><DataView onClose={() => setView('home')} showToast={showToast} />{renderOverlays()}</>;
   }
 
   if (view === 'library') {
@@ -901,7 +878,52 @@ export default function App() {
 
                {replySubTab === 'cards' && (
                   <>
+                    <div className="px-4 mt-3">
+                      <div className="bg-[#e3e3e8] rounded-[10px] flex items-center px-3 py-1.5 border border-transparent focus-within:bg-white focus-within:border-[#c6c6c8]">
+                        <Search size={16} className="text-[#8e8e93] mr-2" />
+                        <input
+                          type="text"
+                          placeholder="搜索字卡..."
+                          className="bg-transparent outline-none flex-1 text-[13px] text-[#333]"
+                          value={librarySearchQuery}
+                          onChange={(e) => setLibrarySearchQuery(e.target.value)}
+                        />
+                        {librarySearchQuery && (
+                          <button onClick={() => setLibrarySearchQuery('')} className="text-[#8e8e93]">
+                            <X size={14} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
                     {!activeGroupId ? (
+                        librarySearchQuery ? (
+                            <div className="mt-4 px-4 space-y-2 pb-8">
+                                {cardGroups.flatMap((g, gIdx) => g.cards.map((card, cIdx) => ({ group: g, gIdx, card, cIdx })))
+                                    .filter(({ card }) => card.toLowerCase().includes(librarySearchQuery.toLowerCase()))
+                                    .map(({ group, gIdx, card, cIdx }) => (
+                                        <div key={`${gIdx}-${cIdx}`} className="flex justify-between items-center bg-white p-2.5 rounded-[10px] shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+                                            <div className="flex flex-col flex-1 pb-1">
+                                                <div className="text-[10px] text-gray-400 mb-1">{group.name}</div>
+                                                <textarea 
+                                                    className="text-[11px] bg-transparent outline-none flex-1 text-[#333] resize-none" 
+                                                    rows={card.length > 20 ? 2 : 1}
+                                                    value={card} 
+                                                    onChange={(e) => {
+                                                        const newGroups = [...cardGroups];
+                                                        newGroups[gIdx].cards[cIdx] = e.target.value;
+                                                        setCardGroups(newGroups);
+                                                    }} 
+                                                />
+                                            </div>
+                                            <button onClick={() => {
+                                                const newGroups = [...cardGroups];
+                                                newGroups[gIdx].cards.splice(cIdx, 1);
+                                                setCardGroups(newGroups);
+                                            }} className="text-[#c6c6c8] active:text-[#FF3B30] ml-2 p-1 shrink-0"><X size={16}/></button>
+                                        </div>
+                                    ))}
+                            </div>
+                        ) : (
                         <div className="mt-4 px-4 space-y-4 pb-8">
                             <div className="flex justify-between items-center bg-white p-3 rounded-[10px] shadow-[0_1px_2px_rgba(0,0,0,0.05)] cursor-pointer active:bg-gray-50 transition-colors" onClick={() => {
                                 const input = document.createElement('input');
@@ -941,7 +963,7 @@ export default function App() {
                             </div>
                             
                             <div className="space-y-3">
-                                {cardGroups.map((group, groupIdx) => (
+                                {cardGroups.filter(g => !librarySearchQuery || g.name.toLowerCase().includes(librarySearchQuery.toLowerCase()) || g.cards.some((c: string) => c.toLowerCase().includes(librarySearchQuery.toLowerCase()))).map((group) => (
                                     <div key={group.id} className="bg-white rounded-[10px] shadow-[0_1px_2px_rgba(0,0,0,0.05)] p-3 flex justify-between items-center cursor-pointer active:bg-gray-50 transition-colors" onClick={() => setActiveGroupId(group.id)}>
                                         <div className="flex-1">
                                             <div className="font-semibold text-[#000] text-[12px]">{group.name}</div>
@@ -954,8 +976,11 @@ export default function App() {
                                                 msg: '确定删除该分组吗？',
                                                 onConfirm: () => {
                                                     const newGroups = [...cardGroups];
-                                                    newGroups.splice(groupIdx, 1);
-                                                    setCardGroups(newGroups);
+                                                    const targetIdx = newGroups.findIndex(g => g.id === group.id);
+                                                    if (targetIdx > -1) {
+                                                      newGroups.splice(targetIdx, 1);
+                                                      setCardGroups(newGroups);
+                                                    }
                                                     if (activeGroupId === group.id) setActiveGroupId(null);
                                                 }
                                             });
@@ -971,6 +996,7 @@ export default function App() {
                                 <Plus size={18}/> 新建分组
                             </button>
                         </div>
+                        )
                     ) : (
                         <div className="mt-2 px-4 pb-8">
                             <div className="flex items-center gap-2 mb-4 bg-white p-2 rounded-[10px] shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
@@ -991,8 +1017,11 @@ export default function App() {
                             </div>
 
                             <div className="space-y-2 max-h-[60vh] overflow-y-auto">
-                                {(cardGroups.find(g => g.id === activeGroupId)?.cards || []).map((card, idx) => (
-                                    <div key={idx} className="flex justify-between items-center bg-white p-2.5 rounded-[10px] shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+                                {(cardGroups.find(g => g.id === activeGroupId)?.cards || [])
+                                    .map((card, originalIdx) => ({ card, originalIdx }))
+                                    .filter(({ card }) => !librarySearchQuery || card.toLowerCase().includes(librarySearchQuery.toLowerCase()))
+                                    .map(({ card, originalIdx }) => (
+                                    <div key={originalIdx} className="flex justify-between items-center bg-white p-2.5 rounded-[10px] shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
                                         <textarea 
                                             className="text-[11px] bg-transparent outline-none flex-1 text-[#333] resize-none" 
                                             rows={card.length > 20 ? 2 : 1}
@@ -1001,7 +1030,7 @@ export default function App() {
                                                 const newGroups = [...cardGroups];
                                                 const gIdx = newGroups.findIndex(g => g.id === activeGroupId);
                                                 if (gIdx > -1) {
-                                                    newGroups[gIdx].cards[idx] = e.target.value;
+                                                    newGroups[gIdx].cards[originalIdx] = e.target.value;
                                                     setCardGroups(newGroups);
                                                 }
                                             }} 
@@ -1010,7 +1039,7 @@ export default function App() {
                                             const newGroups = [...cardGroups];
                                             const gIdx = newGroups.findIndex(g => g.id === activeGroupId);
                                             if (gIdx > -1) {
-                                                newGroups[gIdx].cards.splice(idx, 1);
+                                                newGroups[gIdx].cards.splice(originalIdx, 1);
                                                 setCardGroups(newGroups);
                                             }
                                         }} className="text-[#c6c6c8] active:text-[#FF3B30] ml-2 p-1 shrink-0"><X size={16}/></button>
@@ -1036,22 +1065,22 @@ export default function App() {
                  <div className="mt-4 px-4 space-y-2 pb-8">
                      <div className="bg-white rounded-[10px] shadow-[0_1px_2px_rgba(0,0,0,0.05)] overflow-hidden">
                        {emojis.map((item, idx) => (
-                          <div key={idx} className="flex justify-between items-center p-3 border-b border-[#E5E5EA] last:border-b-0">
-                               <input 
-                                 className="bg-transparent outline-none flex-1 text-[13px] text-[#333]" 
-                                 value={item} 
-                                 onChange={(e) => {
+                           <div key={idx} className="flex justify-between items-center p-3 border-b border-[#E5E5EA] last:border-b-0">
+                                <input 
+                                  className="bg-transparent outline-none flex-1 text-[13px] text-[#333]" 
+                                  value={item} 
+                                  onChange={(e) => {
+                                     const newEmojis = [...emojis];
+                                     newEmojis[idx] = e.target.value;
+                                     setEmojis(newEmojis);
+                                  }} 
+                                />
+                                <button onClick={() => {
                                     const newEmojis = [...emojis];
-                                    newEmojis[idx] = e.target.value;
+                                    newEmojis.splice(idx, 1);
                                     setEmojis(newEmojis);
-                                 }} 
-                               />
-                               <button onClick={() => {
-                                   const newEmojis = [...emojis];
-                                   newEmojis.splice(idx, 1);
-                                   setEmojis(newEmojis);
-                               }} className="text-[#c6c6c8] p-1 active:opacity-50"><X size={18}/></button>
-                          </div>
+                                }} className="text-[#c6c6c8] p-1 active:opacity-50"><X size={18}/></button>
+                           </div>
                        ))}
                      </div>
                      <button onClick={() => setEmojis([...emojis, '😀'])} className="w-full py-3 bg-white text-[#007AFF] font-medium rounded-[10px] shadow-[0_1px_2px_rgba(0,0,0,0.05)] flex items-center justify-center gap-2 mt-4 active:bg-gray-50 transition-colors"><Plus size={18}/> 添加 Emoji</button>
@@ -1095,22 +1124,22 @@ export default function App() {
                  <div className="mt-4 px-4 space-y-2 pb-8">
                      <div className="bg-white rounded-[10px] shadow-[0_1px_2px_rgba(0,0,0,0.05)] overflow-hidden">
                        {nudges.map((item, idx) => (
-                          <div key={idx} className="flex justify-between items-center p-3 border-b border-[#E5E5EA] last:border-b-0">
-                               <input 
-                                 className="bg-transparent outline-none flex-1 text-[13px] text-[#333]" 
-                                 value={item} 
-                                 onChange={(e) => {
+                           <div key={idx} className="flex justify-between items-center p-3 border-b border-[#E5E5EA] last:border-b-0">
+                                <input 
+                                  className="bg-transparent outline-none flex-1 text-[13px] text-[#333]" 
+                                  value={item} 
+                                  onChange={(e) => {
+                                     const newNudges = [...nudges];
+                                     newNudges[idx] = e.target.value;
+                                     setNudges(newNudges);
+                                  }} 
+                                />
+                                <button onClick={() => {
                                     const newNudges = [...nudges];
-                                    newNudges[idx] = e.target.value;
+                                    newNudges.splice(idx, 1);
                                     setNudges(newNudges);
-                                 }} 
-                               />
-                               <button onClick={() => {
-                                   const newNudges = [...nudges];
-                                   newNudges.splice(idx, 1);
-                                   setNudges(newNudges);
-                               }} className="text-[#c6c6c8] p-1 active:opacity-50"><X size={18}/></button>
-                          </div>
+                                }} className="text-[#c6c6c8] p-1 active:opacity-50"><X size={18}/></button>
+                           </div>
                        ))}
                      </div>
                      <button onClick={() => setNudges([...nudges, '拍了拍我的...'])} className="w-full py-3 bg-white text-[#007AFF] font-medium rounded-[10px] shadow-[0_1px_2px_rgba(0,0,0,0.05)] flex items-center justify-center gap-2 mt-4 active:bg-gray-50 transition-colors"><Plus size={18}/> 添加拍一拍</button>
@@ -1472,7 +1501,7 @@ export default function App() {
   }
 
   if (view === 'moments') {
-    return <><MomentsView onClose={() => setView('home')} themeConfig={currentThemeConfig} cardGroups={cardGroups} avatar1={avatar1 || chatAvatar1} avatar2={avatar2 || chatAvatar2} name1={myNickname} name2={mjNickname} bgImage={momentsBg} viewStyle={momentsStyle} /><VideoCallOverlay /></>;
+    return <><MomentsView onClose={() => setView('home')} themeConfig={currentThemeConfig} cardGroups={cardGroups} avatar1={chatAvatar1 || avatar1} avatar2={chatAvatar2 || avatar2} name1={myNickname} name2={mjNickname} bgImage={momentsBg} viewStyle={momentsStyle} /><VideoCallOverlay /></>;
   }
 
   if (view === 'wishlist') {

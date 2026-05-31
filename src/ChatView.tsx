@@ -149,15 +149,17 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
   const [readReceipt] = useLocalState('app_chatReadReceipt', true);
   const [readNoReply] = useLocalState('app_chatReadNoReply', false);
   const [emojis] = useLocalState<string[]>('app_emojis', ['😀', '😂', '🥰', '👍', '🙏']);
-  const [stickers] = useIDBState<string[]>('app_stickers', []);
+  const [stickers, setStickers] = useIDBState<string[]>('app_stickers', []);
 
     // Video Call State
   const { videoCallState, setVideoCallState, isMinimized, setIsMinimized, callDuration } = useCallStore();
 
   const [showPlusMenu, setShowPlusMenu] = useState(false);
+  const [showStickerPane, setShowStickerPane] = useState(false);
 
   const imageInputRef = useRef<HTMLInputElement>(null);
   const stickerInputRef = useRef<HTMLInputElement>(null);
+  const newStickerInputRef = useRef<HTMLInputElement>(null);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, isSticker: boolean) => {
      if (e.target.files && e.target.files[0]) {
@@ -176,6 +178,37 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
               };
               setMessages(prev => [...prev, newMsg]);
               setShowPlusMenu(false);
+              
+              if (!ignored) {
+                 simulateReply();
+              }
+           }
+        };
+        reader.readAsDataURL(file);
+     }
+  };
+
+  const handleNewStickerUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+     if (e.target.files && e.target.files[0]) {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.onload = (event) => {
+           if (event.target?.result) {
+              const url = event.target.result as string;
+              setStickers([...stickers, url]);
+              
+              // Also send it right away
+              const ignored = readNoReply && Math.random() < 0.05;
+              const newMsg: Message = {
+                id: Date.now().toString(),
+                sender: 'me',
+                type: 'sticker',
+                content: url,
+                time: getFormatTime(),
+                isIgnored: ignored
+              };
+              setMessages(prev => [...prev, newMsg]);
+              setShowStickerPane(false);
               
               if (!ignored) {
                  simulateReply();
@@ -348,22 +381,22 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
 
   const simulateReply = () => {
     const delay = Math.random() * (maxWait - minWait) * 1000 + minWait * 1000;
-    const typingDuration = Math.min(delay, Math.random() * 3000 + 2000);
-    const waitBeforeTyping = delay - typingDuration;
     
+    setIsTyping(true);
     setTimeout(() => {
-      setIsTyping(true);
-      setTimeout(() => {
-        setIsTyping(false);
-        const newMsgs: Message[] = [];
-        let baseId = Date.now();
+      setIsTyping(false);
+      const newMsgs: Message[] = [];
+      let baseId = Date.now();
 
       if (Math.random() < 0.03) {
+        const storedNudges = window.localStorage.getItem('app_nudges');
+        const nudgesArr = storedNudges ? JSON.parse(storedNudges) : ['拍了拍你'];
+        const randomNudge = nudgesArr.length > 0 ? nudgesArr[Math.floor(Math.random() * nudgesArr.length)] : '拍了拍你';
         newMsgs.push({
           id: (++baseId).toString(),
           sender: 'them',
           type: 'nudge',
-          content: '拍了拍你',
+          content: randomNudge,
           time: getFormatTime()
         });
       }
@@ -453,8 +486,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
           icon: avatar2 || undefined 
         });
       }
-      }, typingDuration);
-    }, waitBeforeTyping);
+    }, delay);
   };
 
   const handleNudge = () => {
@@ -785,11 +817,11 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
                 <div className="w-[50px] h-[50px] rounded-[16px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><Video size={24} strokeWidth={1.5} /></div>
                 <span className="text-[11px] text-black/50">视频通话</span>
              </button>
-             <div className="flex flex-col items-center gap-2 group cursor-pointer w-[64px]" onClick={() => imageInputRef.current?.click()}>
+             <div className="flex flex-col items-center gap-2 group cursor-pointer w-[64px]" onClick={() => { imageInputRef.current?.click(); setShowPlusMenu(false); }}>
                 <div className="w-[50px] h-[50px] rounded-[16px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><ImageIcon size={24} strokeWidth={1.5} /></div>
                 <span className="text-[11px] text-black/50">图片</span>
              </div>
-             <div className="flex flex-col items-center gap-2 group cursor-pointer w-[64px]" onClick={() => stickerInputRef.current?.click()}>
+             <div className="flex flex-col items-center gap-2 group cursor-pointer w-[64px]" onClick={() => { setShowPlusMenu(false); setShowStickerPane(true); }}>
                 <div className="w-[50px] h-[50px] rounded-[16px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><Smile size={24} strokeWidth={1.5} /></div>
                 <span className="text-[11px] text-black/50">表情库</span>
              </div>
@@ -800,7 +832,47 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
              
              
              <input type="file" ref={imageInputRef} className="hidden" accept="image/*" onChange={(e) => handleImageUpload(e, false)} />
-             <input type="file" ref={stickerInputRef} className="hidden" accept="image/*" onChange={(e) => handleImageUpload(e, true)} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Sticker Pane */}
+      <AnimatePresence>
+        {showStickerPane && (
+          <motion.div 
+            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+            className="absolute bottom-[calc(4rem+env(safe-area-inset-bottom))] left-2 right-2 bg-white/80 backdrop-blur-3xl rounded-[20px] p-4 z-20 shadow-[0_20px_40px_rgba(0,0,0,0.1)] border border-white/60 h-[240px] flex flex-col"
+          >
+             <div className="flex justify-between items-center mb-3">
+               <span className="text-[13px] font-bold text-gray-700">表情包</span>
+               <button onClick={() => setShowStickerPane(false)} className="bg-black/5 p-1 rounded-full"><X size={16} className="text-gray-500" /></button>
+             </div>
+             <div className="grid grid-cols-4 gap-3 overflow-y-auto pr-1 pb-2 scrollbar-hide flex-1 items-start content-start">
+               {stickers.map((url, idx) => (
+                 <div key={idx} onClick={() => {
+                     const ignored = readNoReply && Math.random() < 0.05;
+                     const newMsg: Message = {
+                       id: Date.now().toString(),
+                       sender: 'me',
+                       type: 'sticker',
+                       content: url,
+                       time: getFormatTime(),
+                       isIgnored: ignored
+                     };
+                     setMessages(prev => [...prev, newMsg]);
+                     setShowStickerPane(false);
+                     if(!ignored) simulateReply();
+                 }} className="aspect-square bg-black/5 rounded-[12px] flex items-center justify-center cursor-pointer active:scale-95 transition-transform overflow-hidden">
+                    <img src={url} alt="sticker" className="w-full h-full object-cover" />
+                 </div>
+               ))}
+               <div onClick={() => newStickerInputRef.current?.click()} className="aspect-square bg-gray-100 rounded-[12px] flex flex-col items-center justify-center cursor-pointer active:scale-95 transition-transform border border-dashed border-gray-300">
+                  <Plus size={24} className="text-gray-400 mb-1" />
+               </div>
+             </div>
+             <input type="file" ref={newStickerInputRef} className="hidden" accept="image/*" onChange={handleNewStickerUpload} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -808,9 +880,15 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
       {/* Input Area */}
       <div className="absolute bottom-[max(0.5rem,env(safe-area-inset-bottom))] left-3 right-3 flex items-center space-x-2 z-30">
         <button 
-          className={`w-[42px] h-[42px] rounded-full flex items-center justify-center shrink-0 border border-white/20 text-white shadow-[0_4px_12px_rgba(0,0,0,0.1),inset_0_2px_4px_rgba(255,255,255,0.3)] active:scale-95 transition-all ${showPlusMenu ? 'rotate-45' : ''}`}
+          className={`w-[42px] h-[42px] rounded-full flex items-center justify-center shrink-0 border border-white/20 text-white shadow-[0_4px_12px_rgba(0,0,0,0.1),inset_0_2px_4px_rgba(255,255,255,0.3)] active:scale-95 transition-all ${showPlusMenu || showStickerPane ? 'rotate-45' : ''}`}
           style={{ backgroundColor: bubbleColor }}
-          onClick={() => setShowPlusMenu(!showPlusMenu)}
+          onClick={() => {
+            if (showStickerPane) {
+               setShowStickerPane(false);
+            } else {
+               setShowPlusMenu(!showPlusMenu);
+            }
+          }}
         >
           <Plus size={22} strokeWidth={2.5} />
         </button>

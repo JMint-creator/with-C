@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { ChevronLeft, MessageCircle, RotateCcw, CheckSquare, EyeOff, Keyboard, Clock, Phone, Send, Smile, Volume2, Bell, MessageSquare, Hand } from 'lucide-react';
-import { useLocalState } from './utils';
+import { useLocalState, useIDBState } from './utils';
 
 export const ChatSettingsView = ({ onClose, themeConfig }: { onClose: () => void, themeConfig: any }) => {
   const [activeTab, setActiveTab] = useState('功能');
@@ -22,7 +22,21 @@ export const ChatSettingsView = ({ onClose, themeConfig }: { onClose: () => void
   const [mockVideo, setMockVideo] = useLocalState('app_chatMockVideoCall', true);
   
   const [keepAlive, setKeepAlive] = useLocalState('app_chatKeepAlive', false);
+  const [keepaliveAudio, setKeepaliveAudio] = useIDBState('app_keepalive_audio', '');
   const [pushNotify, setPushNotify] = useLocalState('app_chatPushNotify', true);
+
+  const handleAudioUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files && e.target.files[0]) {
+          const file = e.target.files[0];
+          const reader = new FileReader();
+          reader.onload = (event) => {
+              if (event.target && event.target.result) {
+                  setKeepaliveAudio(event.target.result as string);
+              }
+          };
+          reader.readAsDataURL(file);
+      }
+  };
 
   const primaryColor = themeConfig.textPrimary || '#a894a7';
 
@@ -163,20 +177,33 @@ export const ChatSettingsView = ({ onClose, themeConfig }: { onClose: () => void
                   <Switch checked={keepAlive} onChange={setKeepAlive} color={primaryColor} />
                 </div>
                 {keepAlive && (
-                  <div className="px-4 py-2 bg-[#faf9fa] flex items-center">
-                    <span className="text-[12px] text-[#8e8e93] ml-[42px] mr-3">音频状态</span>
-                    <div className="flex space-x-1 items-end h-[10px]">
-                      {[1,2,3,4,5].map(i => (
-                        <motion.div 
-                          key={i} 
-                          className="w-1 rounded-full" 
-                          style={{ backgroundColor: primaryColor }}
-                          animate={{ height: ['40%', '100%', '40%'] }}
-                          transition={{ duration: 1, repeat: Infinity, delay: i * 0.1 }}
-                        />
-                      ))}
+                  <div className="px-4 py-2 bg-[#faf9fa] flex items-center justify-between">
+                    <div className="flex items-center">
+                      <span className="text-[12px] text-[#8e8e93] ml-[42px] mr-3">音频状态: {keepaliveAudio ? '自定义' : '静音'}</span>
+                      <div className="flex space-x-1 items-end h-[10px]">
+                        {[1,2,3,4,5].map(i => (
+                          <motion.div 
+                            key={i} 
+                            className="w-1 rounded-full" 
+                            style={{ backgroundColor: primaryColor }}
+                            animate={{ height: ['40%', '100%', '40%'] }}
+                            transition={{ duration: 1, repeat: Infinity, delay: i * 0.1 }}
+                          />
+                        ))}
+                      </div>
+                      <span className="text-[11px] font-medium ml-2 tracking-widest" style={{ color: primaryColor }}>LIVE</span>
                     </div>
-                    <span className="text-[11px] font-medium ml-2 tracking-widest" style={{ color: primaryColor }}>LIVE</span>
+                    <div>
+                      <input type="file" id="keepaliveAudioUpload" accept="audio/*" onChange={handleAudioUpload} className="hidden" />
+                      <label htmlFor="keepaliveAudioUpload" className="text-[12px] text-[#007AFF] cursor-pointer">更换音频</label>
+                    </div>
+                  </div>
+                )}
+                {keepAlive && !keepaliveAudio && (
+                  <div className="px-4 py-2 bg-[#faf9fa] border-t border-[#E5E5EA]">
+                    <div className="text-[#8e8e93] text-[11px] ml-[42px]">
+                      默认静音保活若无效，可更换较长的自定义音频 (支持MP3/WAV/OGG等)
+                    </div>
                   </div>
                 )}
               </div>
