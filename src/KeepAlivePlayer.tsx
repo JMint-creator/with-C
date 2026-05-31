@@ -7,23 +7,43 @@ const SILENT_AUDIO_BASE64 = "data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAAD
 
 export const KeepAlivePlayer: React.FC = () => {
   const [keepAlive] = useLocalState('app_chatKeepAlive', false);
-  const [customAudio] = useIDBState('app_keepalive_audio', '');
+  const [customAudio, setCustomAudio] = useIDBState('app_keepalive_audio', '');
   const audioRef = useRef<HTMLAudioElement>(null);
 
+  useEffect(() => {
+    // Custom event to sync from Settings view
+    const handleAudioUpdate = (e: any) => {
+      if (e.detail !== undefined) {
+        setCustomAudio(e.detail);
+      }
+    };
+    window.addEventListener('keepalive_audio_changed', handleAudioUpdate);
+    return () => window.removeEventListener('keepalive_audio_changed', handleAudioUpdate);
+  }, []);
 
   useEffect(() => {
     if (!audioRef.current) return;
     
     if (keepAlive) {
-      // Browsers often block autoplay without user interaction.
-      // The audio might successfully play if the user just interacted with the keepAlive switch.
+      // Set MediaSession metadata so it shows up in control center
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: '后台保活运行中...',
+          artist: 'J',
+          album: '页面保活'
+        });
+      }
+
       audioRef.current.play().catch((e) => {
         console.log('KeepAlive autoplay prevented, waiting for user interaction:', e);
       });
     } else {
       audioRef.current.pause();
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.metadata = null;
+      }
     }
-  }, [keepAlive]);
+  }, [keepAlive, customAudio]);
 
   useEffect(() => {
     // If the browser blocked autoplay, wait for the next user interaction to start it.

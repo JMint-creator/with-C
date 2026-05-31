@@ -164,10 +164,10 @@ export const DataView: React.FC<DataViewProps> = ({ onClose, showToast }) => {
   };
 
   return (
-    <div className="flex-1 w-full bg-[#F2F2F7] flex flex-col min-h-[100dvh] overflow-x-hidden relative text-[12px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
+    <div className="absolute inset-0 bg-white/40 backdrop-blur-2xl flex flex-col overflow-x-hidden overflow-y-auto relative text-[12px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
         
         <div 
-          className="w-full flex items-center justify-between px-3 pb-3 bg-[#F2F2F7] sticky top-0 z-10 border-b border-[#c6c6c8]/50 shadow-sm"
+          className="w-full flex items-center justify-between px-3 pb-3 bg-white/30 sticky top-0 z-10 border-b border-[#c6c6c8]/20 shadow-[0_1px_3px_rgba(0,0,0,0.02)]"
           style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))' }}
         >
           <button onClick={onClose} className="text-[#007AFF] text-[15px] flex items-center active:opacity-50 transition-opacity w-[60px]">

@@ -559,8 +559,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
   };
 
   return (
-    <div className="fixed inset-0 overflow-hidden z-50 transition-colors" style={{ ...customStyle, backgroundColor: themeConfig.bg }}>
-      {chatBg && <img src={chatBg} alt="" className="absolute inset-0 object-cover pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 0 }} /> }
+    <div className="fixed inset-0 overflow-hidden z-50 transition-colors" style={{ ...customStyle }}>
       {chatFont && <style dangerouslySetInnerHTML={{ __html: `@font-face { font-family: 'CustomChatFont'; src: url('${chatFont}'); }` }} />}
       {chatCss && <style dangerouslySetInnerHTML={{ __html: chatCss }} />}
       

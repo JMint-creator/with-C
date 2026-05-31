@@ -323,7 +323,7 @@ export function MomentsView({
   const visibleMoments = moments.filter(m => m.publishAt <= now).sort((a,b) => b.publishAt - a.publishAt);
 
   return (
-    <div className={`absolute inset-0 z-50 flex flex-col overflow-hidden animate-in slide-in-from-right duration-300 ${viewStyle === 'weibo' ? 'bg-[#f2f2f2]' : 'bg-white'}`}>
+    <div className={`fixed inset-0 z-50 flex flex-col overflow-hidden animate-in slide-in-from-right duration-300 bg-white/40 backdrop-blur-3xl`}>
       {/* Toast Notification */}
       {toastMessage && (
           <div className="absolute top-[80px] left-1/2 -translate-x-1/2 z-50 bg-black/75 text-white px-4 py-2 rounded-full text-[14px] shadow-lg animate-in slide-in-from-top fade-in duration-300">

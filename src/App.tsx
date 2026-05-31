@@ -218,7 +218,7 @@ const DecideView = ({ onClose, themeConfig, onStartDecide, isDeciding }: { onClo
   };
 
   return (
-    <div className="flex-1 min-h-[100dvh] w-full flex flex-col font-sans overflow-x-hidden relative" style={{ backgroundColor: themeConfig.bg }}>
+    <div className="w-full h-full flex flex-col font-sans overflow-x-hidden overflow-y-auto relative" style={{ backgroundColor: themeConfig.bg }}>
       {/* Header */}
       <div className="w-full flex items-center justify-between px-4 pb-3 sticky top-0 z-10 pt-[max(1rem,env(safe-area-inset-top))]" style={{ backgroundColor: themeConfig.bg ? themeConfig.bg + 'cc' : '#fcfbf9cc', backdropFilter: 'blur(12px)' }}>
           <button onClick={onClose} className="text-[#8e8e93] text-[15px] flex items-center active:opacity-50 transition-opacity w-[60px]">
@@ -359,6 +359,21 @@ const DecideView = ({ onClose, themeConfig, onStartDecide, isDeciding }: { onClo
 };
 
 const globalAudio = new Audio();
+
+const BackgroundLayer = ({ bg, image }: { bg: string, image: string }) => (
+  <div style={{
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: bg,
+    backgroundImage: image !== 'none' ? image : 'none',
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    zIndex: -1,
+  }} />
+);
 
 export default function App() {
   const [view, setView] = useState<'home' | 'appearance' | 'data' | 'library' | 'decide' | 'chat' | 'chat_settings' | 'music_manager'>('home');
@@ -617,13 +632,14 @@ export default function App() {
     if (view === 'home' && wallpaper) bgImage = `url(${wallpaper})`;
     if (view === 'chat' && chatBg) bgImage = `url(${chatBg})`;
     
-    if (view !== 'home' && view !== 'chat') bgColor = '#F2F2F7';
-    
+    if (view !== 'home' && view !== 'chat' && view !== 'moments' && view !== 'wishlist') bgColor = '#F2F2F7';
+
     document.documentElement.style.backgroundColor = bgColor;
     document.body.style.backgroundColor = bgColor;
     document.body.style.backgroundImage = bgImage;
     document.body.style.backgroundSize = 'cover';
     document.body.style.backgroundPosition = 'center';
+    document.body.style.backgroundAttachment = 'fixed';
 
     let metaThemeColor = document.querySelector('meta[name="theme-color"]');
     if (!metaThemeColor) {
@@ -632,13 +648,7 @@ export default function App() {
       document.head.appendChild(metaThemeColor);
     }
     metaThemeColor.setAttribute('content', bgColor);
-    
-    return () => {
-      document.documentElement.style.backgroundColor = '';
-      document.body.style.backgroundColor = '';
-      document.body.style.backgroundImage = '';
-    };
-  }, [currentThemeConfig.bg, view, wallpaper, chatBg]);
+  }, [currentThemeConfig.bg, view]);
 
   const [showAddMusicModal, setShowAddMusicModal] = useState(false);
   const [addMusicName, setAddMusicName] = useState('');
@@ -826,7 +836,8 @@ export default function App() {
     </>
   );
 
-  if (view === 'decide') {
+  const renderContent = () => {
+    if (view === 'decide') {
     return <DecideView 
       onClose={() => setView('home')} 
       themeConfig={currentThemeConfig} 
@@ -851,12 +862,12 @@ export default function App() {
 
   if (view === 'library') {
     return (
-      <div className="flex-1 w-full bg-[#F2F2F7] flex flex-col min-h-[100dvh] overflow-x-hidden relative text-[11px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
+      <div className="absolute inset-0 bg-white/40 backdrop-blur-2xl flex flex-col overflow-x-hidden overflow-y-auto relative text-[11px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
         
         
         {/* Header */}
         <div 
-          className="w-full flex items-center justify-between px-3 pb-3 bg-[#F2F2F7] sticky top-0 z-10 border-b border-[#c6c6c8]/50 shadow-sm"
+          className="w-full flex items-center justify-between px-3 pb-3 bg-white/30 sticky top-0 z-10 border-b border-[#c6c6c8]/20 shadow-[0_1px_3px_rgba(0,0,0,0.02)]"
           style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))' }}
         >
           <button onClick={() => setView('home')} className="text-[#007AFF] text-[14px] flex items-center active:opacity-50 transition-opacity w-[60px]">
@@ -1214,9 +1225,9 @@ export default function App() {
 
   if (view === 'music_manager') {
     return (
-      <div className="flex-1 w-full bg-[#F2F2F7] flex flex-col min-h-[100dvh] overflow-x-hidden relative text-[14px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
+      <div className="absolute inset-0 bg-white/40 backdrop-blur-2xl flex flex-col overflow-x-hidden overflow-y-auto relative text-[14px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
         <div 
-          className="w-full flex items-center justify-between px-3 pb-3 bg-[#F2F2F7] sticky top-0 z-10 border-b border-[#c6c6c8]/50 shadow-sm"
+          className="w-full flex items-center justify-between px-3 pb-3 bg-white/30 sticky top-0 z-10 border-b border-[#c6c6c8]/20 shadow-[0_1px_3px_rgba(0,0,0,0.02)]"
           style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))' }}
         >
           <button onClick={() => setView('home')} className="text-[#007AFF] text-[15px] flex items-center active:opacity-50 transition-opacity">
@@ -1285,11 +1296,11 @@ export default function App() {
 
   if (view === 'appearance') {
     return (
-      <div className="flex-1 w-full bg-[#F2F2F7] min-h-[100dvh] relative text-[11px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
+      <div className="absolute inset-0 bg-white/40 backdrop-blur-2xl overflow-y-auto relative text-[11px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
         
         {/* Header */}
         <div 
-          className="w-full flex items-center justify-between px-3 pb-3 bg-[#F2F2F7] fixed top-0 left-0 right-0 z-50 shadow-[0_1px_3px_rgba(0,0,0,0.05)]"
+          className="w-full flex items-center justify-between px-3 pb-3 bg-white/30 fixed top-0 left-0 right-0 z-50 shadow-[0_1px_3px_rgba(0,0,0,0.02)]"
           style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))' }}
         >
           <button onClick={() => setView('home')} className="text-[#007AFF] text-[14px] flex items-center active:opacity-50 transition-opacity">
@@ -1512,34 +1523,35 @@ export default function App() {
     return <><CheckInsView onClose={() => setView('home')} themeConfig={currentThemeConfig} checkinsBg={checkinsBg} /><VideoCallOverlay /></>;
   }
 
-  return (
-    <div 
-      className="flex-1 w-full text-[#333] font-sans flex flex-col items-center overflow-x-hidden selection:bg-[#DCD6CE]/50 transition-colors duration-500 relative min-h-[100dvh]"
-      style={{
-        color: currentThemeConfig.textPrimary
-      }}
-    >
-      <VideoCallOverlay />
-      {chatCss && <style dangerouslySetInnerHTML={{ __html: chatCss }} />}
-      {chatFont && <style dangerouslySetInnerHTML={{ __html: `@font-face { font-family: 'CustomChatFont'; src: url('${chatFont}'); } * { font-family: 'CustomChatFont', sans-serif !important; }`}} />}
+    if (view === 'home') {
+      return (
+        <div 
+          className="absolute inset-0 text-[#333] font-sans flex flex-col items-center overflow-x-hidden overflow-y-auto selection:bg-[#DCD6CE]/50 transition-colors duration-500"
+          style={{
+            color: currentThemeConfig.textPrimary
+          }}
+        >
+          <VideoCallOverlay />
+          {chatCss && <style dangerouslySetInnerHTML={{ __html: chatCss }} />}
+          {chatFont && <style dangerouslySetInnerHTML={{ __html: `@font-face { font-family: 'CustomChatFont'; src: url('${chatFont}'); } * { font-family: 'CustomChatFont', sans-serif !important; }`}} />}
 
-      <div 
-        className="w-full max-w-[420px] mx-auto flex flex-col justify-between flex-1 gap-2 px-4 shrink-0"
-        style={{
-          paddingBottom: 'max(0px, calc(env(safe-area-inset-bottom) - 8px))',
-          paddingTop: 'calc(0.5rem + env(safe-area-inset-top))'
-        }}
-      >
+          <div 
+            className="w-full max-w-[420px] mx-auto flex flex-col justify-start flex-1 gap-4 px-4 shrink-0 relative"
+            style={{
+              paddingBottom: 'max(16px, env(safe-area-inset-bottom))',
+              paddingTop: 'max(12px, env(safe-area-inset-top))'
+            }}
+          >
         
         {/* Profile Card */}
         <motion.div 
-          className="border border-white/60 rounded-[32px] flex flex-col items-center shadow-[0_8px_32px_-12px_rgba(0,0,0,0.06)] shrink-0 transition-colors duration-500 overflow-hidden w-full"
+          className="border border-white/60 rounded-[32px] flex flex-col items-center shadow-[0_8px_32px_-12px_rgba(0,0,0,0.06)] shrink-0 transition-colors duration-500 overflow-hidden w-full mt-2"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
           {/* Header Image */}
           <div 
-            className="w-full h-[140px] bg-cover bg-center shrink-0 relative"
+            className="w-full h-[180px] bg-cover bg-center shrink-0 relative"
             style={{ 
               backgroundImage: profileBg ? `url(${profileBg})` : 'none',
               backgroundColor: currentThemeConfig.cardBg
@@ -1548,40 +1560,40 @@ export default function App() {
           
           {/* Bottom Frosted Container */}
           <div 
-            className="w-full relative pt-[48px] pb-6 px-4 flex flex-col items-center backdrop-blur-xl"
+            className="w-full relative pt-[42px] pb-3 px-4 flex flex-col items-center backdrop-blur-xl"
             style={{ backgroundColor: currentThemeConfig.cardBg }}
           >
             {/* Avatars */}
-            <div className="absolute -top-[36px] flex justify-center items-center w-full">
+            <div className="absolute -top-[32px] flex justify-center items-center w-full">
               <div className="relative flex items-center justify-center">
                 <div 
-                  className="w-[72px] h-[72px] rounded-full border-[3px] overflow-hidden flex items-center justify-center shadow-sm transition-transform hover:scale-105 cursor-pointer z-10 -mr-4"
+                  className="w-[64px] h-[64px] rounded-full border-2 overflow-hidden flex items-center justify-center shadow-sm transition-transform hover:scale-105 cursor-pointer z-10 -mr-3"
                   style={{ borderColor: currentThemeConfig.bg, backgroundColor: currentThemeConfig.bg, color: currentThemeConfig.textSecondary }}
                   onClick={() => avatar1InputRef.current?.click()}
                 >
-                  {avatar1 ? <img src={avatar1} className="w-full h-full object-cover" /> : <Cat size={30} strokeWidth={1.5} />}
+                  {avatar1 ? <img src={avatar1} className="w-full h-full object-cover" /> : <Cat size={26} strokeWidth={1.5} />}
                 </div>
                 <div 
-                  className="w-[72px] h-[72px] rounded-full border-[3px] overflow-hidden flex items-center justify-center shadow-sm transition-transform hover:scale-105 cursor-pointer z-0"
+                  className="w-[64px] h-[64px] rounded-full border-2 overflow-hidden flex items-center justify-center shadow-sm transition-transform hover:scale-105 cursor-pointer z-0"
                   style={{ borderColor: currentThemeConfig.bg, backgroundColor: currentThemeConfig.bg, color: currentThemeConfig.textSecondary }}
                   onClick={() => avatar2InputRef.current?.click()}
                 >
-                  {avatar2 ? <img src={avatar2} className="w-full h-full object-cover" /> : <Cat size={30} strokeWidth={1.5} />}
+                  {avatar2 ? <img src={avatar2} className="w-full h-full object-cover" /> : <Cat size={26} strokeWidth={1.5} />}
                 </div>
               </div>
             </div>
             
-            <div className="flex items-center gap-2 mb-2">
-              <h1 className="text-[19px] font-semibold tracking-wide">{name1}</h1>
-              <span className="text-[14px] font-light" style={{color: currentThemeConfig.textSecondary}}>&</span>
-              <h1 className="text-[19px] font-semibold tracking-wide">{name2}</h1>
+            <div className="flex items-center justify-center gap-2 mb-1.5 mt-1">
+              <h1 className="text-[17px] font-medium tracking-wide text-[#333]" style={{color: currentThemeConfig.textPrimary}}>{name1}</h1>
+              <span className="text-[13px] font-light" style={{color: currentThemeConfig.textSecondary}}>&</span>
+              <h1 className="text-[17px] font-medium tracking-wide text-[#333]" style={{color: currentThemeConfig.textPrimary}}>{name2}</h1>
             </div>
-            <p className="text-[12px] leading-[1.6] text-center whitespace-pre-line" style={{color: currentThemeConfig.textSecondary}}>{motto}</p>
+            <p className="text-[12px] leading-relaxed text-center whitespace-pre-line px-2" style={{color: currentThemeConfig.textSecondary}}>{motto}</p>
           </div>
         </motion.div>
 
         {/* Grouped Bottom Elements */}
-        <div className="flex flex-col gap-2 w-full shrink-0 mt-2 mb-[-4px]">
+        <div className="flex flex-col w-full shrink-0 gap-4">
           {/* Widgets Row */}
           <div className="grid grid-cols-2 gap-3 shrink-0">
           {/* Music Widget */}
@@ -1660,7 +1672,7 @@ export default function App() {
 
         {/* Apps Grid */}
         <motion.div 
-          className="grid grid-cols-4 gap-y-1 gap-x-3 pt-1 pb-1 shrink-0 px-1"
+          className="grid grid-cols-4 gap-y-4 gap-x-3 pt-1 pb-1 shrink-0 px-1"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
@@ -1735,5 +1747,15 @@ export default function App() {
           playsInline />
       )}
     </div>
+      );
+    }
+    return null;
+  }; // end renderContent
+
+  return (
+    <>
+      <BackgroundLayer bg={currentThemeConfig.bg} image={wallpaper ? `url(${wallpaper})` : 'none'} />
+      {renderContent()}
+    </>
   );
 }

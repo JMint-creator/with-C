@@ -31,7 +31,9 @@ export const ChatSettingsView = ({ onClose, themeConfig }: { onClose: () => void
           const reader = new FileReader();
           reader.onload = (event) => {
               if (event.target && event.target.result) {
-                  setKeepaliveAudio(event.target.result as string);
+                  const val = event.target.result as string;
+                  setKeepaliveAudio(val);
+                  window.dispatchEvent(new CustomEvent('keepalive_audio_changed', { detail: val }));
               }
           };
           reader.readAsDataURL(file);
@@ -41,11 +43,11 @@ export const ChatSettingsView = ({ onClose, themeConfig }: { onClose: () => void
   const primaryColor = themeConfig.textPrimary || '#a894a7';
 
   return (
-    <div className="flex-1 w-full bg-[#F2F2F7] min-h-[100dvh] relative text-[11px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
+    <div className="absolute inset-0 bg-white/40 backdrop-blur-2xl overflow-y-auto relative text-[11px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
       
       {/* Header */}
       <div 
-        className="w-full flex items-center justify-between px-3 pb-3 bg-[#F2F2F7] fixed top-0 left-0 right-0 z-50 shadow-[0_1px_3px_rgba(0,0,0,0.05)]"
+        className="w-full flex items-center justify-between px-3 pb-3 bg-white/30 fixed top-0 left-0 right-0 z-50 shadow-[0_1px_3px_rgba(0,0,0,0.02)]"
         style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))' }}
       >
         <button onClick={onClose} className="text-[14px] flex items-center active:opacity-50 transition-opacity" style={{ color: primaryColor }}>

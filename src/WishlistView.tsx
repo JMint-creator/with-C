@@ -129,11 +129,12 @@ export const WishlistView = ({ onClose, themeConfig, cardGroups, myNickname, mjN
   };
 
   return (
-    <div className="absolute inset-0 z-50 flex flex-col overflow-hidden animate-in slide-in-from-right duration-300" style={{ 
-        backgroundColor: themeConfig.bg || '#fcfbf9',
+    <div className="fixed inset-0 z-50 flex flex-col overflow-hidden animate-in slide-in-from-right duration-300" style={{ 
+        backgroundColor: wishlistBg ? (themeConfig.bg || '#fcfbf9') : 'transparent',
         backgroundImage: wishlistBg ? `url(${wishlistBg})` : 'none',
         backgroundSize: 'cover',
-        backgroundPosition: 'center'
+        backgroundPosition: 'center',
+        backdropFilter: wishlistBg ? 'none' : 'blur(24px)'
     }}>
       <div className="relative pt-[env(safe-area-inset-top)] shadow-sm z-10 shrink-0" style={{ backgroundColor: wishlistBg ? (themeConfig.bg ? themeConfig.bg + 'cc' : '#fcfbf9cc') : (themeConfig.bg || '#fcfbf9'), backdropFilter: wishlistBg ? 'blur(12px)' : 'none' }}>
         <div className="flex justify-between items-center px-4 h-14" style={{ color: themeConfig.textPrimary }}>
