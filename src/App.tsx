@@ -41,6 +41,7 @@ import { WishlistView } from './WishlistView';
 import { ChatSettingsView } from './ChatSettingsView';
 import { CheckInsView } from './CheckInsView';
 import { compressImage, useIDBState } from './utils';
+import { VideoCallOverlay } from './VideoCallOverlay';
 
 const apps = [
   { name: '聊天', icon: MessageCircle },
@@ -1463,23 +1464,23 @@ export default function App() {
   }
 
   if (view === 'chat') {
-    return <ChatView onClose={() => setView('home')} onOpenSettings={() => setView('chat_settings')} themeConfig={currentThemeConfig} />;
+    return <><ChatView onClose={() => setView('home')} onOpenSettings={() => setView('chat_settings')} themeConfig={currentThemeConfig} /><VideoCallOverlay /></>;
   }
 
   if (view === 'chat_settings') {
-    return <ChatSettingsView onClose={() => setView('home')} themeConfig={currentThemeConfig} />;
+    return <><ChatSettingsView onClose={() => setView('home')} themeConfig={currentThemeConfig} /><VideoCallOverlay /></>;
   }
 
   if (view === 'moments') {
-    return <MomentsView onClose={() => setView('home')} themeConfig={currentThemeConfig} cardGroups={cardGroups} avatar1={avatar1 || chatAvatar1} avatar2={avatar2 || chatAvatar2} name1={myNickname} name2={mjNickname} bgImage={momentsBg} viewStyle={momentsStyle} />;
+    return <><MomentsView onClose={() => setView('home')} themeConfig={currentThemeConfig} cardGroups={cardGroups} avatar1={avatar1 || chatAvatar1} avatar2={avatar2 || chatAvatar2} name1={myNickname} name2={mjNickname} bgImage={momentsBg} viewStyle={momentsStyle} /><VideoCallOverlay /></>;
   }
 
   if (view === 'wishlist') {
-    return <WishlistView onClose={() => setView('home')} themeConfig={currentThemeConfig} cardGroups={cardGroups} myNickname={myNickname} mjNickname={mjNickname} wishlistCardOpacity={wishlistCardOpacity} />;
+    return <><WishlistView onClose={() => setView('home')} themeConfig={currentThemeConfig} cardGroups={cardGroups} myNickname={myNickname} mjNickname={mjNickname} wishlistCardOpacity={wishlistCardOpacity} /><VideoCallOverlay /></>;
   }
 
   if (view === 'check_in') {
-    return <CheckInsView onClose={() => setView('home')} themeConfig={currentThemeConfig} checkinsBg={checkinsBg} />;
+    return <><CheckInsView onClose={() => setView('home')} themeConfig={currentThemeConfig} checkinsBg={checkinsBg} /><VideoCallOverlay /></>;
   }
 
   return (
@@ -1489,6 +1490,7 @@ export default function App() {
         color: currentThemeConfig.textPrimary
       }}
     >
+      <VideoCallOverlay />
       {chatCss && <style dangerouslySetInnerHTML={{ __html: chatCss }} />}
       {chatFont && <style dangerouslySetInnerHTML={{ __html: `@font-face { font-family: 'CustomChatFont'; src: url('${chatFont}'); } * { font-family: 'CustomChatFont', sans-serif !important; }`}} />}
 

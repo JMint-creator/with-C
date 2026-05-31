@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, Video, Settings, Smile, Hand, Plus, Image as ImageIcon, Send, X, PhoneCall, PhoneMissed, Phone, MicOff, Mic, CameraOff, MonitorPlay, Check, CheckCheck, MessageCircle, MoreHorizontal, Heart, Sparkles, Camera } from 'lucide-react';
 import { useLocalState, useIDBState, compressImage } from './utils';
+import { useCallStore } from './callStore';
 
 type Message = {
   id: string;
@@ -106,7 +107,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
       content: '',
       audioUrl,
       voiceDuration: duration,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      time: getFormatTime()
     };
     setMessages(msgs => [...msgs, newMsg]);
     setIsTyping(true);
@@ -146,9 +147,8 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
   const [stickers] = useIDBState<string[]>('app_stickers', []);
 
     // Video Call State
-  const [videoCallState, setVideoCallState] = useState<'none' | 'calling' | 'connected' | 'incoming'>('none');
-  const [isMinimized, setIsMinimized] = useState(false);
-  const [callDuration, setCallDuration] = useState(0);
+  const { videoCallState, setVideoCallState, isMinimized, setIsMinimized, callDuration } = useCallStore();
+
   const [showPlusMenu, setShowPlusMenu] = useState(false);
 
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -165,12 +165,12 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
                 sender: 'me',
                 type: isSticker ? 'sticker' : 'sticker', // For now use sticker type for any image
                 content: e.target.result as string,
-                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                time: getFormatTime()
               };
               setMessages(prev => [...prev, newMsg]);
               setShowPlusMenu(false);
               
-              if (!readNoReply) {
+              if (!(readNoReply && Math.random() < 0.15)) {
                  simulateReply();
               }
            }
@@ -180,6 +180,13 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
   };
 
   const [mixEmoji] = useLocalState('app_chatMixEmoji', true);
+  const [timestampStyle] = useLocalState<'short'|'long'>('app_chatTimestampStyle', 'short');
+  
+  const getFormatTime = () => {
+    return timestampStyle === 'long' 
+      ? new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
   const primaryColor = themeConfig.textPrimary || '#a894a7';
   const [chatBubbleColor] = useLocalState('app_chatBubbleColor', '');
   const bubbleColor = chatBubbleColor || primaryColor;
@@ -207,7 +214,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
                      type: 'call',
                      content: '未接来电',
                      callState: 'missed',
-                     time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                     time: getFormatTime()
                    }]);
                    return 'none';
                  }
@@ -222,7 +229,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
                type: 'check_in',
                content: `${charId} 想知道你在干什么`,
                checkInStatus: 'pending',
-               time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+               time: getFormatTime()
              }]);
              const pushNotify = window.localStorage.getItem('app_chatPushNotify');
              if ((pushNotify ? JSON.parse(pushNotify) : true) && 'Notification' in window && window.Notification.permission === 'granted') {
@@ -258,11 +265,9 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
 
   useEffect(() => {
     let timer: any;
-    if (videoCallState === 'connected') {
-      timer = setInterval(() => setCallDuration(p => p + 1), 1000);
-    }
+    if (showPlusMenu || Object.keys(themeConfig).length > 0) {} // Dummy to avoid empty effect
     return () => clearInterval(timer);
-  }, [videoCallState]);
+  }, [showPlusMenu, themeConfig]);
 
   const handleSend = (text: string = input, type: 'text'|'nudge'|'emoji' = 'text') => {
     if (!text.trim() && type === 'text') return;
@@ -272,14 +277,14 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
       sender: 'me',
       type,
       content: text,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      time: getFormatTime()
     };
     
     setMessages([...messages, newMsg]);
     setInput('');
     
-    if (readNoReply) {
-      // do nothing if read no reply is true
+    if (readNoReply && Math.random() < 0.15) {
+      // 15% chance to do nothing (read no reply)
     } else {
       simulateReply();
     }
@@ -317,7 +322,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
           sender: 'me',
           type: 'image',
           content: checkInImage,
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          time: getFormatTime()
         }]);
      }
      
@@ -327,7 +332,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
           sender: 'me',
           type: 'text',
           content: checkInText,
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          time: getFormatTime()
         }]);
      }
 
@@ -335,13 +340,16 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
   };
 
   const simulateReply = () => {
-    setIsTyping(true);
     const delay = Math.random() * (maxWait - minWait) * 1000 + minWait * 1000;
+    const typingDuration = Math.min(delay, Math.random() * 3000 + 2000);
+    const waitBeforeTyping = delay - typingDuration;
     
     setTimeout(() => {
-      setIsTyping(false);
-      const newMsgs: Message[] = [];
-      let baseId = Date.now();
+      setIsTyping(true);
+      setTimeout(() => {
+        setIsTyping(false);
+        const newMsgs: Message[] = [];
+        let baseId = Date.now();
 
       if (Math.random() < 0.03) {
         newMsgs.push({
@@ -349,7 +357,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
           sender: 'them',
           type: 'nudge',
           content: '拍了拍你',
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          time: getFormatTime()
         });
       }
 
@@ -360,7 +368,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
           type: 'check_in',
           content: `${charId} 想知道你在干什么`,
           checkInStatus: 'pending',
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          time: getFormatTime()
         });
       }
 
@@ -403,7 +411,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
           type: 'text',
           content,
           replyTo: replyToMsg,
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          time: getFormatTime()
         });
 
         if (sendEmojiSeparate) {
@@ -412,7 +420,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
             sender: 'them',
             type: 'emoji',
             content: emojiContent,
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            time: getFormatTime()
           });
         }
 
@@ -423,7 +431,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
              sender: 'them',
              type: 'sticker',
              content: sticker,
-             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+             time: getFormatTime()
           });
         }
       }
@@ -438,14 +446,14 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
           icon: avatar2 || undefined 
         });
       }
-    }, delay);
+      }, typingDuration);
+    }, waitBeforeTyping);
   };
 
   const handleNudge = () => handleSend('拍了拍对方', 'nudge');
 
   const initiateCall = () => {
     setVideoCallState('calling');
-    setCallDuration(0);
     setTimeout(() => {
       if (Math.random() > 0.35) {
         setVideoCallState('connected');
@@ -457,7 +465,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
           type: 'call',
           content: '未接通',
           callState: 'declined',
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          time: getFormatTime()
         }]);
       }
     }, 3000);
@@ -472,13 +480,12 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
       content: `通话时长 ${Math.floor(callDuration / 60)}:${(callDuration % 60).toString().padStart(2, '0')}`,
       callState: 'duration',
       callDuration,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      time: getFormatTime()
     }]);
   };
 
   const acceptCall = () => {
     setVideoCallState('connected');
-    setCallDuration(0);
   };
 
   const declineCall = () => {
@@ -489,7 +496,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
       type: 'call',
       content: '已拒绝',
       callState: 'declined',
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      time: getFormatTime()
     }]);
   };
 
@@ -785,7 +792,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
                   type: 'check_in',
                   content: `${charId} 想知道你在干什么`,
                   checkInStatus: 'pending',
-                  time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                  time: getFormatTime()
                 }]);
              }}>
                 <div className="w-[50px] h-[50px] rounded-[16px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><CheckCheck size={24} strokeWidth={1.5} /></div>
@@ -856,75 +863,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
         </div>
       </div>
 
-      {/* Video Call Overlay */}
-      <AnimatePresence>
-        {videoCallState !== 'none' && (
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.9, y: 100 }}
-            animate={isMinimized ? { top: 60, right: 20, width: 100, height: 160, borderRadius: 16, bottom: 'auto', left: 'auto' } : { top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%', borderRadius: 0 }}
-            exit={{ opacity: 0, scale: 0.8, y: 100 }}
-            className={`fixed z-50 overflow-hidden shadow-2xl ${isMinimized ? 'bg-black/90 cursor-pointer' : 'bg-[#1a1a1c]'}`}
-            onClick={() => isMinimized && setIsMinimized(false)}
-          >
-            {/* Background Blur */}
-            {!isMinimized && avatar2 && (
-              <img src={avatar2} alt="" className="absolute inset-0 w-full h-full object-cover opacity-20 blur-xl" />
-            )}
-            
-            <div className="absolute inset-0 flex flex-col">
-              {!isMinimized && (
-                <div className="flex items-center justify-between p-6 pt-12">
-                  <button onClick={() => setIsMinimized(true)} className="text-white/70 p-2"><ChevronLeft size={28} className="-ml-2 rotate-[-90deg]"/></button>
-                  <button className="text-white/70 p-2"><Plus size={24} /></button>
-                </div>
-              )}
 
-              <div className={`flex-1 flex flex-col items-center ${isMinimized ? 'justify-center p-2' : 'justify-start pt-16'}`}>
-                {/* Avatar */}
-                <div className={`${isMinimized ? 'w-12 h-12' : 'w-24 h-24'} rounded-full bg-white/10 overflow-hidden mb-4 shadow-lg border-2 border-white/10`}>
-                  {avatar2 ? <img src={avatar2} alt="" className="w-full h-full object-cover" /> : null}
-                </div>
-                
-                {!isMinimized && <div className="text-[28px] font-medium text-white mb-2">{charId}</div>}
-                
-                <div className={`${isMinimized ? 'text-[10px]' : 'text-[15px]'} text-white/50 tracking-widest`}>
-                  {videoCallState === 'calling' ? '正在等待接听...' : videoCallState === 'incoming' ? '邀请你视频通话...' : `${Math.floor(callDuration / 60).toString().padStart(2, '0')}:${(callDuration % 60).toString().padStart(2, '0')}`}
-                </div>
-              </div>
-
-              {!isMinimized && (
-                <div className="pb-16 px-10 flex items-center justify-center space-x-8">
-                  {videoCallState === 'incoming' ? (
-                     <>
-                        <button className="w-16 h-16 rounded-full bg-red-500 flex items-center justify-center text-white shadow-[0_4px_20px_rgba(239,68,68,0.4)] active:bg-red-600" onClick={declineCall}>
-                          <Phone size={28} className="rotate-[135deg]" />
-                        </button>
-                        <button className="w-16 h-16 rounded-full bg-green-500 flex items-center justify-center text-white shadow-[0_4px_20px_rgba(34,197,94,0.4)] active:bg-green-600" onClick={acceptCall}>
-                          <Phone size={28} />
-                        </button>
-                     </>
-                  ) : (
-                     <>
-                       <button className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center text-white/80 active:bg-white/20"><MicOff size={24} /></button>
-                       <button className="w-16 h-16 rounded-full bg-red-500 flex items-center justify-center text-white shadow-[0_4px_20px_rgba(239,68,68,0.4)] active:bg-red-600" onClick={endCall}>
-                         <Phone size={28} className="rotate-[135deg]" />
-                       </button>
-                       <button className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center text-white/80 active:bg-white/20"><CameraOff size={24} /></button>
-                     </>
-                  )}
-                </div>
-              )}
-            </div>
-            
-            {/* Self Video PIP */}
-            {!isMinimized && videoCallState === 'connected' && (
-              <div className="absolute top-20 right-6 w-24 h-36 bg-black/40 rounded-xl border border-white/20 overflow-hidden">
-                 {avatar1 ? <img src={avatar1} alt="" className="w-full h-full object-cover opacity-80" /> : <div className="w-full h-full flex items-center justify-center text-white/30"><MonitorPlay size={24}/></div>}
-              </div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Check In Modal Overlay */}
       <AnimatePresence>
