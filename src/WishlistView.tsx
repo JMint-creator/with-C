@@ -164,14 +164,14 @@ export const WishlistView = ({ onClose, themeConfig, cardGroups, myNickname, mjN
         {filteredItems.length === 0 && (
            <div className="text-center text-[14px] mt-20" style={{ color: themeConfig.textSecondary }}>暂无内容</div>
         )}
-        {filteredItems.map(item => {
+        {filteredItems.map((item, i) => {
           
           const isCompleted = item.status === 'completed';
           const showComment = item.commentVisibleAt && now >= item.commentVisibleAt && item.mengjiaoComment;
 
           return (
             <div 
-              key={item.id} 
+              key={`${item.id}-${i}`} 
               className="p-5 shadow-[0_2px_8px_-4px_rgba(0,0,0,0.05)] relative flex flex-col gap-3 transition-opacity backdrop-blur-md"
               style={{ 
                 backgroundColor: themeConfig.cardBg ? themeConfig.cardBg.replace(/0\.\d+\)/, `${wishlistCardOpacity / 100})`) : `rgba(255,255,255,${wishlistCardOpacity / 100})`,

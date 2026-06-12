@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronLeft, Database, Download, Upload, Trash2, CheckCircle, AlertTriangle, FileJson } from 'lucide-react';
+import { ChevronLeft, Database, Download, Upload, Trash2, CheckCircle, AlertTriangle, FileJson, Loader2 } from 'lucide-react';
 import { get, set, keys, del, clear } from 'idb-keyval';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -13,11 +13,18 @@ const FEATURE_DATA = [
   { id: 'moments', name: '朋友圈数据', keys: ['app_moments'], idb: true },
   { id: 'wishlist', name: '心愿单数据', keys: ['app_wishlist'], idb: true },
   { id: 'checkins', name: '打卡记录', keys: ['app_checkins'], idb: true },
-  { id: 'library', name: '字卡库与表情', keys: ['app_cardGroups', 'app_emojis', 'app_nudges', 'app_stickers'], idb: true }, // stickers are in idb, others local
+  { id: 'mailbox', name: '时空信箱', keys: ['app_mailbox_letters'], idb: false },
+  { id: 'todos', name: '待办事项', keys: ['app_todos'], idb: false },
+  { id: 'accounting', name: '记账本', keys: ['app_accounting'], idb: false },
+  { id: 'library', name: '字卡库', keys: ['app_cardGroups'], idb: false },
+  { id: 'emojis', name: '表情与动作', keys: ['app_emojis', 'app_nudges', 'app_stickers'], idb: true },
+  { id: 'settings', name: '系统设置', keys: ['app_theme', 'app_name1', 'app_name2', 'app_motto', 'app_subtitle', 'app_myNickname', 'app_mjNickname', 'app_home_icon_opacity', 'app_wishlist_card_opacity', 'app_moments_style', 'app_chatKeepAlive', 'app_chatBubbleColor', 'app_chatBubbleStyle', 'app_anniversaryDate', 'app_musicList', 'app_activePlaylist', 'app_currentMusicIndex'], idb: false },
 ];
 
 export const DataView: React.FC<DataViewProps> = ({ onClose, showToast }) => {
   const [confirmModal, setConfirmModal] = useState<{title: string, msg: string, onConfirm: () => void, isDanger?: boolean} | null>(null);
+  const [importStatus, setImportStatus] = useState<Record<string, 'loading' | 'success' | null>>({});
+  const [exportStatus, setExportStatus] = useState<Record<string, 'success' | null>>({});
 
   // Export full data
   const handleExportAll = async () => {
@@ -96,7 +103,7 @@ export const DataView: React.FC<DataViewProps> = ({ onClose, showToast }) => {
        const data: any = { localStorage: {}, indexedDB: {} };
        
        for (const k of feature.keys) {
-         if (k === 'app_stickers' || feature.idb && k !== 'app_cardGroups' && k !== 'app_emojis' && k !== 'app_nudges') {
+         if (k === 'app_stickers' || (feature.idb && k !== 'app_cardGroups' && k !== 'app_emojis' && k !== 'app_nudges')) {
              const val = await get(k);
              if (val !== undefined) data.indexedDB[k] = val;
          } else {
@@ -107,9 +114,60 @@ export const DataView: React.FC<DataViewProps> = ({ onClose, showToast }) => {
        
        downloadJson(data, `mengjiao_backup_${feature.id}_${new Date().getTime()}.json`);
        showToast(`【${feature.name}】备份成功`);
+       setExportStatus(prev => ({ ...prev, [feature.id]: 'success' }));
+       setTimeout(() => setExportStatus(prev => ({ ...prev, [feature.id]: null })), 2000);
      } catch(e) {
        showToast('导出失败');
      }
+  };
+
+  // Import specific feature
+  const handleImportFeature = (e: React.ChangeEvent<HTMLInputElement>, feature: typeof FEATURE_DATA[0]) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImportStatus(prev => ({ ...prev, [feature.id]: 'loading' }));
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const text = event.target?.result as string;
+        const data = JSON.parse(text);
+        if (!data.localStorage && !data.indexedDB) {
+          throw new Error("Invalid format");
+        }
+
+        setConfirmModal({
+          title: `导入 ${feature.name}`,
+          msg: `导入【${feature.name}】数据将覆盖当前该模块的所有记录，确定要继续吗？完成后页面将刷新。`,
+          isDanger: true,
+          onConfirm: async () => {
+            if (data.localStorage) {
+              Object.entries(data.localStorage).forEach(([k, v]) => {
+                if (feature.keys.includes(k) || feature.id === 'settings') { // settings could have partials
+                  localStorage.setItem(k, v as string);
+                }
+              });
+            }
+            if (data.indexedDB) {
+              for (const [k, v] of Object.entries(data.indexedDB)) {
+                if (feature.keys.includes(k)) {
+                  await set(k, v);
+                }
+              }
+            }
+            setImportStatus(prev => ({ ...prev, [feature.id]: 'success' }));
+            setTimeout(() => window.location.reload(), 500);
+          }
+        });
+      } catch (e) {
+        showToast('导入格式错误或数据无效');
+        setImportStatus(prev => ({ ...prev, [feature.id]: null }));
+      }
+      if (e.target) e.target.value = '';
+    };
+    reader.onerror = () => setImportStatus(prev => ({ ...prev, [feature.id]: null }));
+    reader.readAsText(file);
   };
 
   // Clear specific feature
@@ -164,76 +222,87 @@ export const DataView: React.FC<DataViewProps> = ({ onClose, showToast }) => {
   };
 
   return (
-    <div className="absolute inset-0 bg-white/40 backdrop-blur-2xl flex flex-col overflow-x-hidden overflow-y-auto relative text-[12px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
+    <div className="absolute inset-0 bg-[#FAFAFA] flex flex-col overflow-x-hidden overflow-y-auto text-[13px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
         
         <div 
-          className="w-full flex items-center justify-between px-3 pb-3 bg-white/30 sticky top-0 z-10 border-b border-[#c6c6c8]/20 shadow-[0_1px_3px_rgba(0,0,0,0.02)]"
-          style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))' }}
+          className="w-full flex items-center justify-between px-4 pb-3 bg-[#FAFAFA]/80 sticky top-0 z-10 border-b border-[#E5E5EA] backdrop-blur-md"
+          style={{ paddingTop: 'calc(1rem + env(safe-area-inset-top))' }}
         >
-          <button onClick={onClose} className="text-[#007AFF] text-[15px] flex items-center active:opacity-50 transition-opacity w-[60px]">
-            <ChevronLeft size={24} className="-ml-1.5" />返回
+          <button onClick={onClose} className="text-[#333] flex items-center active:opacity-50 transition-opacity w-[60px]">
+            <ChevronLeft size={24} className="-ml-1.5" />
           </button>
-          <span className="text-[15px] font-semibold text-black">数据管理</span>
+          <span className="text-[16px] font-semibold tracking-tight text-[#111]">数据与存储</span>
           <div className="w-[60px]"></div>
         </div>
         
-        <div className="w-full max-w-md mx-auto px-4 pb-12 pt-6">
-           <div className="mb-6">
-              <div className="text-[11px] text-[#6d6d72] ml-4 mb-2 uppercase tracking-wide">全量操作</div>
-              <div className="bg-white rounded-[10px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
-                 <div className="flex items-center justify-between p-3 border-b border-[#E5E5EA] active:bg-gray-50 cursor-pointer" onClick={handleExportAll}>
-                     <div className="flex items-center">
-                         <div className="w-[30px] h-[30px] rounded-[8px] bg-[#007AFF]/10 text-[#007AFF] flex items-center justify-center mr-3">
-                             <Download size={16} />
-                         </div>
-                         <span className="text-[14px] text-[#333]">全量备份 (导出)</span>
-                     </div>
-                 </div>
-                 <div className="flex items-center justify-between p-3 active:bg-gray-50 cursor-pointer relative border-b border-[#E5E5EA]">
-                     <div className="flex items-center">
-                         <div className="w-[30px] h-[30px] rounded-[8px] bg-[#34C759]/10 text-[#34C759] flex items-center justify-center mr-3">
-                             <Upload size={16} />
-                         </div>
-                         <span className="text-[14px] text-[#333]">还原数据 (导入)</span>
-                     </div>
-                     <input type="file" accept=".json" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleImportAll} />
-                 </div>
-                 <div className="flex items-center justify-between p-3 active:bg-gray-50 cursor-pointer" onClick={clearAllData}>
-                     <div className="flex items-center">
-                         <div className="w-[30px] h-[30px] rounded-[8px] bg-[#FF3B30]/10 text-[#FF3B30] flex items-center justify-center mr-3">
-                             <AlertTriangle size={16} />
-                         </div>
-                         <span className="text-[14px] text-[#FF3B30]">清除所有本地数据</span>
-                     </div>
-                 </div>
+        <div className="w-full max-w-2xl mx-auto px-4 pb-20 pt-6 space-y-8">
+           <section>
+              <h2 className="text-[12px] font-medium text-[#8E8E93] mb-3 px-1 tracking-wide uppercase">全量操作</h2>
+              <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-[#F2F2F7]">
+                  <div className="flex items-center justify-between p-4 border-b border-[#F2F2F7] active:bg-gray-50 cursor-pointer transition-colors" onClick={handleExportAll}>
+                      <div className="flex items-center gap-3">
+                          <div className="w-[36px] h-[36px] rounded-[10px] bg-[#007AFF]/10 text-[#007AFF] flex items-center justify-center shrink-0">
+                              <Download size={18} />
+                          </div>
+                          <div>
+                            <div className="text-[15px] font-medium text-[#333]">全量备份 (导出)</div>
+                            <div className="text-[12px] text-[#8E8E93] mt-0.5">包含所有模块的数据和设置</div>
+                          </div>
+                      </div>
+                  </div>
+                  <div className="flex items-center justify-between p-4 active:bg-gray-50 cursor-pointer relative border-b border-[#F2F2F7] transition-colors">
+                      <div className="flex items-center gap-3">
+                          <div className="w-[36px] h-[36px] rounded-[10px] bg-[#34C759]/10 text-[#34C759] flex items-center justify-center shrink-0">
+                              <Upload size={18} />
+                          </div>
+                          <div>
+                            <div className="text-[15px] font-medium text-[#333]">还原数据 (导入)</div>
+                            <div className="text-[12px] text-[#8E8E93] mt-0.5">从全量备份文件恢复数据</div>
+                          </div>
+                      </div>
+                      <input type="file" accept=".json" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleImportAll} />
+                  </div>
+                  <div className="flex items-center justify-between p-4 active:bg-gray-50 cursor-pointer transition-colors" onClick={clearAllData}>
+                      <div className="flex items-center gap-3">
+                          <div className="w-[36px] h-[36px] rounded-[10px] bg-[#FF3B30]/10 text-[#FF3B30] flex items-center justify-center shrink-0">
+                              <AlertTriangle size={18} />
+                          </div>
+                          <span className="text-[15px] font-medium text-[#FF3B30]">清除所有本地数据</span>
+                      </div>
+                  </div>
               </div>
-           </div>
+           </section>
 
-           <div className="mb-6">
-              <div className="text-[11px] text-[#6d6d72] ml-4 mb-2 uppercase tracking-wide">模块数据管理</div>
-              <div className="bg-white rounded-[10px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+           <section>
+              <h2 className="text-[12px] font-medium text-[#8E8E93] mb-3 px-1 tracking-wide uppercase">各模块内容管理</h2>
+              <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-[#F2F2F7]">
                  {FEATURE_DATA.map((feature, idx) => (
-                    <div key={feature.id} className={`p-4 flex flex-col gap-3 ${idx < FEATURE_DATA.length - 1 ? 'border-b border-[#E5E5EA]' : ''}`}>
-                        <div className="flex items-center text-[14px] font-medium text-[#333]">
-                           <FileJson size={16} className="text-[#8e8e93] mr-2" />
+                    <div key={feature.id} className={`p-5 flex flex-col gap-4 ${idx < FEATURE_DATA.length - 1 ? 'border-b border-[#F2F2F7]' : ''}`}>
+                        <div className="flex items-center text-[15px] font-medium text-[#111]">
+                           <FileJson size={18} className="text-[#8e8e93] mr-2" />
                            {feature.name}
                         </div>
                         <div className="flex gap-2">
-                           <button onClick={() => handleExportFeature(feature)} className="flex-1 py-1.5 flex justify-center items-center gap-1.5 bg-[#F2F2F7] rounded-[8px] text-[#007AFF] text-[13px] active:bg-[#e5e5ea] transition-colors">
-                              <Download size={14} /> 备份
+                           <button onClick={() => handleExportFeature(feature)} disabled={exportStatus[feature.id] === 'success'} className={`flex-1 py-2 flex justify-center items-center gap-1.5 rounded-[10px] text-[13px] font-medium transition-colors ${exportStatus[feature.id] === 'success' ? 'bg-[#34C759]/10 text-[#34C759]' : 'bg-[#F2F2F7] text-[#007AFF] active:bg-[#e5e5ea]'}`}>
+                              {exportStatus[feature.id] === 'success' ? <><CheckCircle size={14} /> 已备份</> : <><Download size={14} /> 备份</>}
                            </button>
-                           <button onClick={() => handleClearFeature(feature)} className="flex-1 py-1.5 flex justify-center items-center gap-1.5 bg-[#FF3B30]/10 rounded-[8px] text-[#FF3B30] text-[13px] active:bg-[#FF3B30]/20 transition-colors">
+                           <div className="flex-1 relative">
+                              <button disabled={importStatus[feature.id] === 'loading'} className={`w-full py-2 flex justify-center items-center gap-1.5 rounded-[10px] text-[13px] font-medium transition-colors ${importStatus[feature.id] === 'loading' ? 'bg-[#F2F2F7] text-[#8E8E93]' : importStatus[feature.id] === 'success' ? 'bg-[#34C759]/10 text-[#34C759]' : 'bg-[#F2F2F7] text-[#34C759] active:bg-[#e5e5ea]'}`}>
+                                 {importStatus[feature.id] === 'loading' ? <><Loader2 size={14} className="animate-spin" /> 导入中</> : importStatus[feature.id] === 'success' ? <><CheckCircle size={14} /> 导入成功</> : <><Upload size={14} /> 导入</>}
+                              </button>
+                              <input type="file" accept=".json" className="absolute inset-0 opacity-0 cursor-pointer" title="导入模块数据" onChange={(e) => handleImportFeature(e, feature)} disabled={importStatus[feature.id] === 'loading'} />
+                            </div>
+                            <button onClick={() => handleClearFeature(feature)} className="flex-1 py-2 flex justify-center items-center gap-1.5 bg-[#FF3B30]/10 rounded-[10px] text-[#FF3B30] text-[13px] font-medium active:bg-[#FF3B30]/20 transition-colors">
                               <Trash2 size={14} /> 清除
                            </button>
                         </div>
                     </div>
                  ))}
-                 
               </div>
-           </div>
+           </section>
 
-           <p className="text-[11px] text-[#8e8e93] mt-4 ml-4 leading-relaxed opacity-80">
-              提示：部分全量备份可能包含大量数据及图片，导出文件较大。
+           <p className="text-[12px] text-[#8e8e93] mt-6 px-2 leading-relaxed opacity-80 text-center">
+              所有数据均保存在本地浏览器缓存中。请定期备份重要数据，防止丢失。
            </p>
         </div>
 

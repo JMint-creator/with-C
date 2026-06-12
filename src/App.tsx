@@ -33,7 +33,8 @@ import {
   Music,
   ListMusic,
   Aperture,
-  Search
+  Search,
+  Wallet
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { ChatView } from './ChatView';
@@ -42,6 +43,9 @@ import { WishlistView } from './WishlistView';
 import { ChatSettingsView } from './ChatSettingsView';
 import { CheckInsView } from './CheckInsView';
 import { DataView } from './DataView';
+import { AccountingView } from './AccountingView';
+import { TodoView } from './TodoView';
+import { MailboxView } from './MailboxView';
 import { compressImage, useIDBState } from './utils';
 import { VideoCallOverlay } from './VideoCallOverlay';
 
@@ -51,7 +55,7 @@ const apps = [
   { name: '查岗', icon: Radar },
   { name: '朋友圈', icon: Aperture },
   { name: '心愿清单', icon: Gift },
-  { name: '观影阅读', icon: Film },
+  { name: '记账', icon: Wallet },
   { name: 'Todo', icon: CheckSquare },
   { name: '帮我决定', icon: Dices },
 ];
@@ -131,7 +135,7 @@ const SettingItem = ({ icon: Icon, label, value, onClick, onChange, isTextarea =
             <textarea 
               value={value} 
               onChange={(e) => onChange(e.target.value)} 
-              className="text-[13px] text-[#888] text-right bg-transparent outline-none max-w-[150px] resize-none h-16"
+              className="text-[13px] text-[#888] text-right bg-transparent outline-none max-w-[150px] resize-none h-10 py-1"
               placeholder="输入..."
             />
           ) : onChange ? (
@@ -152,7 +156,7 @@ const SettingItem = ({ icon: Icon, label, value, onClick, onChange, isTextarea =
   )
 }
 
-function useLocalState<T>(key: string, initialValue: T): [T, (val: T) => void] {
+function useLocalState<T>(key: string, initialValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
   const [state, setState] = useState<T>(() => {
     try {
       const item = window.localStorage.getItem(key);
@@ -162,10 +166,13 @@ function useLocalState<T>(key: string, initialValue: T): [T, (val: T) => void] {
     }
   });
 
-  const setValue = (value: T) => {
+  const setValue: React.Dispatch<React.SetStateAction<T>> = (value) => {
     try {
-      setState(value);
-      window.localStorage.setItem(key, JSON.stringify(value));
+      setState((prevState) => {
+        const nextValue = value instanceof Function ? value(prevState) : value;
+        window.localStorage.setItem(key, JSON.stringify(nextValue));
+        return nextValue;
+      });
     } catch (error) {}
   };
 
@@ -218,9 +225,9 @@ const DecideView = ({ onClose, themeConfig, onStartDecide, isDeciding }: { onClo
   };
 
   return (
-    <div className="w-full h-full flex flex-col font-sans overflow-x-hidden overflow-y-auto relative" style={{ backgroundColor: themeConfig.bg }}>
+    <div className="absolute inset-0 flex flex-col font-sans overflow-x-hidden overflow-y-auto" style={{ backgroundColor: themeConfig.bg || '#F2F2F7' }}>
       {/* Header */}
-      <div className="w-full flex items-center justify-between px-4 pb-3 sticky top-0 z-10 pt-[max(1rem,env(safe-area-inset-top))]" style={{ backgroundColor: themeConfig.bg ? themeConfig.bg + 'cc' : '#fcfbf9cc', backdropFilter: 'blur(12px)' }}>
+      <div className="w-full flex items-center justify-between px-4 pb-3 sticky top-0 z-10 pt-[max(1rem,env(safe-area-inset-top))]" style={{ backgroundColor: themeConfig.bg || '#F2F2F7', backdropFilter: 'blur(12px)' }}>
           <button onClick={onClose} className="text-[#8e8e93] text-[15px] flex items-center active:opacity-50 transition-opacity w-[60px]">
             <ChevronLeft size={22} className="-ml-1.5" />返回
           </button>
@@ -369,17 +376,19 @@ const BackgroundLayer = ({ bg, image, show }: { bg: string, image: string, show:
       left: 0,
       right: 0,
       bottom: 0,
+      width: '100vw',
+      height: '100dvh',
       backgroundColor: bg,
       backgroundImage: image !== 'none' ? image : 'none',
       backgroundSize: 'cover',
       backgroundPosition: 'center',
-      zIndex: -1,
+      zIndex: -10,
     }} />
   );
 };
 
 export default function App() {
-  const [view, setView] = useState<'home' | 'appearance' | 'data' | 'library' | 'decide' | 'chat' | 'chat_settings' | 'music_manager'>('home');
+  const [view, setView] = useState<'home' | 'appearance' | 'data' | 'library' | 'decide' | 'chat' | 'chat_settings' | 'music_manager' | 'moments' | 'wishlist' | 'check_in' | 'accounting' | 'todo' | 'mailbox'>('home');
   const [appearanceTab, setAppearanceTab] = useState<'global' | 'chat' | 'component' | 'wallpaper' | 'other'>('global');
 
   // Library States
@@ -395,10 +404,27 @@ export default function App() {
       setTimeout(() => setToastMsg(''), 2000);
   };
 
-  const [cardGroups, setCardGroups] = useLocalState<any[]>('app_cardGroups', [{ id: '1', name: '默认分组', cards: ['你好呀！', '在干嘛呢？'] }]);
+  const [cardGroups, setCardGroups] = useLocalState<any[]>('app_cardGroups', [
+    { id: '1', name: '默认分组', cards: ['你好呀！', '在干嘛呢？'] },
+    { id: '2', name: '记账回复', cards: ['记得合理分配生活开销哦~', '钱花在刀刃上！今天有什么收获？', '记账是个好习惯，继续保持！'] }
+  ]);
   const [emojis, setEmojis] = useLocalState<string[]>('app_emojis', ['😀', '😂', '🥰', '👍', '🙏']);
   const [stickers, setStickers] = useIDBState<string[]>('app_stickers', []);
   const [nudges, setNudges] = useLocalState<string[]>('app_nudges', ['拍了拍我的 脑袋', '拍了拍我的 肩膀']);
+
+  useEffect(() => {
+    // Ensure "记账回复" and "Todo回复" groups exist
+    setCardGroups(prev => {
+      let next = [...prev];
+      if (!next.find(g => g.name === '记账回复' || g.name === '记账')) {
+        next.push({ id: 'sys_accounting', name: '记账回复', cards: ['记得合理分配生活开销哦~', '钱花在刀刃上！今天有什么收获？', '记账是个好习惯，继续保持！'] });
+      }
+      if (!next.find(g => g.name === 'Todo回复' || g.name === 'Todo添加' || g.name === 'Todo完成' || g.name === 'Todo逾期')) {
+        next.push({ id: 'sys_todo', name: 'Todo回复', cards: ['小本本记好了！', '不错哦，继续保持~', '既然写下了就要做到哦！', '辛苦啦，奖励一个抱抱！'] });
+      }
+      return next;
+    });
+  }, []);
 
   // UI States
   const [wallpaper, setWallpaper] = useIDBState('app_wallpaper', '');
@@ -408,6 +434,7 @@ export default function App() {
   const [name1, setName1] = useLocalState('app_name1', 'Yuli');
   const [name2, setName2] = useLocalState('app_name2', 'Milk');
   const [motto, setMotto] = useLocalState('app_motto', '沉睡中缠绵 · 清醒又幻灭');
+  const [subtitle, setSubtitle] = useLocalState('app_subtitle', 'LOCAL DAILY ACTIVE');
 
   // Theme
   const [theme, setTheme] = useLocalState<'warm' | 'mint' | 'sakura' | 'blue' | 'purple'>('app_theme', 'warm');
@@ -629,17 +656,20 @@ export default function App() {
   };
 
   useEffect(() => {
-    let bgColor = currentThemeConfig.bg;
+    let bgColor = currentThemeConfig.bg || '#F2F2F7';
+    let bgImage = 'none';
+    
+    if (view === 'home' && wallpaper) bgImage = `url(${wallpaper})`;
+    else if (view === 'chat' && chatBg) bgImage = `url(${chatBg})`;
+    else if (view === 'wishlist' && wishlistBg) bgImage = `url(${wishlistBg})`;
+    else if (view === 'check_in' && checkinsBg) bgImage = `url(${checkinsBg})`;
+    else if (view === 'moments' && momentsBg) bgImage = `url(${momentsBg})`;
     
     // For iOS settings style pages, use the iOS grey background. For other pages use theme color
-    if (['appearance', 'library', 'data', 'chat_settings', 'music_manager', 'moments'].includes(view)) {
+    if (['appearance', 'library', 'data', 'chat_settings', 'music_manager'].includes(view)) {
        bgColor = '#F2F2F7';
     }
 
-    document.documentElement.style.backgroundColor = bgColor;
-    document.body.style.backgroundColor = bgColor;
-    document.body.style.backgroundImage = 'none';
-    
     let metaThemeColor = document.querySelector('meta[name="theme-color"]');
     if (!metaThemeColor) {
       metaThemeColor = document.createElement('meta');
@@ -708,7 +738,7 @@ export default function App() {
                                 return;
                             }
                             setMusicList([...musicList, {
-                                id: Date.now().toString(),
+                                id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
                                 name: addMusicName,
                                 artist: addMusicArtist,
                                 url: addMusicUrl,
@@ -861,7 +891,8 @@ export default function App() {
 
   if (view === 'library') {
     return (
-      <div className="absolute inset-0 bg-white/40 backdrop-blur-2xl flex flex-col overflow-x-hidden overflow-y-auto relative text-[11px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
+      <div className="absolute inset-0 flex flex-col overflow-x-hidden overflow-y-auto text-[11px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif', backgroundColor: currentThemeConfig.bg || '#F2F2F7' }}>
+
         
         
         {/* Header */}
@@ -973,8 +1004,8 @@ export default function App() {
                             </div>
                             
                             <div className="space-y-3">
-                                {cardGroups.filter(g => !librarySearchQuery || g.name.toLowerCase().includes(librarySearchQuery.toLowerCase()) || g.cards.some((c: string) => c.toLowerCase().includes(librarySearchQuery.toLowerCase()))).map((group) => (
-                                    <div key={group.id} className="bg-white rounded-[10px] shadow-[0_1px_2px_rgba(0,0,0,0.05)] p-3 flex justify-between items-center cursor-pointer active:bg-gray-50 transition-colors" onClick={() => setActiveGroupId(group.id)}>
+                                {cardGroups.filter(g => !librarySearchQuery || g.name.toLowerCase().includes(librarySearchQuery.toLowerCase()) || g.cards.some((c: string) => c.toLowerCase().includes(librarySearchQuery.toLowerCase()))).map((group, groupIdx) => (
+                                    <div key={`${group.id}-${groupIdx}`} className="bg-white rounded-[10px] shadow-[0_1px_2px_rgba(0,0,0,0.05)] p-3 flex justify-between items-center cursor-pointer active:bg-gray-50 transition-colors" onClick={() => setActiveGroupId(group.id)}>
                                         <div className="flex-1">
                                             <div className="font-semibold text-[#000] text-[12px]">{group.name}</div>
                                             <div className="text-[#8e8e93] text-[12px] mt-0.5">{group.cards.length} 张字卡</div>
@@ -999,7 +1030,7 @@ export default function App() {
                                 ))}
                             </div>
                             <button onClick={() => {
-                                const newId = Date.now().toString();
+                                const newId = Date.now().toString() + Math.random().toString(36).substring(2, 5);
                                 setCardGroups([...cardGroups, { id: newId, name: '新分组', cards: [] }]);
                                 setActiveGroupId(newId);
                             }} className="w-full py-3 bg-white text-[#007AFF] font-medium rounded-[10px] shadow-[0_1px_2px_rgba(0,0,0,0.05)] flex items-center justify-center gap-2 active:bg-gray-50 transition-colors">
@@ -1170,10 +1201,10 @@ export default function App() {
                            let cardsToAdd: string[] = [];
                            if (Array.isArray(importModalData.data)) {
                                cardsToAdd = importModalData.data.filter(d => typeof d === 'string');
-                               newGroups.push({ id: Date.now().toString(), name: importModalData.name, cards: cardsToAdd });
+                               newGroups.push({ id: Date.now().toString() + Math.random().toString(36).substring(2, 5), name: importModalData.name, cards: cardsToAdd });
                            } else if (importModalData.data && typeof importModalData.data === 'object') {
                                const newG = Object.keys(importModalData.data).map((k, i) => ({
-                                   id: Date.now().toString() + i,
+                                   id: Date.now().toString() + Math.random().toString(36).substring(2, 5) + i,
                                    name: k,
                                    cards: Array.isArray(importModalData.data[k]) ? importModalData.data[k] : []
                                }));
@@ -1186,8 +1217,8 @@ export default function App() {
                        }}>
                            <span className="text-[#007AFF] text-[12px] font-medium">新建分组</span>
                        </div>
-                       {cardGroups.map((group) => (
-                           <div key={group.id} className="p-3 border-b border-[#e5e5ea] last:border-b-0 flex justify-between items-center cursor-pointer active:bg-gray-50" onClick={() => {
+                       {cardGroups.map((group, groupIdx) => (
+                           <div key={`${group.id}-${groupIdx}`} className="p-3 border-b border-[#e5e5ea] last:border-b-0 flex justify-between items-center cursor-pointer active:bg-gray-50" onClick={() => {
                                let newGroups = [...cardGroups];
                                const targetIdx = newGroups.findIndex(g => g.id === group.id);
                                if (targetIdx > -1) {
@@ -1224,7 +1255,7 @@ export default function App() {
 
   if (view === 'music_manager') {
     return (
-      <div className="absolute inset-0 bg-white/40 backdrop-blur-2xl flex flex-col overflow-x-hidden overflow-y-auto relative text-[14px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
+      <div className="absolute inset-0 flex flex-col overflow-x-hidden overflow-y-auto text-[14px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif', backgroundColor: currentThemeConfig.bg || '#F2F2F7' }}>
         <div 
           className="w-full flex items-center justify-between px-3 pb-3 bg-white/30 sticky top-0 z-10 border-b border-[#c6c6c8]/20 shadow-[0_1px_3px_rgba(0,0,0,0.02)]"
           style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))' }}
@@ -1269,7 +1300,7 @@ export default function App() {
               </div>
             ) : (
               playQueue.map((music, idx) => (
-                <div key={music.id} className={`flex items-center justify-between p-3 ${idx !== playQueue.length - 1 ? 'border-b border-[#c6c6c8]/30' : ''}`}>
+                <div key={`${music.id}-${idx}`} className={`flex items-center justify-between p-3 ${idx !== playQueue.length - 1 ? 'border-b border-[#c6c6c8]/30' : ''}`}>
                    <div className="flex flex-col flex-1 overflow-hidden pr-4">
                       <span className="font-medium text-black truncate">{music.name}</span>
                       <span className="text-[12px] text-[#8e8e93] truncate">
@@ -1295,7 +1326,7 @@ export default function App() {
 
   if (view === 'appearance') {
     return (
-      <div className="absolute inset-0 bg-white/40 backdrop-blur-2xl overflow-y-auto relative text-[11px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
+      <div className="absolute inset-0 overflow-y-auto text-[11px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif', backgroundColor: currentThemeConfig.bg || '#F2F2F7' }}>
         
         {/* Header */}
         <div 
@@ -1320,9 +1351,9 @@ export default function App() {
              { id: 'component', name: '组件美化' },
              { id: 'wallpaper', name: '壁纸上传' },
              { id: 'other', name: '其他美化' }
-           ].map(tab => (
+           ].map((tab, idx) => (
               <button 
-                key={tab.id}
+                key={`${tab.id}-${idx}`}
                 onClick={() => setAppearanceTab(tab.id as any)}
                 className={`pb-3 text-[13px] font-medium transition-colors relative whitespace-nowrap ${appearanceTab === tab.id ? 'text-black' : 'text-[#8e8e93]'}`}
               >
@@ -1400,7 +1431,8 @@ export default function App() {
                       <SettingItem icon={User} label="顶部头像 2" value={avatar2 ? '已上传' : '未设置'} onClick={() => avatar2InputRef.current?.click()} />
                       <SettingItem icon={Type} label="顶部昵称 1" value={name1} onChange={setName1} />
                       <SettingItem icon={Type} label="顶部昵称 2" value={name2} onChange={setName2} />
-                      <SettingItem icon={MessageCircle} label="顶部宣言" value={motto} onChange={setMotto} isTextarea={true} hideBorder={true}/>
+                      <SettingItem icon={MessageCircle} label="顶部宣言" value={motto} onChange={setMotto} isTextarea={true} />
+                      <SettingItem icon={Type} label="底部小字" value={subtitle} onChange={setSubtitle} hideBorder={true} />
                    </div>
                 </div>
              </motion.div>
@@ -1502,9 +1534,7 @@ export default function App() {
     )
   }
 
-  if (view === 'chat') {
-    return <><ChatView onClose={() => setView('home')} onOpenSettings={() => setView('chat_settings')} themeConfig={currentThemeConfig} /><VideoCallOverlay /></>;
-  }
+
 
   if (view === 'chat_settings') {
     return <><ChatSettingsView onClose={() => setView('home')} themeConfig={currentThemeConfig} /><VideoCallOverlay /></>;
@@ -1520,6 +1550,18 @@ export default function App() {
 
   if (view === 'check_in') {
     return <><CheckInsView onClose={() => setView('home')} themeConfig={currentThemeConfig} checkinsBg={checkinsBg} /><VideoCallOverlay /></>;
+  }
+
+  if (view === 'accounting') {
+    return <><AccountingView onClose={() => setView('home')} themeConfig={currentThemeConfig} name1={myNickname} name2={mjNickname} avatar2={chatAvatar2 || avatar2} cardGroups={cardGroups} /><VideoCallOverlay /></>;
+  }
+
+  if (view === 'todo') {
+    return <><TodoView onClose={() => setView('home')} themeConfig={currentThemeConfig} avatar2={chatAvatar2 || avatar2} name2={mjNickname} cardGroups={cardGroups} /><VideoCallOverlay /></>;
+  }
+
+  if (view === 'mailbox') {
+    return <><MailboxView onClose={() => setView('home')} themeConfig={currentThemeConfig} cardGroups={cardGroups} /><VideoCallOverlay /></>;
   }
 
     if (view === 'home') {
@@ -1544,50 +1586,65 @@ export default function App() {
         
         {/* Profile Card */}
         <motion.div 
-          className="border border-white/60 rounded-[32px] flex flex-col items-center shadow-[0_8px_32px_-12px_rgba(0,0,0,0.06)] shrink-0 transition-colors duration-500 overflow-hidden w-full mt-2"
+          className="border border-white/60 rounded-[32px] flex flex-col shadow-sm shrink-0 transition-colors duration-500 overflow-hidden w-full mt-2 relative"
+          style={{ backgroundColor: currentThemeConfig.cardBg || '#ffffff' }}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          {/* Header Image */}
+          {/* Top Image Part */}
           <div 
-            className="w-full h-[180px] bg-cover bg-center shrink-0 relative"
+            className="absolute top-0 left-0 w-full h-[60%] bg-cover bg-center shrink-0"
             style={{ 
               backgroundImage: profileBg ? `url(${profileBg})` : 'none',
-              backgroundColor: currentThemeConfig.cardBg
+              backgroundColor: currentThemeConfig.bg || '#EFEFEF'
             }}
           />
           
+          <div className="w-full h-[130px] shrink-0 pointer-events-none" />
+
           {/* Bottom Frosted Container */}
           <div 
-            className="w-full relative pt-[36px] pb-4 px-4 flex flex-col items-center backdrop-blur-xl"
-            style={{ backgroundColor: currentThemeConfig.cardBg }}
+            className="w-full relative z-10 pt-[42px] pb-6 px-4 flex flex-col items-center backdrop-blur-xl rounded-t-[32px] border-t border-white/40 shadow-[0_-4px_24px_rgba(0,0,0,0.06)]"
+            style={{ 
+               backgroundColor: currentThemeConfig.cardBg ? `${currentThemeConfig.cardBg}E6` : 'rgba(255,255,255,0.85)'
+            }}
           >
             {/* Avatars */}
-            <div className="absolute -top-[28px] flex justify-center items-center w-full">
+            <div className="absolute -top-[36px] flex justify-center items-center w-full">
               <div className="relative flex items-center justify-center">
                 <div 
-                  className="w-[56px] h-[56px] rounded-full border-2 overflow-hidden flex items-center justify-center shadow-sm transition-transform hover:scale-105 cursor-pointer z-10 -mr-2.5"
-                  style={{ borderColor: currentThemeConfig.bg, backgroundColor: currentThemeConfig.bg, color: currentThemeConfig.textSecondary }}
+                  className="w-[66px] h-[66px] rounded-full border-[3px] border-white overflow-hidden flex items-center justify-center shadow-[0_4px_12px_rgba(0,0,0,0.08)] transition-transform hover:scale-105 cursor-pointer z-10 -mr-2 sm:-mr-4 bg-white"
+                  style={{ color: currentThemeConfig.textSecondary }}
                   onClick={() => avatar1InputRef.current?.click()}
                 >
-                  {avatar1 ? <img src={avatar1} className="w-full h-full object-cover" /> : <Cat size={22} strokeWidth={1.5} />}
+                  {avatar1 ? <img src={avatar1} className="w-full h-full object-cover" /> : <Cat size={24} strokeWidth={1.5} />}
                 </div>
                 <div 
-                  className="w-[56px] h-[56px] rounded-full border-2 overflow-hidden flex items-center justify-center shadow-sm transition-transform hover:scale-105 cursor-pointer z-0"
-                  style={{ borderColor: currentThemeConfig.bg, backgroundColor: currentThemeConfig.bg, color: currentThemeConfig.textSecondary }}
+                  className="w-[66px] h-[66px] rounded-full border-[3px] border-white overflow-hidden flex items-center justify-center shadow-[0_4px_12px_rgba(0,0,0,0.08)] transition-transform hover:scale-105 cursor-pointer z-0 bg-white"
+                  style={{ color: currentThemeConfig.textSecondary }}
                   onClick={() => avatar2InputRef.current?.click()}
                 >
-                  {avatar2 ? <img src={avatar2} className="w-full h-full object-cover" /> : <Cat size={22} strokeWidth={1.5} />}
+                   {avatar2 ? <img src={avatar2} className="w-full h-full object-cover" /> : <Cat size={24} strokeWidth={1.5} />}
                 </div>
               </div>
             </div>
             
-            <div className="flex items-center justify-center gap-1.5 mb-1.5">
-              <h1 className="text-[15px] font-semibold tracking-tight text-[#333]" style={{color: currentThemeConfig.textPrimary}}>{name1}</h1>
-              <span className="text-[12px] opacity-70" style={{color: currentThemeConfig.textSecondary}}>&</span>
-              <h1 className="text-[15px] font-semibold tracking-tight text-[#333]" style={{color: currentThemeConfig.textPrimary}}>{name2}</h1>
+            {/* Names */}
+            <div className="flex items-center justify-center gap-[6px] mb-2 mt-1">
+              <h1 className="text-[17px] sm:text-[18px] font-bold tracking-tight text-[#111] leading-none whitespace-nowrap overflow-hidden text-ellipsis max-w-[120px]">{name1}</h1>
+              <span className="text-[13px] text-[#555] opacity-80 shrink-0">&</span>
+              <h1 className="text-[17px] sm:text-[18px] font-bold tracking-tight text-[#111] leading-none whitespace-nowrap overflow-hidden text-ellipsis max-w-[120px]">{name2}</h1>
             </div>
-            <p className="text-[11px] leading-snug text-center whitespace-pre-line px-4 max-w-[85%] mx-auto opacity-80" style={{color: currentThemeConfig.textSecondary}}>{motto}</p>
+            
+            {/* Dark text block */}
+            <p className="text-[13px] font-medium leading-relaxed text-center whitespace-pre-line px-2 max-w-[95%] mx-auto text-[#333] tracking-widest mb-3 mt-1 opacity-90">
+               {motto}
+            </p>
+            
+            {/* Light text block */}
+            <p className="text-[10px] uppercase tracking-[0.2em] text-[#888] font-semibold opacity-70">
+               {subtitle}
+            </p>
           </div>
         </motion.div>
 
@@ -1686,6 +1743,9 @@ export default function App() {
                 if (app.name === '朋友圈') setView('moments');
                 if (app.name === '心愿清单') setView('wishlist');
                 if (app.name === '查岗') setView('check_in');
+                if (app.name === '记账') setView('accounting');
+                if (app.name === 'Todo') setView('todo');
+                if (app.name === '信箱') setView('mailbox');
               }}
             >
               <div 
@@ -1752,6 +1812,7 @@ export default function App() {
   }; // end renderContent
 
   let currentBgImage = 'none';
+  let currentBgColor = currentThemeConfig.bg || '#F2F2F7';
   let showBackgroundLayer = false;
 
   if (view === 'home' && wallpaper) {
@@ -1766,18 +1827,27 @@ export default function App() {
   } else if (view === 'check_in' && checkinsBg) {
     currentBgImage = `url(${checkinsBg})`;
     showBackgroundLayer = true;
-  } else if (['home', 'chat', 'wishlist', 'check_in'].includes(view)) {
-    showBackgroundLayer = true; // Show solid theme background if no wallpaper is set for these views
+  } else if (view === 'moments') {
+    currentBgColor = momentsStyle === 'weibo' ? '#f2f2f2' : '#ffffff';
+    currentBgImage = 'none';
+    showBackgroundLayer = true;
+  } else if (['home', 'chat', 'wishlist', 'check_in', 'accounting'].includes(view)) {
+    showBackgroundLayer = true; // Use background layer with theme color fallback
   }
 
   return (
     <>
-      <BackgroundLayer 
-        bg={currentThemeConfig.bg || '#F2F2F7'} 
-        image={currentBgImage} 
-        show={showBackgroundLayer} 
+      <BackgroundLayer
+        bg={currentBgColor}
+        image={currentBgImage}
+        show={showBackgroundLayer}
       />
-      {renderContent()}
+      
+      <div style={{ position: "absolute", inset: 0, zIndex: view === "chat" ? 40 : -10, opacity: view === "chat" ? 1 : 0, pointerEvents: view === "chat" ? "auto" : "none", visibility: view === "chat" ? "visible" : "hidden" }}>
+        <ChatView onClose={() => setView("home")} onOpenSettings={() => setView("chat_settings")} themeConfig={currentThemeConfig} />
+      </div>
+      {view === "chat" && <VideoCallOverlay />}
+      {view !== "chat" && renderContent()}
     </>
   );
 }

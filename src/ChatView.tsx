@@ -103,7 +103,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
     if (duration === 0) duration = 1;
     const ignored = readNoReply && Math.random() < 0.05;
     const newMsg: Message = {
-      id: Date.now().toString(),
+      id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
       sender: 'me',
       type: 'voice',
       content: '',
@@ -169,7 +169,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
            if (e.target?.result) {
               const ignored = readNoReply && Math.random() < 0.05;
               const newMsg: Message = {
-                id: Date.now().toString(),
+                id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
                 sender: 'me',
                 type: isSticker ? 'sticker' : 'sticker', // For now use sticker type for any image
                 content: e.target.result as string,
@@ -200,7 +200,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
               // Also send it right away
               const ignored = readNoReply && Math.random() < 0.05;
               const newMsg: Message = {
-                id: Date.now().toString(),
+                id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
                 sender: 'me',
                 type: 'sticker',
                 content: url,
@@ -249,7 +249,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
                setVideoCallState(prev => {
                  if (prev === 'incoming') {
                    setMessages(msgs => [...msgs, {
-                     id: Date.now().toString(),
+                     id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
                      sender: 'them',
                      type: 'call',
                      content: '未接来电',
@@ -264,7 +264,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
            } else {
              // 50% chance for check-in
              setMessages(msgs => [...msgs, {
-               id: Date.now().toString(),
+               id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
                sender: 'them',
                type: 'check_in',
                content: `${charId} 想知道你在干什么`,
@@ -314,7 +314,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
     
     const ignored = readNoReply && Math.random() < 0.05;
     const newMsg: Message = {
-      id: Date.now().toString(),
+      id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
       sender: 'me',
       type,
       content: text,
@@ -348,7 +348,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
      if (!checkInText && !checkInImage) return;
 
      setCheckIns(prev => [...prev, {
-        id: Date.now().toString(),
+        id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
         timestamp: Date.now(),
         text: checkInText,
         imageUrl: checkInImage
@@ -358,7 +358,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
      
      if (checkInImage) {
         setMessages(msgs => [...msgs, {
-          id: Date.now().toString(),
+          id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
           sender: 'me',
           type: 'image',
           content: checkInImage,
@@ -505,7 +505,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
       } else {
         setVideoCallState('none');
         setMessages(prev => [...prev, {
-          id: Date.now().toString(),
+          id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
           sender: 'them',
           type: 'call',
           content: '未接通',
@@ -519,7 +519,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
   const endCall = () => {
     setVideoCallState('none');
     setMessages(prev => [...prev, {
-      id: Date.now().toString(),
+      id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
       sender: 'me',
       type: 'call',
       content: `通话时长 ${Math.floor(callDuration / 60)}:${(callDuration % 60).toString().padStart(2, '0')}`,
@@ -536,7 +536,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
   const declineCall = () => {
     setVideoCallState('none');
     setMessages(prev => [...prev, {
-      id: Date.now().toString(),
+      id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
       sender: 'me',
       type: 'call',
       content: '已拒绝',
@@ -601,7 +601,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
 
           if (msg.type === 'nudge') {
             return (
-              <div key={msg.id} className={`w-full flex justify-center ${marginBottom}`}>
+              <div key={`${msg.id}-${i}`} className={`w-full flex justify-center ${marginBottom}`}>
                 <div className="px-3 py-1 rounded-full bg-black/[0.05] text-[12px] text-gray-500">
                   {isMe ? myNickname : charId}{msg.content}
                 </div>
@@ -611,7 +611,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
 
           if (msg.type === 'call') {
             return (
-              <div key={msg.id} className={`w-full flex justify-center ${marginBottom}`}>
+              <div key={`${msg.id}-${i}`} className={`w-full flex justify-center ${marginBottom}`}>
                 <div className="px-4 py-2 rounded-2xl bg-black/[0.03] text-[13px] flex items-center space-x-2 text-gray-600">
                   {msg.callState === 'declined' || msg.callState === 'missed' ? <PhoneMissed size={14} className="text-red-400" /> : <PhoneCall size={14} />}
                   <span>{msg.content}</span>
@@ -622,7 +622,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
 
           if (msg.type === 'check_in') {
              return (
-               <div key={msg.id} className={`w-full flex justify-center ${marginBottom} px-4`}>
+               <div key={`${msg.id}-${i}`} className={`w-full flex justify-center ${marginBottom} px-4`}>
                  <div className="bg-white/15 backdrop-blur-3xl rounded-[24px] p-5 shadow-[0_8px_32px_rgba(0,0,0,0.08),inset_0_2px_4px_rgba(255,255,255,0.4)] w-full max-w-[320px] flex flex-col items-center border border-white/40 relative overflow-hidden">
                    <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mb-3 shadow-[inset_0_2px_4px_rgba(255,255,255,0.3)] border border-white/30 text-white">
                       <Camera size={22} />
@@ -654,7 +654,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
           }
 
           return (
-            <div key={msg.id} className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'} ${marginBottom}`}>
+            <div key={`${msg.id}-${i}`} className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'} ${marginBottom}`}>
               {!isMe && (
                 <div className="w-[38px] h-[38px] shrink-0 mr-2.5">
                   {!isGroupedNext && <div className="w-full h-full rounded-full bg-black/10 overflow-hidden shadow-sm border border-white/20">
@@ -853,7 +853,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
                  <div key={idx} onClick={() => {
                      const ignored = readNoReply && Math.random() < 0.05;
                      const newMsg: Message = {
-                       id: Date.now().toString(),
+                       id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
                        sender: 'me',
                        type: 'sticker',
                        content: url,

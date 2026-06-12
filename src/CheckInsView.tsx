@@ -172,7 +172,7 @@ export const CheckInsView = ({ onClose, themeConfig, checkinsBg }: any) => {
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: index * 0.05 }}
-                            key={record.id} 
+                            key={`${record.id}-${index}`} 
                             className="relative pl-10"
                          >
                              {/* Timeline Dot */}

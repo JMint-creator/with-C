@@ -144,7 +144,7 @@ export function MomentsView({
                     }
                     
                     const newMoment: Moment = {
-                        id: Date.now().toString(),
+                        id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
                         authorName: name2 || '梦角',
                         authorAvatar: avatar2,
                         type: 'mengjiao',
@@ -239,7 +239,7 @@ export function MomentsView({
             // add comment
             const content = pickRandomCards(1, 5);
             const newComment: Comment = {
-                id: Date.now().toString(),
+                id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
                 authorName: name2 || '梦角',
                 authorAvatar: avatar2,
                 content,
@@ -323,7 +323,7 @@ export function MomentsView({
   const visibleMoments = moments.filter(m => m.publishAt <= now).sort((a,b) => b.publishAt - a.publishAt);
 
   return (
-    <div className={`fixed inset-0 z-50 flex flex-col overflow-hidden animate-in slide-in-from-right duration-300 bg-white/40 backdrop-blur-3xl`}>
+    <div className={`fixed inset-0 z-50 flex flex-col overflow-hidden animate-in slide-in-from-right duration-300`}>
       {/* Toast Notification */}
       {toastMessage && (
           <div className="absolute top-[80px] left-1/2 -translate-x-1/2 z-50 bg-black/75 text-white px-4 py-2 rounded-full text-[14px] shadow-lg animate-in slide-in-from-top fade-in duration-300">
@@ -367,7 +367,7 @@ export function MomentsView({
                   </div>
               </div>
           ) : (
-              <div className="relative pb-10 bg-white">
+              <div className="relative pb-10">
                   <div 
                     className="w-full aspect-square max-h-[300px] bg-cover bg-center bg-gray-200"
                     style={{ backgroundImage: bgImage ? `url(${bgImage})` : 'none' }}
@@ -389,12 +389,12 @@ export function MomentsView({
 
           {/* List */}
           <div className={viewStyle === 'wechat' ? "px-4 pb-20 mt-4" : "pb-20 pt-2"}>
-              {visibleMoments.map(moment => {
+              {visibleMoments.map((moment, i) => {
                   const visibleComments = moment.comments.filter(c => c.publishAt <= now);
                   
                   if (viewStyle === 'weibo') {
                      return (
-                         <div key={moment.id} className="bg-white mb-2 pt-4 pb-2 px-4 shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+                         <div key={`${moment.id}-${i}`} className="bg-white mb-2 pt-4 pb-2 px-4 shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
                              {/* Weibo Header: Avatar + Info */}
                              <div className="flex items-center gap-3 mb-2">
                                  <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 shrink-0">
@@ -446,12 +446,12 @@ export function MomentsView({
                              {/* Weibo Comments Preview */}
                              {visibleComments.length > 0 && (
                                  <div className="bg-[#f9f9f9] rounded-[4px] mt-2 p-3 text-[13px]">
-                                     {visibleComments.map(c => {
+                                     {visibleComments.map((c, cIdx) => {
                                          const resolvedAuthor = getAuthorName(c.authorName);
                                          const resolvedTo = c.to ? getAuthorName(c.to) : undefined;
                                          return (
                                          <div 
-                                           key={c.id} 
+                                           key={`${c.id}-${cIdx}`} 
                                            className="break-all cursor-pointer active:bg-black/5 rounded-sm px-1 -mx-1 mb-1 last:mb-0"
                                            onClick={() => {
                                                if (resolvedAuthor !== (name1 || '我')) {
@@ -474,7 +474,7 @@ export function MomentsView({
                   }
 
                   return (
-                      <div key={moment.id} className="flex gap-3 mb-8 border-b border-gray-100 pb-4 last:border-b-0">
+                      <div key={`${moment.id}-${i}`} className="flex gap-3 mb-8 border-b border-gray-100 pb-4 last:border-b-0">
                           <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-200 shrink-0">
                               {getAuthorAvatar(moment.authorName, moment.authorAvatar, moment.type) && <img src={getAuthorAvatar(moment.authorName, moment.authorAvatar, moment.type)} className="w-full h-full object-cover"/>}
                           </div>
@@ -531,12 +531,12 @@ export function MomentsView({
 
                                       {visibleComments.length > 0 && (
                                           <div className="space-y-1">
-                                              {visibleComments.map(c => {
+                                              {visibleComments.map((c, cIdx) => {
                                                   const resolvedAuthor = getAuthorName(c.authorName);
                                                   const resolvedTo = c.to ? getAuthorName(c.to) : undefined;
                                                   return (
                                                   <div 
-                                                    key={c.id} 
+                                                    key={`${c.id}-${cIdx}`} 
                                                     className="break-all cursor-pointer active:bg-black/5 rounded-sm px-1 -mx-1"
                                                     onClick={() => {
                                                         if (resolvedAuthor !== (name1 || '我')) {
