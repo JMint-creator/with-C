@@ -302,7 +302,7 @@ export function TodoView({ onClose, themeConfig, avatar2, name2, cardGroups }: T
              initial={{ opacity: 0, scale: 0.8 }}
              animate={{ opacity: 1, scale: 1 }}
              exit={{ opacity: 0, scale: 0.8 }}
-             className="absolute bottom-10 right-6 w-[56px] h-[56px] rounded-full shadow-[0_4px_16px_rgba(0,0,0,0.15)] flex items-center justify-center text-white active:scale-95 transition-transform z-30"
+             className="absolute bottom-[calc(2.5rem+env(safe-area-inset-bottom))] right-6 w-[56px] h-[56px] rounded-full shadow-[0_4px_16px_rgba(0,0,0,0.15)] flex items-center justify-center text-white active:scale-95 transition-transform z-30"
              onClick={() => setShowAddModal(true)}
              style={{ backgroundColor: themeConfig.numColor || '#007AFF' }}
           >

@@ -376,8 +376,7 @@ const BackgroundLayer = ({ bg, image, show }: { bg: string, image: string, show:
       left: 0,
       right: 0,
       bottom: 0,
-      width: '100vw',
-      height: '100dvh',
+      
       backgroundColor: bg,
       backgroundImage: image !== 'none' ? image : 'none',
       backgroundSize: 'cover',
@@ -666,7 +665,7 @@ export default function App() {
     else if (view === 'moments' && momentsBg) bgImage = `url(${momentsBg})`;
     
     // For iOS settings style pages, use the iOS grey background. For other pages use theme color
-    if (['appearance', 'library', 'data', 'chat_settings', 'music_manager'].includes(view)) {
+    if (['appearance', 'library', 'data', 'chat_settings', 'music_manager', 'decide'].includes(view)) {
        bgColor = '#F2F2F7';
     }
 
@@ -891,7 +890,7 @@ export default function App() {
 
   if (view === 'library') {
     return (
-      <div className="absolute inset-0 flex flex-col overflow-x-hidden overflow-y-auto text-[11px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif', backgroundColor: currentThemeConfig.bg || '#F2F2F7' }}>
+      <div className="absolute inset-0 flex flex-col overflow-x-hidden overflow-y-auto text-[11px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif', backgroundColor: '#F2F2F7' }}>
 
         
         
@@ -1255,7 +1254,7 @@ export default function App() {
 
   if (view === 'music_manager') {
     return (
-      <div className="absolute inset-0 flex flex-col overflow-x-hidden overflow-y-auto text-[14px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif', backgroundColor: currentThemeConfig.bg || '#F2F2F7' }}>
+      <div className="absolute inset-0 flex flex-col overflow-x-hidden overflow-y-auto text-[14px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif', backgroundColor: '#F2F2F7' }}>
         <div 
           className="w-full flex items-center justify-between px-3 pb-3 bg-white/30 sticky top-0 z-10 border-b border-[#c6c6c8]/20 shadow-[0_1px_3px_rgba(0,0,0,0.02)]"
           style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))' }}
@@ -1326,7 +1325,7 @@ export default function App() {
 
   if (view === 'appearance') {
     return (
-      <div className="absolute inset-0 overflow-y-auto text-[11px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif', backgroundColor: currentThemeConfig.bg || '#F2F2F7' }}>
+      <div className="absolute inset-0 overflow-y-auto text-[11px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif', backgroundColor: '#F2F2F7' }}>
         
         {/* Header */}
         <div 
@@ -1579,7 +1578,7 @@ export default function App() {
           <div 
             className="w-full max-w-[420px] mx-auto flex flex-col justify-start flex-1 gap-3 px-4 shrink-0 relative"
             style={{
-              paddingBottom: 'max(16px, env(safe-area-inset-bottom))',
+              paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)',
               paddingTop: 'max(12px, env(safe-area-inset-top))'
             }}
           >

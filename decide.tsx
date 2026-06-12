@@ -70,9 +70,9 @@ const DecideView = ({ onClose }: { onClose: () => void }) => {
   };
 
   return (
-    <div className="flex-1 w-full bg-[#fcfbf9] flex flex-col font-sans overflow-x-hidden relative h-full">
+    <div className="flex-1 w-full bg-[#F2F2F7] flex flex-col font-sans overflow-x-hidden relative h-full">
       {/* Header */}
-      <div className="w-full flex items-center justify-between px-4 pb-3 sticky top-0 z-10 bg-[#fcfbf9]/80 backdrop-blur-md pt-[env(safe-area-inset-top)] mt-4">
+      <div className="w-full flex items-center justify-between px-4 pb-3 sticky top-0 z-10 bg-[#F2F2F7]/80 backdrop-blur-md pt-[env(safe-area-inset-top)] mt-4">
           <button onClick={onClose} className="text-[#8e8e93] text-[15px] flex items-center active:opacity-50 transition-opacity w-[60px]">
             <ChevronLeft size={22} className="-ml-1.5" />返回
           </button>
@@ -80,7 +80,7 @@ const DecideView = ({ onClose }: { onClose: () => void }) => {
           <div className="w-[60px]"></div>
       </div>
 
-      <div className="w-full max-w-sm mx-auto px-5 pt-4 pb-20 flex-1 flex flex-col items-center">
+      <div className="w-full max-w-sm mx-auto px-5 pt-4 pb-[calc(2rem+env(safe-area-inset-bottom))] flex-1 flex flex-col items-center">
          {/* Tabs */}
          <div className="flex bg-[#f2f2f7] rounded-[14px] p-1 mb-8 w-full">
             <button className={`flex-1 py-1.5 rounded-[12px] text-[14px] font-medium transition-all ${tab === 'tarot' ? 'bg-white shadow-[0_2px_8px_rgba(0,0,0,0.06)] text-black' : 'text-[#8e8e93]'}`} onClick={() => setTab('tarot')}>塔罗牌</button>
@@ -205,7 +205,7 @@ const DecideView = ({ onClose }: { onClose: () => void }) => {
 
          {/* Result Overlay */}
          {(isDrawing || result !== null) && (
-             <div className="fixed inset-0 z-50 bg-[#fcfbf9]/95 backdrop-blur-xl flex flex-col items-center justify-center px-6">
+             <div className="fixed inset-0 z-50 bg-[#F2F2F7]/95 backdrop-blur-xl flex flex-col items-center justify-center px-6">
                  {isDrawing ? (
                      <motion.div 
                         initial={{ opacity: 0, scale: 0.9 }}

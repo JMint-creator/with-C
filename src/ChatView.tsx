@@ -23,6 +23,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
   const [messages, setMessages] = useIDBState<Message[]>('app_chatMessages', []);
   const [checkIns, setCheckIns] = useIDBState<any[]>('app_checkins', []);
   const [input, setInput] = useState('');
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
@@ -104,15 +105,17 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
     const ignored = readNoReply && Math.random() < 0.05;
     const newMsg: Message = {
       id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
-      sender: 'me',
-      type: 'voice',
-      content: '',
+      sender: "me",
+      type: "voice",
+      content: "",
       audioUrl,
       voiceDuration: duration,
+      replyTo: replyingTo ? (replyingTo.type === "text" ? replyingTo.content : (replyingTo.type === "voice" ? "[语音]" : "[图片/表情]")) : undefined,
       time: getFormatTime(),
       isIgnored: ignored
     };
     setMessages(msgs => [...msgs, newMsg]);
+    setReplyingTo(null);
     if (!ignored) {
       setIsTyping(true);
       setTimeout(() => {
@@ -201,13 +204,15 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
               const ignored = readNoReply && Math.random() < 0.05;
               const newMsg: Message = {
                 id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
-                sender: 'me',
-                type: 'sticker',
+                sender: "me",
+                type: "sticker",
                 content: url,
+                replyTo: replyingTo ? (replyingTo.type === "text" ? replyingTo.content : (replyingTo.type === "voice" ? "[语音]" : "[图片/表情]")) : undefined,
                 time: getFormatTime(),
                 isIgnored: ignored
               };
               setMessages(prev => [...prev, newMsg]);
+              setReplyingTo(null);
               setShowStickerPane(false);
               
               if (!ignored) {
@@ -318,12 +323,14 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
       sender: 'me',
       type,
       content: text,
+      replyTo: replyingTo ? (replyingTo.type === 'text' ? replyingTo.content : (replyingTo.type === 'voice' ? '[语音]' : '[图片/表情]')) : undefined,
       time: getFormatTime(),
       isIgnored: ignored
     };
     
     setMessages([...messages, newMsg]);
     setInput('');
+    setReplyingTo(null);
     
     if (!ignored) {
       simulateReply();
@@ -587,7 +594,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} className="absolute inset-0 overflow-y-auto px-4 pt-[calc(env(safe-area-inset-top)+80px)] pb-[calc(env(safe-area-inset-bottom)+85px)] flex flex-col scrollbar-hide z-10">
+      <div ref={scrollRef} className="absolute inset-0 overflow-y-auto px-4 pt-[calc(env(safe-area-inset-top)+80px)] pb-[calc(env(safe-area-inset-bottom)+120px)] flex flex-col scrollbar-hide z-10">
         {messages.map((msg, i) => {
           const isMe = msg.sender === 'me';
           const avatar = isMe ? (avatar1 || '') : (avatar2 || '');
@@ -662,9 +669,9 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
                   </div>}
                 </div>
               )}
-              <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} max-w-[70%]`}>
+              <div onDoubleClick={() => setReplyingTo(msg)} className={`flex flex-col ${isMe ? "items-end" : "items-start"} max-w-[70%]`}>
                 {msg.replyTo && (
-                  <div className={`text-[12px] px-3 py-1.5 mb-1 rounded-[12px] opacity-70 truncate max-w-full ${isMe ? 'bg-black/10 text-black' : 'bg-white/50 text-black/60'} border border-black/5`}>
+                  <div className={`text-[12px] px-3 py-1.5 mb-1 rounded-[12px] opacity-70 truncate max-w-full ${isMe ? "bg-black/10 text-black" : "bg-white/50 text-black/60"} border border-black/5`}>
                     回复: {msg.replyTo}
                   </div>
                 )}
@@ -853,14 +860,16 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
                  <div key={idx} onClick={() => {
                      const ignored = readNoReply && Math.random() < 0.05;
                      const newMsg: Message = {
-                       id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
-                       sender: 'me',
-                       type: 'sticker',
-                       content: url,
-                       time: getFormatTime(),
-                       isIgnored: ignored
-                     };
-                     setMessages(prev => [...prev, newMsg]);
+                id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
+                sender: "me",
+                type: "sticker",
+                content: url,
+                replyTo: replyingTo ? (replyingTo.type === "text" ? replyingTo.content : (replyingTo.type === "voice" ? "[语音]" : "[图片/表情]")) : undefined,
+                time: getFormatTime(),
+                isIgnored: ignored
+              };
+              setMessages(prev => [...prev, newMsg]);
+              setReplyingTo(null);
                      setShowStickerPane(false);
                      if(!ignored) simulateReply();
                  }} className="aspect-square bg-black/5 rounded-[12px] flex items-center justify-center cursor-pointer active:scale-95 transition-transform overflow-hidden">
@@ -877,7 +886,7 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
       </AnimatePresence>
 
       {/* Input Area */}
-      <div className="absolute bottom-[max(0.5rem,env(safe-area-inset-bottom))] left-3 right-3 flex items-center space-x-2 z-30">
+      <div className="absolute bottom-0 left-0 right-0 px-3 pt-2 w-full flex items-center space-x-2 z-30 bg-transparent" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.5rem)" }}>
         <button 
           className={`w-[42px] h-[42px] rounded-full flex items-center justify-center shrink-0 border border-white/20 text-white shadow-[0_4px_12px_rgba(0,0,0,0.1),inset_0_2px_4px_rgba(255,255,255,0.3)] active:scale-95 transition-all ${showPlusMenu || showStickerPane ? 'rotate-45' : ''}`}
           style={{ backgroundColor: bubbleColor }}

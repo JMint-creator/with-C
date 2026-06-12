@@ -87,11 +87,33 @@ export function useLocalState<T>(key: string, initialValue: T): [T, Dispatch<Set
     }
   });
 
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === key) {
+        try {
+          setState(e.newValue ? JSON.parse(e.newValue) : initialValue);
+        } catch (err) {}
+      }
+    };
+    const handleCustomChange = (e: CustomEvent) => {
+      if (e.detail?.key === key) {
+        setState(e.detail.newValue);
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("localStateChanged", handleCustomChange as EventListener);
+    return () => {
+       window.removeEventListener("storage", handleStorageChange);
+       window.removeEventListener("localStateChanged", handleCustomChange as EventListener);
+    };
+  }, [key, initialValue]);
+
   const setValue = (value: SetStateAction<T>) => {
     try {
       const valueToStore = value instanceof Function ? (value as any)(state) : value;
       setState(valueToStore);
       window.localStorage.setItem(key, JSON.stringify(valueToStore));
+      window.dispatchEvent(new CustomEvent("localStateChanged", { detail: { key, newValue: valueToStore } }));
     } catch (error) {
       console.error(error);
     }

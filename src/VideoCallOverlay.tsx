@@ -131,7 +131,7 @@ export const VideoCallOverlay = () => {
                     )}
                 </div>
 
-                <div className="absolute bottom-10 left-0 right-0 flex justify-center items-center">
+                <div className="absolute bottom-[calc(2.5rem+env(safe-area-inset-bottom))] left-0 right-0 flex justify-center items-center">
                    <button className="w-14 h-14 rounded-full bg-red-500 flex items-center justify-center text-white shadow-[0_4px_20px_rgba(239,68,68,0.4)] active:bg-red-600 transition-colors" onClick={endCall}>
                       <Phone size={26} className="rotate-[135deg]" fill="currentColor" strokeWidth={0}/>
                    </button>

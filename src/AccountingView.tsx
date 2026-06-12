@@ -265,7 +265,7 @@ export function AccountingView({
                  initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
                  transition={{ type: 'spring', damping: 25, stiffness: 200 }}
                  className="bg-white rounded-t-3xl overflow-hidden relative z-10 flex flex-col"
-                 style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+                 style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)' }}
                >
                   <div className="flex justify-between items-center px-6 py-4 border-b border-gray-100">
                      <button onClick={() => setIsAdding(false)} className="text-gray-400"><X size={24} /></button>
