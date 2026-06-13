@@ -5,29 +5,33 @@
   --font-sans: "Inter", "Noto Serif SC", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
 }
 
-html, body, #root {
-  box-sizing: border-box;
-  width: 100vw;
-  height: 100dvh;
+html, body {
   margin: 0;
   padding: 0;
-  overflow: hidden;
-  overscroll-behavior-y: none;
-  background-color: #000;
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
+  overflow: hidden !important;
+  background-color: transparent !important;
+  overscroll-behavior: none !important;
   -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  user-select: none;
 }
 
 #root {
-  background-color: transparent;
-  padding-bottom: env(safe-area-inset-bottom) !important;
+  width: 100%;
+  height: 100dvh;
+  position: relative;
+  overflow: hidden !important;
+  display: flex;
+  flex-direction: column;
 }
 
-.pb-safe { padding-bottom: env(safe-area-inset-bottom) !important; }
-
-.pb-safe-offset-3 {
-  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+.overflow-y-auto, .overflow-x-auto, .overflow-auto {
+  -webkit-overflow-scrolling: touch;
 }
 
-.pt-safe {
-  padding-top: env(safe-area-inset-top);
+input, textarea, select {
+  user-select: auto;
 }

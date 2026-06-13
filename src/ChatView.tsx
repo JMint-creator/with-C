@@ -19,7 +19,16 @@ type Message = {
   isIgnored?: boolean;
 };
 
-export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
+export const ChatView = ({ 
+  onClose, 
+  onOpenSettings, 
+  themeConfig,
+  chatBg: propChatBg,
+  chatAvatar1: propChatAvatar1,
+  chatAvatar2: propChatAvatar2,
+  chatCss: propChatCss,
+  chatFont: propChatFont
+}: any) => {
   const [messages, setMessages] = useIDBState<Message[]>('app_chatMessages', []);
   const [checkIns, setCheckIns] = useIDBState<any[]>('app_checkins', []);
   const [input, setInput] = useState('');
@@ -138,11 +147,17 @@ export const ChatView = ({ onClose, onOpenSettings, themeConfig }: any) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   
   // States from appearance / settings
-  const [chatBg] = useIDBState('app_chatBg', '');
-  const [avatar1] = useIDBState('app_chatAvatar1', '');
-  const [avatar2] = useIDBState('app_chatAvatar2', '');
-  const [chatCss] = useIDBState('app_chatCss', '');
-  const [chatFont] = useIDBState('app_chatFont', '');
+  const [localChatBg] = useIDBState('app_chatBg', '');
+  const [localAvatar1] = useIDBState('app_chatAvatar1', '');
+  const [localAvatar2] = useIDBState('app_chatAvatar2', '');
+  const [localChatCss] = useIDBState('app_chatCss', '');
+  const [localChatFont] = useIDBState('app_chatFont', '');
+
+  const chatBg = propChatBg !== undefined ? propChatBg : localChatBg;
+  const avatar1 = propChatAvatar1 !== undefined ? propChatAvatar1 : localAvatar1;
+  const avatar2 = propChatAvatar2 !== undefined ? propChatAvatar2 : localAvatar2;
+  const chatCss = propChatCss !== undefined ? propChatCss : localChatCss;
+  const chatFont = propChatFont !== undefined ? propChatFont : localChatFont;
   
   const [mockVideo] = useLocalState('app_chatMockVideoCall', true);
   const [chatBubbleStyle] = useLocalState<'glass'|'system'>('app_chatBubbleStyle', 'glass');

@@ -376,12 +376,15 @@ const BackgroundLayer = ({ bg, image, show }: { bg: string, image: string, show:
       left: 0,
       right: 0,
       bottom: 0,
-      
+      width: '100vw',
+      height: 'calc(100dvh + env(safe-area-inset-bottom) + 120px)',
       backgroundColor: bg,
       backgroundImage: image !== 'none' ? image : 'none',
       backgroundSize: 'cover',
       backgroundPosition: 'center',
-      zIndex: -10,
+      backgroundRepeat: 'no-repeat',
+      zIndex: -11,
+      pointerEvents: 'none',
     }} />
   );
 };
@@ -658,16 +661,30 @@ export default function App() {
     let bgColor = currentThemeConfig.bg || '#F2F2F7';
     let bgImage = 'none';
     
-    if (view === 'home' && wallpaper) bgImage = `url(${wallpaper})`;
-    else if (view === 'chat' && chatBg) bgImage = `url(${chatBg})`;
-    else if (view === 'wishlist' && wishlistBg) bgImage = `url(${wishlistBg})`;
-    else if (view === 'check_in' && checkinsBg) bgImage = `url(${checkinsBg})`;
-    else if (view === 'moments' && momentsBg) bgImage = `url(${momentsBg})`;
+    if (view === 'home' && wallpaper) {
+      bgImage = `url(${wallpaper})`;
+    } else if (view === 'chat' && chatBg) {
+      bgImage = `url(${chatBg})`;
+    } else if (view === 'wishlist' && wishlistBg) {
+      bgImage = `url(${wishlistBg})`;
+    } else if (view === 'check_in' && checkinsBg) {
+      bgImage = `url(${checkinsBg})`;
+    } else if (view === 'moments' && momentsBg) {
+      bgImage = `url(${momentsBg})`;
+    } else if (view === 'moments') {
+      bgColor = momentsStyle === 'weibo' ? '#f2f2f2' : '#ffffff';
+    }
     
     // For iOS settings style pages, use the iOS grey background. For other pages use theme color
     if (['appearance', 'library', 'data', 'chat_settings', 'music_manager', 'decide'].includes(view)) {
        bgColor = '#F2F2F7';
+       bgImage = 'none';
     }
+
+    // Apply directly to body and html elements as transparent to maintain PWA zero-flicker behavior
+    document.body.style.backgroundColor = 'transparent';
+    document.body.style.backgroundImage = 'none';
+    document.documentElement.style.backgroundColor = 'transparent';
 
     let metaThemeColor = document.querySelector('meta[name="theme-color"]');
     if (!metaThemeColor) {
@@ -676,7 +693,16 @@ export default function App() {
       document.head.appendChild(metaThemeColor);
     }
     metaThemeColor.setAttribute('content', bgColor);
-  }, [currentThemeConfig.bg, view]);
+  }, [
+    currentThemeConfig.bg, 
+    view, 
+    wallpaper, 
+    chatBg, 
+    wishlistBg, 
+    checkinsBg, 
+    momentsBg, 
+    momentsStyle
+  ]);
 
   const [showAddMusicModal, setShowAddMusicModal] = useState(false);
   const [addMusicName, setAddMusicName] = useState('');
@@ -1812,27 +1838,27 @@ export default function App() {
 
   let currentBgImage = 'none';
   let currentBgColor = currentThemeConfig.bg || '#F2F2F7';
-  let showBackgroundLayer = false;
 
   if (view === 'home' && wallpaper) {
     currentBgImage = `url(${wallpaper})`;
-    showBackgroundLayer = true;
   } else if (view === 'chat' && chatBg) {
     currentBgImage = `url(${chatBg})`;
-    showBackgroundLayer = true;
   } else if (view === 'wishlist' && wishlistBg) {
     currentBgImage = `url(${wishlistBg})`;
-    showBackgroundLayer = true;
   } else if (view === 'check_in' && checkinsBg) {
     currentBgImage = `url(${checkinsBg})`;
-    showBackgroundLayer = true;
   } else if (view === 'moments') {
     currentBgColor = momentsStyle === 'weibo' ? '#f2f2f2' : '#ffffff';
+    if (momentsBg) {
+      currentBgImage = `url(${momentsBg})`;
+    }
+  } else if (['appearance', 'library', 'data', 'chat_settings', 'music_manager', 'decide'].includes(view)) {
+    currentBgColor = '#F2F2F7';
     currentBgImage = 'none';
-    showBackgroundLayer = true;
-  } else if (['home', 'chat', 'wishlist', 'check_in', 'accounting'].includes(view)) {
-    showBackgroundLayer = true; // Use background layer with theme color fallback
   }
+
+  const showBackgroundLayer = true;
+
 
   return (
     <>
@@ -1843,7 +1869,16 @@ export default function App() {
       />
       
       <div style={{ position: "absolute", inset: 0, zIndex: view === "chat" ? 40 : -10, opacity: view === "chat" ? 1 : 0, pointerEvents: view === "chat" ? "auto" : "none", visibility: view === "chat" ? "visible" : "hidden" }}>
-        <ChatView onClose={() => setView("home")} onOpenSettings={() => setView("chat_settings")} themeConfig={currentThemeConfig} />
+        <ChatView 
+          onClose={() => setView("home")} 
+          onOpenSettings={() => setView("chat_settings")} 
+          themeConfig={currentThemeConfig} 
+          chatAvatar1={chatAvatar1}
+          chatAvatar2={chatAvatar2}
+          chatBg={chatBg}
+          chatCss={chatCss}
+          chatFont={chatFont}
+        />
       </div>
       {view === "chat" && <VideoCallOverlay />}
       {view !== "chat" && renderContent()}
