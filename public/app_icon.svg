@@ -1,0 +1,148 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Beautiful gradient background -->
+    <linearGradient id="lavenderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E8DFFF" />
+      <stop offset="50%" stop-color="#D5C5E6" />
+      <stop offset="100%" stop-color="#BCAAC8" />
+    </linearGradient>
+    
+    <!-- Shadow for swallows and envelope -->
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="3" dy="12" stdDeviation="15" flood-color="#5B457D" flood-opacity="0.25" />
+    </filter>
+  </defs>
+
+  <!-- Base lavender card background with beautiful rounded iOS corners -->
+  <rect width="512" height="512" rx="108" fill="url(#lavenderGrad)" />
+  
+  <!-- Subtly textured background grid/pattern or birdcage outline -->
+  <path d="M 256,60 C 130,60 110,180 110,320 L 110,420 L 402,420 L 402,320 C 402,180 382,60 256,60 Z" fill="none" stroke="#FFFFFF" stroke-width="6" opacity="0.45" />
+  <path d="M 256,60 L 256,420" fill="none" stroke="#FFFFFF" stroke-width="3" opacity="0.3" />
+  <path d="M 183,100 C 183,100 220,180 220,320 L 220,420" fill="none" stroke="#FFFFFF" stroke-width="3" opacity="0.3" />
+  <path d="M 329,100 C 329,100 292,180 292,320 L 292,420" fill="none" stroke="#FFFFFF" stroke-width="3" opacity="0.3" />
+  <path d="M 110,240 Q 256,220 402,240" fill="none" stroke="#FFFFFF" stroke-width="3" opacity="0.3" />
+  <path d="M 110,320 Q 256,300 402,320" fill="none" stroke="#FFFFFF" stroke-width="3" opacity="0.3" />
+
+  <!-- Flowing Pink Ribbons cascading around -->
+  <path d="M 50,220 Q 180,100 280,160 T 480,260 T 360,450" fill="none" stroke="#FFA3D7" stroke-width="12" stroke-linecap="round" opacity="0.6" />
+  <path d="M 120,480 Q 80,320 220,340 T 380,180" fill="none" stroke="#FFA3D7" stroke-width="8" stroke-linecap="round" opacity="0.4" />
+
+  <!-- Open Pink Envelope with Bow tied on it -->
+  <g transform="translate(256, 340) rotate(-8)" filter="url(#softShadow)">
+    <!-- Envelope backing -->
+    <rect x="-100" y="-70" width="200" height="140" rx="12" fill="#FFEBF2" stroke="#ECA9C3" stroke-width="4" />
+    <!-- Opened flap pointing down -->
+    <path d="M -100,-70 L 0,-15 L 100,-70" fill="#FFDFEB" stroke="#ECA9C3" stroke-width="4" />
+    <path d="M -100,70 L -20,-10 M 100,70 L 20,-10" stroke="#ECA9C3" stroke-width="4" stroke-linecap="round" />
+    
+    <!-- Beautiful Ribbon tied in a bowtie centered on envelope -->
+    <path d="M -110,12 L 110,5" fill="none" stroke="#B08EF5" stroke-width="7" />
+    <!-- Ribbon bow loops -->
+    <path d="M 0,8 C -30,-25 -45,-15 -15,8 Z" fill="#9D6EFF" />
+    <path d="M 0,8 C 30,-25 45,-15 15,8 Z" fill="#9D6EFF" />
+    <!-- Ribbon tails -->
+    <path d="M -5,12 C -20,35 -40,45 -35,60" fill="none" stroke="#9D6EFF" stroke-width="5" stroke-linecap="round" />
+    <path d="M 5,12 C 20,35 40,45 35,60" fill="none" stroke="#9D6EFF" stroke-width="5" stroke-linecap="round" />
+    <!-- Bow center knot -->
+    <rect x="-10" y="0" width="20" height="16" rx="4" fill="#7C3AED" />
+  </g>
+
+  <!-- Large Center Swallow (soaring from bottom-left to top-right) -->
+  <g transform="translate(240, 210) rotate(-12)" filter="url(#softShadow)">
+    <!-- Main Body and Head -->
+    <path d="M -70,-15 C -45,-15 5,-5 45,5 C 65,10 80,18 95,30 C 70,30 30,22 -15,12 C -45,5 -60,0 -70,-15 Z" fill="#FFFFFF" />
+    <!-- Left Wing (pointing upwards-leftwards, elegant) -->
+    <path d="M -10,3 C -55,-45 -125,-80 -175,-95 C -135,-60 -80,-25 -30,-5 Z" fill="#EDF3FF" stroke="#DFE7F5" stroke-width="2" />
+    <!-- Right Wing (pointing downwards-rightwards) -->
+    <path d="M 20,8 C 65,45 125,75 175,95 C 135,65 85,30 35,10 Z" fill="#FFFFFF" stroke="#DFE7F5" stroke-width="2" />
+    <!-- Distinctive Black Cap/Crown of Swallow -->
+    <path d="M 25,2 C 40,5 55,10 70,16 C 85,25 70,27 55,22 C 40,14 30,8 25,2 Z" fill="#1E293B" />
+    <!-- Red Beak -->
+    <path d="M 70,16 L 93,25 L 68,21 Z" fill="#FF4747" />
+    <!-- Tucked Red Feet under body -->
+    <path d="M -20,15 L -25,26" fill="none" stroke="#FF4747" stroke-width="4" stroke-linecap="round" />
+    <path d="M -12,13 L -16,23" fill="none" stroke="#FF4747" stroke-width="4" stroke-linecap="round" />
+  </g>
+
+  <!-- Smaller Swallow in upper-right background -->
+  <g transform="translate(370, 120) scale(0.55) rotate(15)" opacity="0.9" filter="url(#softShadow)">
+    <path d="M -70,-15 C -45,-15 5,-5 45,5 C 65,10 80,18 95,30 C 70,30 30,22 -15,12 C -45,5 -60,0 -70,-15 Z" fill="#FFFFFF" />
+    <path d="M -10,3 C -55,-45 -125,-80 -175,-95 C -135,-60 -80,-25 -30,-5 Z" fill="#EDF3FF" stroke="#DFE7F5" stroke-width="2" />
+    <path d="M 20,8 C 65,45 125,75 175,95 C 135,65 85,30 35,10 Z" fill="#FFFFFF" stroke="#DFE7F5" stroke-width="2" />
+    <path d="M 25,2 C 40,5 55,10 70,16 C 85,25 70,27 55,22 Z" fill="#1E293B" />
+    <path d="M 70,16 L 93,25 L 68,21 Z" fill="#FF4747" />
+  </g>
+
+  <!-- Third swallowing bird in lower-left flight, holding ribbon -->
+  <g transform="translate(150, 360) scale(0.55) rotate(-35)" opacity="0.9" filter="url(#softShadow)">
+    <path d="M -70,-15 C -45,-15 5,-5 45,5 C 65,10 80,18 95,30 C 70,30 30,22 -15,12 C -45,5 -60,0 -70,-15 Z" fill="#FFFFFF" />
+    <path d="M -10,3 C -55,-45 -125,-80 -175,-95 C -135,-60 -80,-25 -30,-5 Z" fill="#EDF3FF" stroke="#DFE7F5" stroke-width="2" />
+    <path d="M 20,8 C 65,45 125,75 175,95 C 135,65 85,30 35,10 Z" fill="#FFFFFF" stroke="#DFE7F5" stroke-width="2" />
+    <path d="M 25,2 C 40,5 55,10 70,16 C 85,25 70,27 55,22 Z" fill="#1E293B" />
+    <path d="M 70,16 L 93,25 L 68,21 Z" fill="#FF4747" />
+  </g>
+
+  <!-- Plumeria/Frangipani Floral Arrangement on the bottom left -->
+  <g transform="translate(100, 390)">
+    <!-- Flower 1 (Large) -->
+    <g transform="scale(1.2)">
+      <!-- Petals (White with soft pink gradients on edges and golden-yellow core) -->
+      <path d="M 0,0 C -15,-25 -35,-20 -30,-5 Q -25,10 0,0" fill="#FFFFFF" />
+      <path d="M 0,0 C 15,-25 35,-20 30,-5 Q 25,10 0,0" fill="#FFFFFF" />
+      <path d="M 0,0 C 25,15 20,35 5,30 Q -10,25 0,0" fill="#FFFFFF" />
+      <path d="M 0,0 C -25,15 -20,35 -5,30 Q 10,25 0,0" fill="#FFFFFF" />
+      <path d="M 0,0 C -30,-5 -35,-30 -10,-25 Q 5,-20 0,0" fill="#FFFFFF" />
+      <!-- Golden Yellow Center Glow -->
+      <circle cx="0" cy="0" r="16" fill="#FFD000" opacity="0.9" />
+      <circle cx="0" cy="0" r="8" fill="#FF8800" opacity="0.9" />
+    </g>
+
+    <!-- Flower 2 (Medium left) -->
+    <g transform="translate(-40, -10) scale(0.85) rotate(25)">
+      <path d="M 0,0 C -15,-25 -35,-20 -30,-5 Q -25,10 0,0" fill="#FFFFFF" />
+      <path d="M 0,0 C 15,-25 35,-20 30,-5 Q 25,10 0,0" fill="#FFFFFF" />
+      <path d="M 0,0 C 25,15 20,35 5,30 Q -10,25 0,0" fill="#FFFFFF" />
+      <path d="M 0,0 C -25,15 -20,35 -5,30 Q 10,25 0,0" fill="#FFFFFF" />
+      <path d="M 0,0 C -30,-5 -35,-30 -10,-25 Q 5,-20 0,0" fill="#FFFFFF" />
+      <circle cx="0" cy="0" r="14" fill="#FFD000" opacity="0.9" />
+      <circle cx="0" cy="0" r="7" fill="#FF8800" opacity="0.9" />
+    </g>
+
+    <!-- Flower 3 (Medium right) -->
+    <g transform="translate(35, 20) scale(0.75) rotate(-35)">
+      <path d="M 0,0 C -15,-25 -35,-20 -30,-5 Q -25,10 0,0" fill="#FFFFFF" />
+      <path d="M 0,0 C 15,-25 35,-20 30,-5 Q 25,10 0,0" fill="#FFFFFF" />
+      <path d="M 0,0 C 25,15 20,35 5,30 Q -10,25 0,0" fill="#FFFFFF" />
+      <path d="M 0,0 C -25,15 -20,35 -5,30 Q 10,25 0,0" fill="#FFFFFF" />
+      <path d="M 0,0 C -30,-5 -35,-30 -10,-25 Q 5,-20 0,0" fill="#FFFFFF" />
+      <circle cx="0" cy="0" r="14" fill="#FFD000" opacity="0.9" />
+      <circle cx="0" cy="0" r="7" fill="#FF8800" opacity="0.9" />
+    </g>
+    
+    <!-- Fresh Green Leaves -->
+    <path d="M -70,10 Q -90,40 -60,60 T -40,20 Z" fill="#60A5FA" opacity="0.25" />
+    <path d="M -70,10 Q -90,40 -60,60 T -40,20 Z" fill="none" stroke="#2D6A4F" stroke-width="2" opacity="0.4" />
+  </g>
+
+  <!-- Plumeria Arrangement on middle right -->
+  <g transform="translate(400, 330)">
+    <g transform="scale(1.0) rotate(55)">
+      <path d="M 0,0 C -15,-25 -35,-20 -30,-5 Q -25,10 0,0" fill="#FFFFFF" />
+      <path d="M 0,0 C 15,-25 35,-20 30,-5 Q 25,10 0,0" fill="#FFFFFF" />
+      <path d="M 0,0 C 25,15 20,35 5,30 Q -10,25 0,0" fill="#FFFFFF" />
+      <path d="M 0,0 C -25,15 -20,35 -5,30 Q 10,25 0,0" fill="#FFFFFF" />
+      <path d="M 0,0 C -30,-5 -35,-30 -10,-25 Q 5,-20 0,0" fill="#FFFFFF" />
+      <circle cx="0" cy="0" r="15" fill="#FFD000" />
+      <circle cx="0" cy="0" r="7" fill="#FF8800" />
+    </g>
+    <g transform="translate(-25, -35) scale(0.7) rotate(-15)">
+      <path d="M 0,0 C -15,-25 -35,-20 -30,-5 Q -25,10 0,0" fill="#FFFFFF" />
+      <path d="M 0,0 C 15,-25 35,-20 30,-5 Q 25,10 0,0" fill="#FFFFFF" />
+      <path d="M 0,0 C 25,15 20,35 5,30 Q -10,25 0,0" fill="#FFFFFF" />
+      <path d="M 0,0 C -25,15 -20,35 -5,30 Q 10,25 0,0" fill="#FFFFFF" />
+      <path d="M 0,0 C -30,-5 -35,-30 -10,-25 Q 5,-20 0,0" fill="#FFFFFF" />
+      <circle cx="0" cy="0" r="14" fill="#FFD000" />
+    </g>
+  </g>
+</svg>

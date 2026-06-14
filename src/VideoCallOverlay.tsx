@@ -14,12 +14,13 @@ export const VideoCallOverlay = () => {
   const [charId] = useLocalState('app_charId', '查理苏');
 
   const endCall = () => {
+    const currentDuration = callDuration;
     setVideoCallState('none');
     setMessages(prev => [...prev, {
       id: Date.now().toString(),
       sender: 'me',
       type: 'call',
-      content: `通话时长 ${Math.floor(callDuration / 60)}:${(callDuration % 60).toString().padStart(2, '0')}`,
+      content: `通话时长 ${Math.floor(currentDuration / 60)}:${(currentDuration % 60).toString().padStart(2, '0')}`,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }]);
   };
@@ -155,10 +156,10 @@ export const VideoCallOverlay = () => {
              initial={{ opacity: 0, y: -20, scale: 0.9 }}
              animate={{ opacity: 1, y: 0, scale: 1 }}
              exit={{ opacity: 0, scale: 0.9 }}
-             className="fixed top-20 right-4 z-50 cursor-pointer shadow-2xl rounded-[100px]"
+             className="fixed top-20 right-4 z-50 cursor-pointer shadow-2xl rounded-[100px] touch-none"
            >
              <div 
-                className="bg-[#191924]/95 backdrop-blur-3xl border border-white/10 pr-2 pl-1 py-1 flex items-center w-[160px] relative rounded-[100px]"
+                className="bg-[#1a1b26] border border-white/10 pr-2 pl-1 py-1 flex items-center w-[160px] relative rounded-[100px]"
                 onClick={() => {
                   if (!isDragging.current) {
                     setIsMinimized(false);

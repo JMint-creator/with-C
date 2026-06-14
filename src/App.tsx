@@ -48,6 +48,7 @@ import { TodoView } from './TodoView';
 import { MailboxView } from './MailboxView';
 import { compressImage, useIDBState } from './utils';
 import { VideoCallOverlay } from './VideoCallOverlay';
+import { TodoScheduler } from './TodoScheduler';
 
 const apps = [
   { name: '聊天', icon: MessageCircle },
@@ -376,14 +377,12 @@ const BackgroundLayer = ({ bg, image, show }: { bg: string, image: string, show:
       left: 0,
       right: 0,
       bottom: 0,
-      width: '100vw',
-      height: 'calc(100dvh + env(safe-area-inset-bottom) + 120px)',
       backgroundColor: bg,
       backgroundImage: image !== 'none' ? image : 'none',
       backgroundSize: 'cover',
       backgroundPosition: 'center',
       backgroundRepeat: 'no-repeat',
-      zIndex: -11,
+      zIndex: -1,
       pointerEvents: 'none',
     }} />
   );
@@ -391,11 +390,11 @@ const BackgroundLayer = ({ bg, image, show }: { bg: string, image: string, show:
 
 export default function App() {
   const [view, setView] = useState<'home' | 'appearance' | 'data' | 'library' | 'decide' | 'chat' | 'chat_settings' | 'music_manager' | 'moments' | 'wishlist' | 'check_in' | 'accounting' | 'todo' | 'mailbox'>('home');
-  const [appearanceTab, setAppearanceTab] = useState<'global' | 'chat' | 'component' | 'wallpaper' | 'other'>('global');
+  const [appearanceTab, setAppearanceTab] = useState<'global' | 'chat' | 'component' | 'wallpaper'>('global');
 
   // Library States
   const [librarySearchQuery, setLibrarySearchQuery] = useState('');
-  const [replySubTab, setReplySubTab] = useState<'cards' | 'emoji' | 'stickers' | 'nudge'>('cards');
+  const [replySubTab, setReplySubTab] = useState<'cards' | 'emoji' | 'stickers' | 'nudge' | 'audio'>('cards');
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
   const [importModalData, setImportModalData] = useState<{name: string, data: any} | null>(null);
   const [confirmModal, setConfirmModal] = useState<{title: string, msg: string, onConfirm: () => void} | null>(null);
@@ -412,6 +411,7 @@ export default function App() {
   ]);
   const [emojis, setEmojis] = useLocalState<string[]>('app_emojis', ['😀', '😂', '🥰', '👍', '🙏']);
   const [stickers, setStickers] = useIDBState<string[]>('app_stickers', []);
+  const [voiceCards, setVoiceCards] = useIDBState<Array<{ id: string, name: string, url: string, duration: number }>>('app_voiceCards', []);
   const [nudges, setNudges] = useLocalState<string[]>('app_nudges', ['拍了拍我的 脑袋', '拍了拍我的 肩膀']);
 
   useEffect(() => {
@@ -449,6 +449,7 @@ export default function App() {
   // Social Settings
   const [myNickname, setMyNickname] = useLocalState('app_myNickname', '我');
   const [mjNickname, setMjNickname] = useLocalState('app_mjNickname', '梦角');
+  const [keepaliveIcon, setKeepaliveIcon] = useIDBState('app_keepalive_icon', '');
   const [momentsBg, setMomentsBg] = useIDBState('app_moments_bg', '');
   const [wishlistBg, setWishlistBg] = useIDBState('app_wishlist_bg', '');
   const [checkinsBg, setCheckinsBg] = useIDBState('app_checkins_bg', '');
@@ -609,6 +610,74 @@ export default function App() {
   const cssInputRef = useRef<HTMLInputElement>(null);
   const fontInputRef = useRef<HTMLInputElement>(null);
   const stickerInputRef = useRef<HTMLInputElement>(null);
+  const audioInputRef = useRef<HTMLInputElement>(null);
+  const cardGroupImageInputRef = useRef<HTMLInputElement>(null);
+  const keepaliveIconInputRef = useRef<HTMLInputElement>(null);
+
+  const handleCardGroupImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || !activeGroupId) return;
+    
+    const newGroups = [...cardGroups];
+    const gIdx = newGroups.findIndex(g => g.id === activeGroupId);
+    if (gIdx === -1) return;
+
+    showToast('正在处理图片...');
+    let processedCount = 0;
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (file.type.startsWith('image/')) {
+        try {
+          const dataUrl = await compressImage(file);
+          newGroups[gIdx].cards.push(dataUrl);
+          processedCount++;
+        } catch (err) {
+          console.error(err);
+        }
+      }
+    }
+    
+    if (processedCount > 0) {
+      setCardGroups(newGroups);
+      showToast(`成功导入 ${processedCount} 张图片/表情包字卡！`);
+    } else {
+      showToast('未选择有效的图片文件');
+    }
+    e.target.value = ''; // reset
+  };
+
+  const handleKeepaliveIconChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      if (file.type.startsWith('image/')) {
+          try {
+              const dataUrl = await compressImage(file);
+              setKeepaliveIcon(dataUrl);
+              window.dispatchEvent(new CustomEvent('keepalive_icon_changed', { detail: dataUrl }));
+              showToast('锁屏与灵动岛小图标已设置');
+          } catch (err) {
+              console.error(err);
+          }
+      }
+    }
+    e.target.value = ''; // reset
+  };
+
+  const handleKeepaliveIconClick = () => {
+    if (keepaliveIcon) {
+      setConfirmModal({
+        title: "管理锁屏图标",
+        msg: "是否清除已上传的锁屏/灵动岛封面图，恢复默认使用梦角头像作为封面？",
+        onConfirm: () => {
+          setKeepaliveIcon('');
+          window.dispatchEvent(new CustomEvent('keepalive_icon_changed', { detail: '' }));
+          showToast('已恢复为默认梦角头像');
+        }
+      });
+    } else {
+      keepaliveIconInputRef.current?.click();
+    }
+  };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, setter: (val: string) => void) => {
     if (e.target.files && e.target.files[0]) {
@@ -642,6 +711,48 @@ export default function App() {
       reader.readAsText(e.target.files[0]);
     }
     e.target.value = '';
+  }
+
+  const handleAudioUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    const file = files[0];
+    if (!file) return;
+
+    showToast('正在处理音频...');
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      const audio = new Audio();
+      audio.src = dataUrl;
+      audio.onloadedmetadata = () => {
+        const duration = Math.round(audio.duration) || 1;
+        setVoiceCards(prev => {
+          const newVoiceCards = [...(prev || []), {
+            id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
+            name: file.name.substring(0, file.name.lastIndexOf('.')) || file.name,
+            url: dataUrl,
+            duration: duration
+          }];
+          return newVoiceCards;
+        });
+        showToast('语音导入成功！');
+      };
+      audio.onerror = () => {
+        setVoiceCards(prev => {
+          const newVoiceCards = [...(prev || []), {
+            id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
+            name: file.name.substring(0, file.name.lastIndexOf('.')) || file.name,
+            url: dataUrl,
+            duration: 3
+          }];
+          return newVoiceCards;
+        });
+        showToast('语音导入成功 (默认3秒)');
+      };
+    };
+    reader.readAsDataURL(file);
+    e.target.value = ''; // Reset
   }
 
   const currentThemeConfig = colorThemes[theme];
@@ -681,10 +792,20 @@ export default function App() {
        bgImage = 'none';
     }
 
-    // Apply directly to body and html elements as transparent to maintain PWA zero-flicker behavior
-    document.body.style.backgroundColor = 'transparent';
-    document.body.style.backgroundImage = 'none';
-    document.documentElement.style.backgroundColor = 'transparent';
+    // Apply directly to body and html elements to match current screen color and prevent gaps
+    document.body.style.backgroundColor = bgColor;
+    document.body.style.backgroundImage = bgImage !== 'none' ? bgImage : 'none';
+    document.body.style.backgroundSize = 'cover';
+    document.body.style.backgroundPosition = 'center';
+    document.body.style.backgroundRepeat = 'no-repeat';
+    document.body.style.backgroundAttachment = 'fixed';
+
+    document.documentElement.style.backgroundColor = bgColor;
+    document.documentElement.style.backgroundImage = bgImage !== 'none' ? bgImage : 'none';
+    document.documentElement.style.backgroundSize = 'cover';
+    document.documentElement.style.backgroundPosition = 'center';
+    document.documentElement.style.backgroundRepeat = 'no-repeat';
+    document.documentElement.style.backgroundAttachment = 'fixed';
 
     let metaThemeColor = document.querySelector('meta[name="theme-color"]');
     if (!metaThemeColor) {
@@ -916,30 +1037,55 @@ export default function App() {
 
   if (view === 'library') {
     return (
-      <div className="absolute inset-0 flex flex-col overflow-x-hidden overflow-y-auto text-[11px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif', backgroundColor: '#F2F2F7' }}>
+      <div className="absolute inset-0 bg-[#FAFAFA] flex flex-col overflow-x-hidden overflow-y-auto text-[13px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
 
         
         
         {/* Header */}
         <div 
-          className="w-full flex items-center justify-between px-3 pb-3 bg-white/30 sticky top-0 z-10 border-b border-[#c6c6c8]/20 shadow-[0_1px_3px_rgba(0,0,0,0.02)]"
-          style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))' }}
+          className="w-full flex items-center justify-between px-4 pb-3 bg-[#FAFAFA]/80 sticky top-0 z-30 border-b border-[#E5E5EA] backdrop-blur-md"
+          style={{ paddingTop: 'calc(1rem + env(safe-area-inset-top))' }}
         >
-          <button onClick={() => setView('home')} className="text-[#007AFF] text-[14px] flex items-center active:opacity-50 transition-opacity w-[60px]">
-            <ChevronLeft size={24} className="-ml-1.5" />返回
+          <button onClick={() => setView('home')} className="text-[#333] flex items-center active:opacity-50 transition-opacity w-[60px]">
+            <ChevronLeft size={24} className="-ml-1.5" />
           </button>
           
-          <span className="text-[14px] font-semibold text-black">字卡库</span>
+          <span className="text-[16px] font-semibold tracking-tight text-[#111]">字卡库</span>
           <div className="w-[60px]"></div>
         </div>
 
-        <div className="flex-1 overflow-y-auto pb-12 w-full max-w-md mx-auto mt-2">
+        {/* Categories Tabs */}
+        <div className="w-full bg-[#FAFAFA]/90 sticky top-[53px] z-20 border-b border-[#F2F2F7] backdrop-blur-md">
+          <div className="w-full max-w-2xl mx-auto flex px-4 space-x-6 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] pt-2 pb-0">
+             {[
+               { id: 'cards', name: '主字卡' },
+               { id: 'emoji', name: 'Emoji' },
+               { id: 'stickers', name: '表情库' },
+               { id: 'nudge', name: '拍一拍' },
+               { id: 'audio', name: '语音' }
+             ].map((tab, idx) => (
+                <button 
+                  key={`${tab.id}-${idx}`}
+                  onClick={() => setReplySubTab(tab.id as any)}
+                  className={`pb-3 text-[13.5px] font-semibold transition-colors relative whitespace-nowrap ${replySubTab === tab.id ? 'text-black' : 'text-[#8e8e93]'}`}
+                >
+                  {tab.name}
+                  {replySubTab === tab.id && (
+                    <div className="absolute bottom-[-1px] left-0 right-0 h-[2px] rounded-t-full bg-black/80" />
+                  )}
+                </button>
+             ))}
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto pb-12 w-full max-w-2xl mx-auto px-4 mt-4">
              <div>
-               <div className="flex space-x-1 px-4 mt-2 font-medium text-[12px] border-b border-[#c6c6c8]/30">
-                   <button className={`px-3 py-2 ${replySubTab === 'cards' ? 'border-b-2 border-[#007AFF] text-[#007AFF]' : 'text-[#8e8e93]'}`} onClick={() => setReplySubTab('cards')}>主字卡</button>
-                   <button className={`px-3 py-2 ${replySubTab === 'emoji' ? 'border-b-2 border-[#007AFF] text-[#007AFF]' : 'text-[#8e8e93]'}`} onClick={() => setReplySubTab('emoji')}>Emoji</button>
-                   <button className={`px-3 py-2 ${replySubTab === 'stickers' ? 'border-b-2 border-[#007AFF] text-[#007AFF]' : 'text-[#8e8e93]'}`} onClick={() => setReplySubTab('stickers')}>表情库</button>
-                   <button className={`px-3 py-2 ${replySubTab === 'nudge' ? 'border-b-2 border-[#007AFF] text-[#007AFF]' : 'text-[#8e8e93]'}`} onClick={() => setReplySubTab('nudge')}>拍一拍</button>
+               <div className="hidden">
+                   <button className={`px-3 py-2 shrink-0 ${replySubTab === 'cards' ? 'border-b-2 border-[#007AFF] text-[#007AFF]' : 'text-[#8e8e93]'}`} onClick={() => setReplySubTab('cards')}>主字卡</button>
+                   <button className={`px-3 py-2 shrink-0 ${replySubTab === 'emoji' ? 'border-b-2 border-[#007AFF] text-[#007AFF]' : 'text-[#8e8e93]'}`} onClick={() => setReplySubTab('emoji')}>Emoji</button>
+                   <button className={`px-3 py-2 shrink-0 ${replySubTab === 'stickers' ? 'border-b-2 border-[#007AFF] text-[#007AFF]' : 'text-[#8e8e93]'}`} onClick={() => setReplySubTab('stickers')}>表情库</button>
+                   <button className={`px-3 py-2 shrink-0 ${replySubTab === 'nudge' ? 'border-b-2 border-[#007AFF] text-[#007AFF]' : 'text-[#8e8e93]'}`} onClick={() => setReplySubTab('nudge')}>拍一拍</button>
+                   <button className={`px-3 py-2 shrink-0 ${replySubTab === 'audio' ? 'border-b-2 border-[#007AFF] text-[#007AFF]' : 'text-[#8e8e93]'}`} onClick={() => setReplySubTab('audio')}>语音</button>
                </div>
 
                {replySubTab === 'cards' && (
@@ -970,8 +1116,16 @@ export default function App() {
                                         <div key={`${gIdx}-${cIdx}`} className="flex justify-between items-center bg-white p-2.5 rounded-[10px] shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
                                             <div className="flex flex-col flex-1 pb-1">
                                                 <div className="text-[10px] text-gray-400 mb-1">{group.name}</div>
+                                                {(card.startsWith('data:image/') || /^https?:\/\/.*\.(png|jpg|jpeg|gif|webp|svg)/i.test(card)) && (
+                                                    <div className="flex items-center gap-2 flex-1 min-w-0 mb-1">
+                                                        <div className="w-12 h-12 rounded-[6px] overflow-hidden bg-gray-50 border border-gray-100 shrink-0 flex items-center justify-center">
+                                                            <img src={card} alt="" className="w-full h-full object-contain" />
+                                                        </div>
+                                                        <span className="text-[10px] text-gray-400 font-mono truncate flex-1">图片/表情包/字卡</span>
+                                                    </div>
+                                                )}
                                                 <textarea 
-                                                    className="text-[11px] bg-transparent outline-none flex-1 text-[#333] resize-none" 
+                                                    className={`text-[11px] bg-transparent outline-none flex-1 text-[#333] resize-none ${(card.startsWith('data:image/') || /^https?:\/\/.*\.(png|jpg|jpeg|gif|webp|svg)/i.test(card)) ? 'hidden' : ''}`} 
                                                     rows={card.length > 20 ? 2 : 1}
                                                     value={card} 
                                                     onChange={(e) => {
@@ -990,8 +1144,8 @@ export default function App() {
                                     ))}
                             </div>
                         ) : (
-                        <div className="mt-4 px-4 space-y-4 pb-8">
-                            <div className="flex justify-between items-center bg-white p-3 rounded-[10px] shadow-[0_1px_2px_rgba(0,0,0,0.05)] cursor-pointer active:bg-gray-50 transition-colors" onClick={() => {
+                        <div className="mt-5 space-y-5 pb-8 font-sans">
+                            <div className="flex justify-between items-center bg-white p-4.5 rounded-[20px] shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-[#F2F2F7] cursor-pointer active:bg-gray-50 transition-colors" onClick={() => {
                                 const input = document.createElement('input');
                                 input.type = 'file';
                                 input.accept = '.js,.json,text/plain';
@@ -1024,15 +1178,15 @@ export default function App() {
                                 };
                                 input.click();
                             }}>
-                                <span className="text-[12px] font-medium text-[#333]">批量导入 (来自 .js/.json 文件)</span>
-                                <Download size={20} className="text-[#007AFF]" />
+                                <span className="text-[13.5px] font-semibold text-black">批量导入 (来自 .js/.json 文件)</span>
+                                <Download size={18} className="text-black/85" />
                             </div>
                             
-                            <div className="space-y-3">
+                            <div className="bg-white rounded-[20px] shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-[#F2F2F7] divide-y divide-[#F2F2F7] overflow-hidden">
                                 {cardGroups.filter(g => !librarySearchQuery || g.name.toLowerCase().includes(librarySearchQuery.toLowerCase()) || g.cards.some((c: string) => c.toLowerCase().includes(librarySearchQuery.toLowerCase()))).map((group, groupIdx) => (
-                                    <div key={`${group.id}-${groupIdx}`} className="bg-white rounded-[10px] shadow-[0_1px_2px_rgba(0,0,0,0.05)] p-3 flex justify-between items-center cursor-pointer active:bg-gray-50 transition-colors" onClick={() => setActiveGroupId(group.id)}>
-                                        <div className="flex-1">
-                                            <div className="font-semibold text-[#000] text-[12px]">{group.name}</div>
+                                    <div key={`${group.id}-${groupIdx}`} className="p-4 flex justify-between items-center cursor-pointer active:bg-[#FAFAFA] transition-colors" onClick={() => setActiveGroupId(group.id)}>
+                                        <div className="flex-1 min-w-0 pr-4">
+                                            <div className="font-semibold text-black text-[13.5px] truncate">{group.name}</div>
                                             <div className="text-[#8e8e93] text-[12px] mt-0.5">{group.cards.length} 张字卡</div>
                                         </div>
                                         <button onClick={(e) => {
@@ -1058,14 +1212,14 @@ export default function App() {
                                 const newId = Date.now().toString() + Math.random().toString(36).substring(2, 5);
                                 setCardGroups([...cardGroups, { id: newId, name: '新分组', cards: [] }]);
                                 setActiveGroupId(newId);
-                            }} className="w-full py-3 bg-white text-[#007AFF] font-medium rounded-[10px] shadow-[0_1px_2px_rgba(0,0,0,0.05)] flex items-center justify-center gap-2 active:bg-gray-50 transition-colors">
+                            }} className="w-full py-4 bg-white text-black font-semibold rounded-[20px] shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-[#F2F2F7] flex items-center justify-center gap-2 active:bg-gray-50 transition-all">
                                 <Plus size={18}/> 新建分组
                             </button>
                         </div>
                         )
                     ) : (
-                        <div className="mt-2 px-4 pb-8">
-                            <div className="flex items-center gap-2 mb-4 bg-white p-2 rounded-[10px] shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+                        <div className="mt-2 pb-8">
+                            <div className="flex items-center gap-2.5 mb-4 bg-white p-3.5 rounded-[20px] shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-[#F2F2F7]">
                                 <button onClick={() => setActiveGroupId(null)} className="p-1 active:opacity-50 text-[#007AFF]"><ChevronLeft size={20}/></button>
                                 <input 
                                     className="font-semibold text-[#000] bg-transparent outline-none border-none text-[12px] flex-1" 
@@ -1082,14 +1236,22 @@ export default function App() {
                                 />
                             </div>
 
-                            <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+                            <div className="bg-white rounded-[20px] shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-[#F2F2F7] divide-y divide-[#F2F2F7] overflow-hidden max-h-[60vh] overflow-y-auto">
                                 {(cardGroups.find(g => g.id === activeGroupId)?.cards || [])
                                     .map((card, originalIdx) => ({ card, originalIdx }))
                                     .filter(({ card }) => !librarySearchQuery || card.toLowerCase().includes(librarySearchQuery.toLowerCase()))
                                     .map(({ card, originalIdx }) => (
-                                    <div key={originalIdx} className="flex justify-between items-center bg-white p-2.5 rounded-[10px] shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+                                    <div key={originalIdx} className="flex justify-between items-center p-3.5 bg-white">
+                                        {(card.startsWith('data:image/') || /^https?:\/\/.*\.(png|jpg|jpeg|gif|webp|svg)/i.test(card)) && (
+                                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                                                <div className="w-12 h-12 rounded-[6px] overflow-hidden bg-gray-50 border border-gray-100 shrink-0 flex items-center justify-center">
+                                                    <img src={card} alt="" className="w-full h-full object-contain" />
+                                                </div>
+                                                <span className="text-[10px] text-gray-400 font-mono truncate flex-1">图片/表情包/字卡</span>
+                                            </div>
+                                        )}
                                         <textarea 
-                                            className="text-[11px] bg-transparent outline-none flex-1 text-[#333] resize-none" 
+                                            className={`text-[11px] bg-transparent outline-none flex-1 text-[#333] resize-none ${(card.startsWith('data:image/') || /^https?:\/\/.*\.(png|jpg|jpeg|gif|webp|svg)/i.test(card)) ? 'hidden' : ''}`} 
                                             rows={card.length > 20 ? 2 : 1}
                                             value={card} 
                                             onChange={(e) => {
@@ -1119,8 +1281,8 @@ export default function App() {
                                     newGroups[gIdx].cards.push('');
                                     setCardGroups(newGroups);
                                 }
-                            }} className="w-full mt-4 py-2.5 text-[11px] font-medium text-[#007AFF] flex justify-center items-center gap-1 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] active:bg-gray-50 transition-colors rounded-[10px]">
-                                <Plus size={16}/> 添加一条字卡
+                            }} className="w-full mt-4 py-3.5 text-[13px] font-semibold text-[#007AFF] flex justify-center items-center gap-1.5 bg-white border border-[#F2F2F7] shadow-[0_2px_12px_rgba(0,0,0,0.03)] active:bg-gray-50 transition-all rounded-[20px]">
+                                <Plus size={16}/> 添加文字字卡
                             </button>
                         </div>
                     )}
@@ -1186,6 +1348,62 @@ export default function App() {
                       }} />
                  </div>
                )}
+                {replySubTab === 'audio' && (
+                  <div className="mt-4 px-4 pb-8 space-y-3">
+                       <div className="bg-white rounded-[10px] shadow-[0_1px_2px_rgba(0,0,0,0.05)] overflow-hidden">
+                        {(voiceCards || []).length === 0 ? (
+                            <div className="text-gray-400 text-center py-8 text-[12px] leading-relaxed">
+                              还没有语音字卡，点击下方按钮上传音频文件<br/>
+                              (支持 .mp3 / .wav / .m4a 格式)
+                            </div>
+                        ) : (
+                            (voiceCards || []).map((voice, idx) => (
+                                <div key={voice.id} className="flex justify-between items-center p-3 border-b border-[#E5E5EA] last:border-b-0">
+                                     <div className="flex flex-col flex-1 min-w-0 pr-2">
+                                         <div className="text-[13px] text-[#333] font-medium truncate">{voice.name}</div>
+                                         <div className="text-[10px] text-gray-400 mt-0.5">时长: {voice.duration}s</div>
+                                     </div>
+                                     <div className="flex items-center space-x-2 shrink-0">
+                                         <button 
+                                             onClick={() => {
+                                                 const audio = new Audio(voice.url);
+                                                 audio.play().catch(e => console.error(e));
+                                             }} 
+                                             className="text-[#007AFF] text-[12px] px-2.5 py-1 bg-[#007AFF]/10 active:opacity-50 rounded-full font-medium"
+                                         >
+                                             试听
+                                         </button>
+                                         <button 
+                                             onClick={() => {
+                                                 const newVoiceCards = [...voiceCards];
+                                                 newVoiceCards.splice(idx, 1);
+                                                 setVoiceCards(newVoiceCards);
+                                             }} 
+                                             className="text-[#8e8e93] hover:text-red-500 p-1 active:opacity-50"
+                                         >
+                                             <X size={18}/>
+                                         </button>
+                                     </div>
+                                </div>
+                            ))
+                        )}
+                       </div>
+                       <button 
+                         onClick={() => audioInputRef.current?.click()} 
+                         className="w-full py-3 bg-white text-[#007AFF] font-medium rounded-[10px] shadow-[0_1px_2px_rgba(0,0,0,0.05)] flex items-center justify-center gap-2 mt-4 active:bg-gray-50 transition-colors"
+                       >
+                         <Plus size={18}/> 上传语音字卡
+                       </button>
+                       <input 
+                         type="file" 
+                         ref={audioInputRef} 
+                         className="hidden" 
+                         accept="audio/*" 
+                         onChange={handleAudioUpload} 
+                       />
+                  </div>
+                )}
+
                {replySubTab === 'nudge' && (
                  <div className="mt-4 px-4 space-y-2 pb-8">
                      <div className="bg-white rounded-[10px] shadow-[0_1px_2px_rgba(0,0,0,0.05)] overflow-hidden">
@@ -1351,58 +1569,58 @@ export default function App() {
 
   if (view === 'appearance') {
     return (
-      <div className="absolute inset-0 overflow-y-auto text-[11px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif', backgroundColor: '#F2F2F7' }}>
+      <div className="absolute inset-0 bg-[#FAFAFA] flex flex-col overflow-x-hidden overflow-y-auto text-[13px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
         
         {/* Header */}
         <div 
-          className="w-full flex items-center justify-between px-3 pb-3 bg-white/30 fixed top-0 left-0 right-0 z-50 shadow-[0_1px_3px_rgba(0,0,0,0.02)]"
-          style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))' }}
+          className="w-full flex items-center justify-between px-4 pb-3 bg-[#FAFAFA]/80 sticky top-0 z-30 border-b border-[#E5E5EA] backdrop-blur-md"
+          style={{ paddingTop: 'calc(1rem + env(safe-area-inset-top))' }}
         >
-          <button onClick={() => setView('home')} className="text-[#007AFF] text-[14px] flex items-center active:opacity-50 transition-opacity">
-            <ChevronLeft size={24} className="-ml-1.5" />返回
+          <button onClick={() => setView('home')} className="text-[#333] flex items-center active:opacity-50 transition-opacity w-[60px]">
+            <ChevronLeft size={24} className="-ml-1.5" />
           </button>
-          <span className="text-[14px] font-semibold text-black">外观设置</span>
+          <span className="text-[16px] font-semibold tracking-tight text-[#111]">外观设置</span>
           <div className="w-[60px]"></div>
         </div>
 
         {/* Categories Tabs */}
         <div 
-          className="w-full flex px-4 space-x-6 bg-[#F2F2F7]/95 backdrop-blur-md fixed left-0 right-0 z-40 border-b border-[#c6c6c8]/30 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] pt-2 pb-0"
-          style={{ top: 'calc(3rem + env(safe-area-inset-top))' }}
+          className="w-full bg-[#FAFAFA]/90 sticky top-[53px] z-20 border-b border-[#F2F2F7] backdrop-blur-md"
         >
-           {[
-             { id: 'global', name: '全局设置' },
-             { id: 'chat', name: '聊天设置' },
-             { id: 'component', name: '组件美化' },
-             { id: 'wallpaper', name: '壁纸上传' },
-             { id: 'other', name: '其他美化' }
-           ].map((tab, idx) => (
-              <button 
-                key={`${tab.id}-${idx}`}
-                onClick={() => setAppearanceTab(tab.id as any)}
-                className={`pb-3 text-[13px] font-medium transition-colors relative whitespace-nowrap ${appearanceTab === tab.id ? 'text-black' : 'text-[#8e8e93]'}`}
-              >
-                {tab.name}
-                {appearanceTab === tab.id && (
-                  <div className="absolute bottom-[-1px] left-0 right-0 h-[2px] rounded-t-full bg-[#007AFF]" />
-                )}
-              </button>
-           ))}
+          <div className="w-full max-w-2xl mx-auto flex px-4 space-x-6 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] pt-2 pb-0">
+             {[
+               { id: 'global', name: '全局设置' },
+               { id: 'chat', name: '聊天设置' },
+               { id: 'component', name: '组件与其它美化' },
+               { id: 'wallpaper', name: '壁纸上传' }
+             ].map((tab, idx) => (
+                <button 
+                  key={`${tab.id}-${idx}`}
+                  onClick={() => setAppearanceTab(tab.id as any)}
+                  className={`pb-3 text-[13.5px] font-semibold transition-colors relative whitespace-nowrap ${appearanceTab === tab.id ? 'text-black' : 'text-[#8e8e93]'}`}
+                >
+                  {tab.name}
+                  {appearanceTab === tab.id && (
+                    <div className="absolute bottom-[-1px] left-0 right-0 h-[2px] rounded-t-full" style={{ backgroundColor: currentThemeConfig.textPrimary }} />
+                  )}
+                </button>
+             ))}
+          </div>
         </div>
 
-        <div className="w-full max-w-md mx-auto px-4 pb-12 pt-[calc(6rem+env(safe-area-inset-top))]">
+        <div className="w-full max-w-2xl mx-auto px-4 pb-20 pt-6 space-y-8">
            {appearanceTab === 'global' && (
-             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
                 <div>
-                   <div className="text-[12px] text-[#6d6d72] ml-4 mb-2 uppercase tracking-wide">基本信息</div>
-                   <div className="bg-white rounded-[10px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+                   <div className="text-[12px] font-medium text-[#8E8E93] mb-3 px-1 tracking-wide uppercase">基本信息</div>
+                   <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-[#F2F2F7]">
                       <SettingItem icon={Type} label="我方全局昵称" value={myNickname} onChange={setMyNickname} />
                       <SettingItem icon={Type} label="梦角全局昵称" value={mjNickname} onChange={setMjNickname} hideBorder={true} />
                    </div>
                 </div>
                 <div>
-                   <div className="text-[12px] text-[#6d6d72] ml-4 mb-2 uppercase tracking-wide">主题配色</div>
-                   <div className="bg-white rounded-[10px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+                   <div className="text-[12px] font-medium text-[#8E8E93] mb-3 px-1 tracking-wide uppercase">主题配色</div>
+                   <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-[#F2F2F7]">
                       <SettingItem icon={Palette} label="暖冬麦色" value={theme === 'warm' ? '当前' : ''} onClick={() => setTheme('warm')} />
                       <SettingItem icon={Palette} label="薄荷微风" value={theme === 'mint' ? '当前' : ''} onClick={() => setTheme('mint')} />
                       <SettingItem icon={Palette} label="春日落樱" value={theme === 'sakura' ? '当前' : ''} onClick={() => setTheme('sakura')} />
@@ -1415,29 +1633,31 @@ export default function App() {
            )}
 
            {appearanceTab === 'chat' && (
-             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
                 <div>
-                   <div className="text-[12px] text-[#6d6d72] ml-4 mb-2 uppercase tracking-wide">气泡样式</div>
-                   <div className="bg-white rounded-[10px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)] mb-3 p-2 px-4 flex items-center justify-between">
-                      <span className="text-[14px] text-[#333] flex items-center"><MessageCircle size={18} className="mr-3 text-[#007AFF]" /> 气泡样式</span>
-                      <div className="flex bg-[#f2f2f7] rounded-[8px] p-0.5">
-                         <button 
-                            className={`px-3 py-1 text-[13px] rounded-[6px] transition-colors ${chatBubbleStyle === 'glass' ? 'bg-white shadow-sm font-medium text-black' : 'text-[#8e8e93]'}`}
-                            onClick={() => setChatBubbleStyle('glass')}
-                         >液态玻璃</button>
-                         <button 
-                            className={`px-3 py-1 text-[13px] rounded-[6px] transition-colors ${chatBubbleStyle === 'system' ? 'bg-white shadow-sm font-medium text-black' : 'text-[#8e8e93]'}`}
-                            onClick={() => setChatBubbleStyle('system')}
-                         >系统气泡</button>
+                   <div className="text-[12px] font-medium text-[#8E8E93] mb-3 px-1 tracking-wide uppercase">气泡样式</div>
+                   <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-[#F2F2F7] divide-y divide-[#F2F2F7]">
+                      <div className="px-5 py-4.5 flex items-center justify-between">
+                         <span className="text-[15px] font-medium text-[#333] flex items-center"><MessageCircle size={18} className="mr-3 text-[#555]" /> 气泡样式</span>
+                         <div className="flex bg-[#E5E5EA]/60 p-0.5 rounded-[8px]">
+                            <button 
+                               className={`px-4 py-1 text-[12px] font-semibold rounded-[6px] transition-all ${chatBubbleStyle === 'glass' ? 'bg-white shadow-sm text-black' : 'text-[#8e8e93]'}`}
+                               onClick={() => setChatBubbleStyle('glass')}
+                            >液态玻璃</button>
+                            <button 
+                               className={`px-4 py-1 text-[12px] font-semibold rounded-[6px] transition-all ${chatBubbleStyle === 'system' ? 'bg-white shadow-sm text-black' : 'text-[#8e8e93]'}`}
+                               onClick={() => setChatBubbleStyle('system')}
+                            >系统气泡</button>
+                         </div>
                       </div>
-                   </div>
-                   <div className="bg-white rounded-[10px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
-                      <SettingItem icon={Palette} label="我方气泡及已读颜色" value={chatBubbleColor} onChange={setChatBubbleColor} isColor={true} hideBorder={true} />
+                      <div className="px-1.5 py-1 bg-white">
+                         <SettingItem icon={Palette} label="我方气泡及已读颜色" value={chatBubbleColor} onChange={setChatBubbleColor} isColor={true} hideBorder={true} />
+                      </div>
                    </div>
                 </div>
                 <div>
-                   <div className="text-[12px] text-[#6d6d72] ml-4 mb-2 uppercase tracking-wide">聊天资源</div>
-                   <div className="bg-white rounded-[10px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+                   <div className="text-[12px] font-medium text-[#8E8E93] mb-3 px-1 tracking-wide uppercase">聊天资源</div>
+                   <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-[#F2F2F7]">
                       <SettingItem icon={ImageIcon} label="聊天壁纸" value={chatBg ? '已上传' : '未设置'} onClick={() => chatBgInputRef.current?.click()} />
                       <SettingItem icon={Users} label="我方聊天头像" value={chatAvatar1 ? '已上传' : '未设置'} onClick={() => chatAvatar1InputRef.current?.click()} />
                       <SettingItem icon={Users} label="对方聊天头像" value={chatAvatar2 ? '已上传' : '未设置'} onClick={() => chatAvatar2InputRef.current?.click()} hideBorder={true} />
@@ -1447,27 +1667,97 @@ export default function App() {
            )}
 
            {appearanceTab === 'component' && (
-             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-                <div>
-                   <div className="text-[12px] text-[#6d6d72] ml-4 mb-2 uppercase tracking-wide">主页顶部卡片</div>
-                   <div className="bg-white rounded-[10px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
-                      <SettingItem icon={ImageIcon} label="顶部卡片图" value={profileBg ? '已上传' : '未设置'} onClick={() => profileBgInputRef.current?.click()} />
-                      <SettingItem icon={User} label="顶部头像 1" value={avatar1 ? '已上传' : '未设置'} onClick={() => avatar1InputRef.current?.click()} />
-                      <SettingItem icon={User} label="顶部头像 2" value={avatar2 ? '已上传' : '未设置'} onClick={() => avatar2InputRef.current?.click()} />
-                      <SettingItem icon={Type} label="顶部昵称 1" value={name1} onChange={setName1} />
-                      <SettingItem icon={Type} label="顶部昵称 2" value={name2} onChange={setName2} />
-                      <SettingItem icon={MessageCircle} label="顶部宣言" value={motto} onChange={setMotto} isTextarea={true} />
-                      <SettingItem icon={Type} label="底部小字" value={subtitle} onChange={setSubtitle} hideBorder={true} />
-                   </div>
-                </div>
-             </motion.div>
-           )}
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+                 <div>
+                    <div className="text-[12px] font-medium text-[#8E8E93] mb-3 px-1 tracking-wide uppercase">主页顶部卡片</div>
+                    <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-[#F2F2F7]">
+                       <SettingItem icon={ImageIcon} label="顶部卡片图" value={profileBg ? '已上传' : '未设置'} onClick={() => profileBgInputRef.current?.click()} />
+                       <SettingItem icon={User} label="顶部头像 1" value={avatar1 ? '已上传' : '未设置'} onClick={() => avatar1InputRef.current?.click()} />
+                       <SettingItem icon={User} label="顶部头像 2" value={avatar2 ? '已上传' : '未设置'} onClick={() => avatar2InputRef.current?.click()} />
+                       <SettingItem icon={Type} label="顶部昵称 1" value={name1} onChange={setName1} />
+                       <SettingItem icon={Type} label="顶部昵称 2" value={name2} onChange={setName2} />
+                       <SettingItem icon={MessageCircle} label="顶部宣言" value={motto} onChange={setMotto} isTextarea={true} />
+                       <SettingItem icon={Type} label="底部小字" value={subtitle} onChange={setSubtitle} hideBorder={true} />
+                    </div>
+                 </div>
 
-           {appearanceTab === 'wallpaper' && (
-             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                 <div>
+                    <div className="text-[12px] font-medium text-[#8E8E93] mb-3 px-1 tracking-wide uppercase">保活与锁屏/灵动岛设置</div>
+                    <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-[#F2F2F7]">
+                       <SettingItem 
+                           icon={ImageIcon} 
+                           label="锁屏/灵动岛封面小图标" 
+                           value={keepaliveIcon ? '已自定' : '未设置 (默认使用梦角头像)'} 
+                           onClick={handleKeepaliveIconClick} 
+                           hideBorder={true}
+                       />
+                    </div>
+                 </div>
+
+                 <div>
+                    <div className="text-[12px] font-medium text-[#8E8E93] mb-3 px-1 tracking-wide uppercase">界面切换</div>
+                    <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-[#F2F2F7] px-5 py-4.5 flex items-center justify-between">
+                       <span className="text-[15px] font-medium text-[#333]">朋友圈样式</span>
+                       <div className="flex bg-[#E5E5EA]/60 p-0.5 rounded-[8px]">
+                          <button 
+                             className={`px-4 py-1 text-[12px] font-semibold rounded-[6px] transition-all ${momentsStyle === 'wechat' ? 'bg-white shadow-sm text-black' : 'text-[#8e8e93]'}`}
+                             onClick={() => setMomentsStyle('wechat')}
+                          >微信</button>
+                          <button 
+                             className={`px-4 py-1 text-[12px] font-semibold rounded-[6px] transition-all ${momentsStyle === 'weibo' ? 'bg-white shadow-sm text-black' : 'text-[#8e8e93]'}`}
+                             onClick={() => setMomentsStyle('weibo')}
+                          >微博</button>
+                       </div>
+                    </div>
+                 </div>
+
+                 <div>
+                    <div className="text-[12px] font-medium text-[#8E8E93] mb-3 px-1 tracking-wide uppercase">透明度调节</div>
+                    <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-[#F2F2F7] p-5 space-y-6">
+                        <div>
+                            <div className="flex justify-between text-[14px] text-[#333] mb-3">
+                                <span className="font-semibold">主页图标背景</span>
+                                <span className="font-mono font-bold text-[14px]" style={{ color: currentThemeConfig.textPrimary }}>{appOpacity}%</span>
+                            </div>
+                            <input 
+                                type="range" min="0" max="100" value={appOpacity} onChange={e => setAppOpacity(parseInt(e.target.value))} 
+                                className="w-full h-1.5 bg-[#e5e5ea] rounded-lg appearance-none cursor-pointer" 
+                                style={{
+                                    background: `linear-gradient(to right, ${currentThemeConfig.textPrimary} 0%, ${currentThemeConfig.textPrimary} ${appOpacity}%, #e5e5ea ${appOpacity}%, #e5e5ea 100%)`
+                                }}
+                            />
+                        </div>
+                        <div>
+                            <div className="flex justify-between text-[14px] text-[#333] mb-3">
+                                <span className="font-semibold">心愿清单卡片背景</span>
+                                <span className="font-mono font-bold text-[14px]" style={{ color: currentThemeConfig.textPrimary }}>{wishlistCardOpacity}%</span>
+                            </div>
+                            <input 
+                                type="range" min="0" max="100" value={wishlistCardOpacity} onChange={e => setWishlistCardOpacity(parseInt(e.target.value))} 
+                                className="w-full h-1.5 bg-[#e5e5ea] rounded-lg appearance-none cursor-pointer"
+                                style={{
+                                    background: `linear-gradient(to right, ${currentThemeConfig.textPrimary} 0%, ${currentThemeConfig.textPrimary} ${wishlistCardOpacity}%, #e5e5ea ${wishlistCardOpacity}%, #e5e5ea 100%)`
+                                }}
+                            />
+                        </div>
+                    </div>
+                 </div>
+
+                 <div>
+                    <div className="text-[12px] font-medium text-[#8E8E93] mb-3 px-1 tracking-wide uppercase">进阶设置 (高阶玩家专用)</div>
+                    <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-[#F2F2F7]">
+                       <SettingItem icon={Droplet} label="聊天气泡 CSS" value={chatCss ? '已上传' : '未设置'} onClick={() => cssInputRef.current?.click()} />
+                       <SettingItem icon={Type} label="聊天字体 TTF" value={chatFont ? '已上传' : '未设置'} onClick={() => fontInputRef.current?.click()} hideBorder={true}/>
+                    </div>
+                 </div>
+              </motion.div>
+            )}
+
+            {appearanceTab === 'wallpaper' && (
+             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
                 <div>
-                   <div className="text-[12px] text-[#6d6d72] ml-4 mb-2 uppercase tracking-wide">各界面壁纸</div>
-                   <div className="bg-white rounded-[10px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+                   <div className="text-[12px] font-medium text-[#8E8E93] mb-3 px-1 tracking-wide uppercase">各界面壁纸</div>
+                   <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-[#F2F2F7]">
                       <SettingItem icon={ImageIcon} label="主界面壁纸" value={wallpaper ? '已上传' : '未设置'} onClick={() => wallpaperInputRef.current?.click()} />
                       <SettingItem icon={ImageIcon} label="朋友圈背景图" value={momentsBg ? '已上传' : '未设置'} onClick={() => momentsBgInputRef.current?.click()} />
                       <SettingItem icon={ImageIcon} label="查岗背景图" value={checkinsBg ? '已上传' : '未设置'} onClick={() => checkinsBgInputRef.current?.click()} />
@@ -1477,19 +1767,19 @@ export default function App() {
              </motion.div>
            )}
 
-           {appearanceTab === 'other' && (
-             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+           {false && (
+             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
                 <div>
-                   <div className="text-[12px] text-[#6d6d72] ml-4 mb-2 uppercase tracking-wide">界面切换</div>
-                   <div className="bg-white rounded-[10px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)] p-2 px-4 flex items-center justify-between">
-                      <span className="text-[14px] text-[#333]">朋友圈样式</span>
-                      <div className="flex bg-[#f2f2f7] rounded-[8px] p-0.5">
+                   <div className="text-[12px] font-medium text-[#8E8E93] mb-3 px-1 tracking-wide uppercase">界面切换</div>
+                   <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-[#F2F2F7] px-5 py-4.5 flex items-center justify-between">
+                      <span className="text-[15px] font-medium text-[#333]">朋友圈样式</span>
+                      <div className="flex bg-[#E5E5EA]/60 p-0.5 rounded-[8px]">
                          <button 
-                            className={`px-3 py-1 text-[13px] rounded-[6px] transition-colors ${momentsStyle === 'wechat' ? 'bg-white shadow-sm font-medium text-black' : 'text-[#8e8e93]'}`}
+                            className={`px-4 py-1 text-[12px] font-semibold rounded-[6px] transition-all ${momentsStyle === 'wechat' ? 'bg-white shadow-sm text-black' : 'text-[#8e8e93]'}`}
                             onClick={() => setMomentsStyle('wechat')}
                          >微信</button>
                          <button 
-                            className={`px-3 py-1 text-[13px] rounded-[6px] transition-colors ${momentsStyle === 'weibo' ? 'bg-white shadow-sm font-medium text-black' : 'text-[#8e8e93]'}`}
+                            className={`px-4 py-1 text-[12px] font-semibold rounded-[6px] transition-all ${momentsStyle === 'weibo' ? 'bg-white shadow-sm text-black' : 'text-[#8e8e93]'}`}
                             onClick={() => setMomentsStyle('weibo')}
                          >微博</button>
                       </div>
@@ -1497,12 +1787,12 @@ export default function App() {
                 </div>
 
                 <div>
-                   <div className="text-[12px] text-[#6d6d72] ml-4 mb-2 uppercase tracking-wide">透明度调节</div>
-                   <div className="bg-white rounded-[10px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)] p-4 space-y-5">
+                   <div className="text-[12px] font-medium text-[#8E8E93] mb-3 px-1 tracking-wide uppercase">透明度调节</div>
+                   <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-[#F2F2F7] p-5 space-y-6">
                        <div>
                            <div className="flex justify-between text-[14px] text-[#333] mb-3">
-                               <span className="font-medium">主页图标背景</span>
-                               <span className="text-[#8e8e93]">{appOpacity}%</span>
+                               <span className="font-semibold">主页图标背景</span>
+                               <span className="font-mono font-bold text-[14px]" style={{ color: currentThemeConfig.textPrimary }}>{appOpacity}%</span>
                            </div>
                            <input 
                                type="range" min="0" max="100" value={appOpacity} onChange={e => setAppOpacity(parseInt(e.target.value))} 
@@ -1514,8 +1804,8 @@ export default function App() {
                        </div>
                        <div>
                            <div className="flex justify-between text-[14px] text-[#333] mb-3">
-                               <span className="font-medium">心愿清单卡片背景</span>
-                               <span className="text-[#8e8e93]">{wishlistCardOpacity}%</span>
+                               <span className="font-semibold">心愿清单卡片背景</span>
+                               <span className="font-mono font-bold text-[14px]" style={{ color: currentThemeConfig.textPrimary }}>{wishlistCardOpacity}%</span>
                            </div>
                            <input 
                                type="range" min="0" max="100" value={wishlistCardOpacity} onChange={e => setWishlistCardOpacity(parseInt(e.target.value))} 
@@ -1529,8 +1819,21 @@ export default function App() {
                 </div>
 
                 <div>
-                   <div className="text-[12px] text-[#6d6d72] ml-4 mb-2 uppercase tracking-wide">进阶设置 (高阶玩家专用)</div>
-                   <div className="bg-white rounded-[10px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+                   <div className="text-[12px] font-medium text-[#8E8E93] mb-3 px-1 tracking-wide uppercase">保活与锁屏/灵动岛设置</div>
+                   <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-[#F2F2F7]">
+                      <SettingItem 
+                          icon={ImageIcon} 
+                          label="锁屏/灵动岛封面小图标" 
+                          value={keepaliveIcon ? '已自定' : '未设置 (默认使用梦角头像)'} 
+                          onClick={handleKeepaliveIconClick} 
+                          hideBorder={true}
+                      />
+                   </div>
+                </div>
+
+                <div>
+                   <div className="text-[12px] font-medium text-[#8E8E93] mb-3 px-1 tracking-wide uppercase">进阶设置 (高阶玩家专用)</div>
+                   <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-[#F2F2F7]">
                       <SettingItem icon={Droplet} label="聊天气泡 CSS" value={chatCss ? '已上传' : '未设置'} onClick={() => cssInputRef.current?.click()} />
                       <SettingItem icon={Type} label="聊天字体 TTF" value={chatFont ? '已上传' : '未设置'} onClick={() => fontInputRef.current?.click()} hideBorder={true}/>
                    </div>
@@ -1548,6 +1851,7 @@ export default function App() {
         <input type="file" ref={momentsBgInputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setMomentsBg)} />
         <input type="file" ref={wishlistBgInputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setWishlistBg)} />
         <input type="file" ref={checkinsBgInputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setCheckinsBg)} />
+        <input type="file" ref={keepaliveIconInputRef} className="hidden" accept="image/*" onChange={handleKeepaliveIconChange} />
         
         <input type="file" ref={chatAvatar1InputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setChatAvatar1)} />
         <input type="file" ref={chatAvatar2InputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setChatAvatar2)} />
@@ -1556,7 +1860,7 @@ export default function App() {
         <input type="file" ref={fontInputRef} className="hidden" accept=".ttf,.otf,.woff,.woff2" onChange={(e) => handleFileChange(e, setChatFont)} />
         {renderOverlays()}
       </div>
-    )
+    );
   }
 
 
@@ -1841,17 +2145,19 @@ export default function App() {
 
   if (view === 'home' && wallpaper) {
     currentBgImage = `url(${wallpaper})`;
-  } else if (view === 'chat' && chatBg) {
-    currentBgImage = `url(${chatBg})`;
-  } else if (view === 'wishlist' && wishlistBg) {
-    currentBgImage = `url(${wishlistBg})`;
-  } else if (view === 'check_in' && checkinsBg) {
-    currentBgImage = `url(${checkinsBg})`;
+  } else if (view === 'chat') {
+    currentBgImage = chatBg ? `url(${chatBg})` : (wallpaper ? `url(${wallpaper})` : 'none');
+  } else if (view === 'wishlist') {
+    currentBgImage = wishlistBg ? `url(${wishlistBg})` : (wallpaper ? `url(${wallpaper})` : 'none');
+  } else if (view === 'check_in') {
+    currentBgImage = checkinsBg ? `url(${checkinsBg})` : (wallpaper ? `url(${wallpaper})` : 'none');
+  } else if (view === 'todo') {
+    currentBgImage = wallpaper ? `url(${wallpaper})` : 'none';
+  } else if (view === 'mailbox') {
+    currentBgImage = wallpaper ? `url(${wallpaper})` : 'none';
   } else if (view === 'moments') {
     currentBgColor = momentsStyle === 'weibo' ? '#f2f2f2' : '#ffffff';
-    if (momentsBg) {
-      currentBgImage = `url(${momentsBg})`;
-    }
+    currentBgImage = 'none';
   } else if (['appearance', 'library', 'data', 'chat_settings', 'music_manager', 'decide'].includes(view)) {
     currentBgColor = '#F2F2F7';
     currentBgImage = 'none';
@@ -1862,6 +2168,7 @@ export default function App() {
 
   return (
     <>
+      <TodoScheduler />
       <BackgroundLayer
         bg={currentBgColor}
         image={currentBgImage}

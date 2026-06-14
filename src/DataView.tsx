@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronLeft, Database, Download, Upload, Trash2, CheckCircle, AlertTriangle, FileJson, Loader2 } from 'lucide-react';
 import { get, set, keys, del, clear } from 'idb-keyval';
 import { motion, AnimatePresence } from 'motion/react';
@@ -25,6 +25,104 @@ export const DataView: React.FC<DataViewProps> = ({ onClose, showToast }) => {
   const [confirmModal, setConfirmModal] = useState<{title: string, msg: string, onConfirm: () => void, isDanger?: boolean} | null>(null);
   const [importStatus, setImportStatus] = useState<Record<string, 'loading' | 'success' | null>>({});
   const [exportStatus, setExportStatus] = useState<Record<string, 'success' | null>>({});
+
+  const [calculating, setCalculating] = useState(true);
+  const [totalSize, setTotalSize] = useState(0);
+  const [categories, setCategories] = useState<{ id: string; name: string; color: string; size: number }[]>([]);
+
+  const formatSize = (bytes: number): string => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const calculateStorage = async () => {
+    setCalculating(true);
+    try {
+      let chatSize = 0;
+      let momentsSize = 0;
+      let visualSize = 0;
+      let toolsSize = 0;
+      let systemSize = 0;
+
+      const getValSize = (val: any): number => {
+        if (val === undefined || val === null) return 0;
+        if (typeof val === 'string') {
+          return new Blob([val]).size;
+        }
+        try {
+          return new Blob([JSON.stringify(val)]).size;
+        } catch (e) {
+          return 0;
+        }
+      };
+
+      // 1. Scan LocalStorage
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('app_')) {
+          const val = localStorage.getItem(key);
+          if (val) {
+            const size = getValSize(val);
+            if (['app_chatMessages', 'app_stickers', 'app_emojis', 'app_nudges'].includes(key)) {
+              chatSize += size;
+            } else if (['app_moments', 'app_moments_bg'].includes(key)) {
+              momentsSize += size;
+            } else if (['app_wallpaper', 'app_chat_bg', 'app_profile_bg', 'app_wishlist_bg', 'app_checkins_bg'].includes(key)) {
+              visualSize += size;
+            } else if (['app_todos', 'app_accounting', 'app_mailbox_letters', 'app_cardGroups', 'app_wishlist', 'app_checkins'].includes(key)) {
+              toolsSize += size;
+            } else {
+              systemSize += size;
+            }
+          }
+        }
+      }
+
+      // 2. Scan IndexedDB
+      const idbKeys = await keys();
+      for (const key of idbKeys) {
+        if (typeof key === 'string' && key.startsWith('app_')) {
+          const val = await get(key);
+          if (val !== undefined) {
+            const size = getValSize(val);
+            if (['app_chatMessages', 'app_stickers', 'app_emojis', 'app_nudges'].includes(key)) {
+              chatSize += size;
+            } else if (['app_moments', 'app_moments_bg'].includes(key)) {
+              momentsSize += size;
+            } else if (['app_wallpaper', 'app_chat_bg', 'app_profile_bg', 'app_wishlist_bg', 'app_checkins_bg'].includes(key)) {
+              visualSize += size;
+            } else if (['app_todos', 'app_accounting', 'app_mailbox_letters', 'app_cardGroups', 'app_wishlist', 'app_checkins'].includes(key)) {
+              toolsSize += size;
+            } else {
+              systemSize += size;
+            }
+          }
+        }
+      }
+
+      const total = chatSize + momentsSize + visualSize + toolsSize + systemSize;
+      setTotalSize(total);
+
+      setCategories([
+        { id: 'chat', name: '聊天与表情包', color: '#007AFF', size: chatSize },
+        { id: 'moments', name: '朋友圈动态', color: '#34C759', size: momentsSize },
+        { id: 'visual', name: '自定背景与壁纸', color: '#AF52DE', size: visualSize },
+        { id: 'tools', name: '伴侣小工具', color: '#FF9500', size: toolsSize },
+        { id: 'system', name: '设置与基本信息', color: '#8E8E93', size: systemSize }
+      ]);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setCalculating(false);
+    }
+  };
+
+  useEffect(() => {
+    calculateStorage();
+  }, []);
 
   // Export full data
   const handleExportAll = async () => {
@@ -178,13 +276,14 @@ export const DataView: React.FC<DataViewProps> = ({ onClose, showToast }) => {
           isDanger: true,
           onConfirm: async () => {
               for (const k of feature.keys) {
-                 if (k === 'app_stickers' || feature.idb && k !== 'app_cardGroups' && k !== 'app_emojis' && k !== 'app_nudges') {
+                 if (k === 'app_stickers' || (feature.idb && k !== 'app_cardGroups' && k !== 'app_emojis' && k !== 'app_nudges')) {
                      await del(k);
                  } else {
                      localStorage.removeItem(k);
                  }
               }
-              showToast(`【${feature.name}】已清空，请重新进入页面生效`);
+              showToast(`【${feature.name}】已清空`);
+              await calculateStorage();
           }
       });
   };
@@ -236,6 +335,67 @@ export const DataView: React.FC<DataViewProps> = ({ onClose, showToast }) => {
         </div>
         
         <div className="w-full max-w-2xl mx-auto px-4 pb-20 pt-6 space-y-8">
+           <section>
+              <h2 className="text-[12px] font-medium text-[#8E8E93] mb-3 px-1 tracking-wide uppercase">存储空间</h2>
+              <div className="bg-white rounded-[20px] p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-[#F2F2F7]">
+                  {calculating ? (
+                      <div className="flex flex-col items-center justify-center py-6 text-[#8E8E93] gap-2">
+                          <Loader2 size={24} className="animate-spin text-[#007AFF]" />
+                          <span className="text-[12px]">正在计算已用空间...</span>
+                      </div>
+                  ) : (
+                      <div className="space-y-4">
+                          {/* Heading */}
+                          <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 pb-3 border-b border-[#F2F2F7]">
+                              <div className="flex items-baseline gap-2 shrink-0">
+                                  <span className="text-[26px] font-extrabold text-[#111] tracking-tight font-mono">{formatSize(totalSize)}</span>
+                                  <span className="text-[13px] text-[#8E8E93] font-medium">已使用</span>
+                              </div>
+                              <div className="text-[12px] text-[#8E8E93] font-normal sm:text-right mt-1 sm:mt-0 leading-normal">
+                                  无可用上限 <span className="text-[#AEAEB2]">(由浏览器内核动态配额)</span>
+                              </div>
+                          </div>
+
+                          {/* Progress bar stack */}
+                          <div className="h-[12px] w-full bg-[#E5E5EA] rounded-full overflow-hidden flex">
+                              {totalSize === 0 ? (
+                                  <div className="h-full bg-gray-200 w-full" />
+                              ) : (
+                                  categories.map(cat => {
+                                      const pct = totalSize > 0 ? (cat.size / totalSize) * 100 : 0;
+                                      if (pct === 0) return null;
+                                      return (
+                                          <div 
+                                              key={cat.id} 
+                                              style={{ 
+                                                  width: `${pct}%`,
+                                                  backgroundColor: cat.color
+                                              }} 
+                                              className="h-full first:rounded-l-full last:rounded-r-full transition-all duration-500"
+                                              title={`${cat.name}: ${formatSize(cat.size)} (${pct.toFixed(1)}%)`}
+                                          />
+                                      );
+                                  })
+                              )}
+                          </div>
+
+                          {/* Legend / Breakdown of each group */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                              {categories.map(cat => (
+                                  <div key={cat.id} className="flex justify-between items-center text-[12.5px] p-1 h-7">
+                                      <div className="flex items-center gap-2">
+                                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
+                                          <span className="text-[#333] truncate max-w-[150px]">{cat.name}</span>
+                                      </div>
+                                      <span className="text-[#8E8E93] font-mono font-medium">{formatSize(cat.size)}</span>
+                                  </div>
+                              ))}
+                          </div>
+                      </div>
+                  )}
+              </div>
+           </section>
+
            <section>
               <h2 className="text-[12px] font-medium text-[#8E8E93] mb-3 px-1 tracking-wide uppercase">全量操作</h2>
               <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-[#F2F2F7]">

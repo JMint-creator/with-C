@@ -150,7 +150,10 @@ export function AccountingView({
   const sortedDates = Object.keys(groupedRecords).sort((a,b) => b.localeCompare(a));
 
   return (
-    <div className="absolute inset-0 z-40 flex flex-col overflow-hidden animate-in slide-in-from-right duration-300 font-sans">
+    <div 
+      className="absolute inset-0 z-40 flex flex-col overflow-hidden animate-in slide-in-from-right duration-300 font-sans"
+      style={{ backgroundColor: themeConfig.bg || '#F2F2F7' }}
+    >
         <div className="w-full flex items-center justify-between px-4 pb-3 sticky top-0 z-10 pt-[max(1rem,env(safe-area-inset-top))]" style={{ backgroundColor: 'transparent' }}>
           <button onClick={onClose} className="flex items-center active:opacity-50 transition-opacity w-[60px]" style={{ color: themeConfig.textPrimary || '#333' }}>
             <ChevronLeft size={24} className="-ml-1.5" />返回

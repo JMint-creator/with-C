@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, Video, Settings, Smile, Hand, Plus, Image as ImageIcon, Send, X, PhoneCall, PhoneMissed, Phone, MicOff, Mic, CameraOff, MonitorPlay, Check, CheckCheck, MessageCircle, MoreHorizontal, Heart, Sparkles, Camera } from 'lucide-react';
 import { useLocalState, useIDBState, compressImage } from './utils';
-import { useCallStore } from './callStore';
+import { useCallStore, callStore } from './callStore';
 
 type Message = {
   id: string;
@@ -31,8 +31,10 @@ export const ChatView = ({
 }: any) => {
   const [messages, setMessages] = useIDBState<Message[]>('app_chatMessages', []);
   const [checkIns, setCheckIns] = useIDBState<any[]>('app_checkins', []);
+  const [voiceCards] = useIDBState<Array<{ id: string, name: string, url: string, duration: number }>>('app_voiceCards', []);
   const [input, setInput] = useState('');
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+  const [activeMenuMsgId, setActiveMenuMsgId] = useState<string | null>(null);
   
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
@@ -119,7 +121,7 @@ export const ChatView = ({
       content: "",
       audioUrl,
       voiceDuration: duration,
-      replyTo: replyingTo ? (replyingTo.type === "text" ? replyingTo.content : (replyingTo.type === "voice" ? "[语音]" : "[图片/表情]")) : undefined,
+      replyTo: replyingTo ? (replyingTo.type === "text" ? (replyingTo.content.length > 40 ? replyingTo.content.substring(0, 40) + '...' : replyingTo.content) : (replyingTo.type === "voice" ? "[语音]" : "[图片/表情]")) : undefined,
       time: getFormatTime(),
       isIgnored: ignored
     };
@@ -162,7 +164,11 @@ export const ChatView = ({
   const [mockVideo] = useLocalState('app_chatMockVideoCall', true);
   const [chatBubbleStyle] = useLocalState<'glass'|'system'>('app_chatBubbleStyle', 'glass');
   const [cardGroups] = useLocalState<any[]>('app_cardGroups', []);
-  const replyCards = cardGroups.flatMap(g => g.cards).map(content => ({ content }));
+  const replyCards = cardGroups.flatMap(g => g.cards).filter(c => {
+    if (!c || typeof c !== 'string') return false;
+    const trimmed = c.trim();
+    return !(trimmed.startsWith('data:image/') || /^https?:\/\/.*\.(png|jpg|jpeg|gif|webp|svg)/i.test(trimmed));
+  }).map(content => ({ content }));
   const [receiptStyle] = useLocalState('app_chatReceiptStyle', 'graphic');
   const [readReceipt] = useLocalState('app_chatReadReceipt', true);
   const [readNoReply] = useLocalState('app_chatReadNoReply', false);
@@ -214,25 +220,6 @@ export const ChatView = ({
            if (event.target?.result) {
               const url = event.target.result as string;
               setStickers([...stickers, url]);
-              
-              // Also send it right away
-              const ignored = readNoReply && Math.random() < 0.05;
-              const newMsg: Message = {
-                id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
-                sender: "me",
-                type: "sticker",
-                content: url,
-                replyTo: replyingTo ? (replyingTo.type === "text" ? replyingTo.content : (replyingTo.type === "voice" ? "[语音]" : "[图片/表情]")) : undefined,
-                time: getFormatTime(),
-                isIgnored: ignored
-              };
-              setMessages(prev => [...prev, newMsg]);
-              setReplyingTo(null);
-              setShowStickerPane(false);
-              
-              if (!ignored) {
-                 simulateReply();
-              }
            }
         };
         reader.readAsDataURL(file);
@@ -251,6 +238,32 @@ export const ChatView = ({
   const [chatBubbleColor] = useLocalState('app_chatBubbleColor', '');
   const bubbleColor = chatBubbleColor || primaryColor;
 
+  const triggerIncomingVideoCall = () => {
+    if (callStore.state !== 'none') return;
+    setVideoCallState('incoming');
+    const pushNotify = window.localStorage.getItem('app_chatPushNotify');
+    if ((pushNotify ? JSON.parse(pushNotify) : true) && 'Notification' in window && window.Notification.permission === 'granted') {
+      new window.Notification(charId, { body: '收到新来电' });
+    }
+    // Auto missed call after 30 seconds if not answered
+    setTimeout(() => {
+      setVideoCallState(prev => {
+        if (prev === 'incoming') {
+          setMessages(msgs => [...msgs, {
+            id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
+            sender: 'them',
+            type: 'call',
+            content: '未接来电',
+            callState: 'missed',
+            time: getFormatTime()
+          }]);
+          return 'none';
+        }
+        return prev;
+      });
+    }, 30000);
+  };
+
   useEffect(() => {
     let timer: any;
     const scheduleNextCall = () => {
@@ -259,28 +272,7 @@ export const ChatView = ({
          if (Math.random() < 0.25) { // 25% chance of an event every ~30 mins
            if (Math.random() < 0.5 && videoCallState === 'none') {
              // 50% chance for video call
-             setVideoCallState('incoming');
-             const pushNotify = window.localStorage.getItem('app_chatPushNotify');
-             if ((pushNotify ? JSON.parse(pushNotify) : true) && 'Notification' in window && window.Notification.permission === 'granted') {
-               new window.Notification(charId, { body: '收到新来电' });
-             }
-             // Auto missed call after 30 seconds if not answered
-             setTimeout(() => {
-               setVideoCallState(prev => {
-                 if (prev === 'incoming') {
-                   setMessages(msgs => [...msgs, {
-                     id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
-                     sender: 'them',
-                     type: 'call',
-                     content: '未接来电',
-                     callState: 'missed',
-                     time: getFormatTime()
-                   }]);
-                   return 'none';
-                 }
-                 return prev;
-               });
-             }, 30000);
+             triggerIncomingVideoCall();
            } else {
              // 50% chance for check-in
              setMessages(msgs => [...msgs, {
@@ -338,7 +330,7 @@ export const ChatView = ({
       sender: 'me',
       type,
       content: text,
-      replyTo: replyingTo ? (replyingTo.type === 'text' ? replyingTo.content : (replyingTo.type === 'voice' ? '[语音]' : '[图片/表情]')) : undefined,
+      replyTo: replyingTo ? (replyingTo.type === 'text' ? (replyingTo.content.length > 40 ? replyingTo.content.substring(0, 40) + '...' : replyingTo.content) : (replyingTo.type === 'voice' ? '[语音]' : '[图片/表情]')) : undefined,
       time: getFormatTime(),
       isIgnored: ignored
     };
@@ -434,60 +426,122 @@ export const ChatView = ({
         });
       }
 
+      // Add small chance of real-time proactive video call on conversation response!
+      if (Math.random() < 0.04 && mockVideo && videoCallState === 'none') {
+        setTimeout(() => {
+          triggerIncomingVideoCall();
+        }, 1500);
+      }
+
       const r = Math.random();
       let replyCount = 1;
       if (r > 0.95) replyCount = 3;
       else if (r > 0.75) replyCount = 2;
       
       for(let i=0; i<replyCount; i++) {
-        let content = '嗯嗯';
-        if (replyCards.length > 0) {
-           content = replyCards[Math.floor(Math.random() * replyCards.length)].content;
-        }
+        const shouldSendVoice = Math.random() < 0.12 && (voiceCards || []).length > 0;
 
-        let replyToMsg: string | undefined = undefined;
-        if (Math.random() < 0.3) {
-           const myMsgs = messages.filter(m => m.sender === 'me');
-           const recentMyMsgs = myMsgs.slice(-10);
-           if (recentMyMsgs.length > 0) {
-             replyToMsg = recentMyMsgs[Math.floor(Math.random() * recentMyMsgs.length)].content;
-           }
-        }
-        
-        let emojiContent = '';
-        let sendEmojiSeparate = false;
-        if (Math.random() < 0.2 && emojis.length > 0) {
-          const emoji = emojis[Math.floor(Math.random() * emojis.length)];
-          if (mixEmoji) {
-             if (Math.random() < 0.5) content = emoji + content;
-             else content = content + emoji;
-          } else {
-             emojiContent = emoji;
-             sendEmojiSeparate = true;
-          }
-        }
-
-        newMsgs.push({
-          id: (++baseId).toString(),
-          sender: 'them',
-          type: 'text',
-          content,
-          replyTo: replyToMsg,
-          time: getFormatTime()
-        });
-
-        if (sendEmojiSeparate) {
+        if (shouldSendVoice) {
+          const randomVoice = (voiceCards || [])[Math.floor(Math.random() * (voiceCards || []).length)];
           newMsgs.push({
             id: (++baseId).toString(),
             sender: 'them',
-            type: 'emoji',
-            content: emojiContent,
+            type: 'voice',
+            content: '',
+            audioUrl: randomVoice.url,
+            voiceDuration: randomVoice.duration,
             time: getFormatTime()
           });
+        } else {
+          let content = '嗯嗯';
+          if (replyCards.length > 0) {
+             const condRand = Math.random();
+             if (condRand < 0.15 && replyCards.length >= 2) {
+               const countToConcat = Math.min(Math.random() < 0.5 ? 2 : 3, replyCards.length);
+               const shuffled = [...replyCards].sort(() => Math.random() - 0.5);
+               content = shuffled.slice(0, countToConcat).map(c => c.content).join(' ');
+             } else {
+               content = replyCards[Math.floor(Math.random() * replyCards.length)].content;
+             }
+          }
+
+          let replyToMsg: string | undefined = undefined;
+          if (Math.random() < 0.3) {
+             const myMsgs = messages.filter(m => m.sender === 'me');
+             const recentMyMsgs = myMsgs.slice(-10);
+             if (recentMyMsgs.length > 0) {
+                const chosen = recentMyMsgs[Math.floor(Math.random() * recentMyMsgs.length)];
+                if (chosen.type === 'text') {
+                  replyToMsg = chosen.content.length > 40 ? chosen.content.substring(0, 40) + '...' : chosen.content;
+                } else if (chosen.type === 'voice') {
+                  replyToMsg = '[语音]';
+                } else if (chosen.type === 'image') {
+                  replyToMsg = '[图片]';
+                } else if (chosen.type === 'sticker') {
+                  replyToMsg = '[表情]';
+                } else if (chosen.type === 'check_in') {
+                  replyToMsg = '[汇报]';
+                } else {
+                  replyToMsg = '[消息]';
+                }
+             }
+          }
+          
+          let emojiContent = '';
+          let sendEmojiSeparate = false;
+          if (Math.random() < 0.2 && emojis.length > 0) {
+            const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+            if (mixEmoji) {
+               if (Math.random() < 0.5) content = emoji + content;
+               else content = content + emoji;
+            } else {
+               emojiContent = emoji;
+               sendEmojiSeparate = true;
+            }
+          }
+
+          newMsgs.push({
+            id: (++baseId).toString(),
+            sender: 'them',
+            type: 'text',
+            content,
+            replyTo: replyToMsg,
+            time: getFormatTime()
+          });
+
+          if (sendEmojiSeparate) {
+            newMsgs.push({
+              id: (++baseId).toString(),
+              sender: 'them',
+              type: 'emoji',
+              content: emojiContent,
+              time: getFormatTime()
+            });
+          }
         }
 
-        if (Math.random() < 0.2 && stickers.length > 0) {
-          const sticker = stickers[Math.floor(Math.random() * stickers.length)];
+        // Find Dream Character's stickers from word card groups (must be valid image strings)
+        const mjStickers: string[] = [];
+        cardGroups.forEach(g => {
+          if (g.cards && Array.isArray(g.cards)) {
+            g.cards.forEach((c: string) => {
+              if (c && typeof c === 'string') {
+                const trimmed = c.trim();
+                const isImg = trimmed.startsWith('data:image/') || /^https?:\/\/.*\.(png|jpg|jpeg|gif|webp|svg)/i.test(trimmed);
+                if (isImg) {
+                  if (!mjStickers.includes(trimmed)) {
+                    mjStickers.push(trimmed);
+                  }
+                }
+              }
+            });
+          }
+        });
+
+        const availableStickers = mjStickers.length > 0 ? mjStickers : stickers;
+
+        if (Math.random() < 0.2 && availableStickers.length > 0) {
+          const sticker = availableStickers[Math.floor(Math.random() * availableStickers.length)];
           newMsgs.push({
              id: (++baseId).toString(),
              sender: 'them',
@@ -581,8 +635,15 @@ export const ChatView = ({
   };
 
   return (
-    <div className="fixed inset-0 overflow-hidden z-50 transition-colors" style={{ ...customStyle }}>
+    <div className="absolute inset-0 overflow-hidden z-50 transition-colors" style={{ ...customStyle }}>
       {chatFont && <style dangerouslySetInnerHTML={{ __html: `@font-face { font-family: 'CustomChatFont'; src: url('${chatFont}'); }` }} />}
+      <style>{`
+        .chat-bubble {
+          background-color: var(--bubble-bg);
+          color: var(--bubble-color);
+          text-shadow: var(--bubble-text-shadow);
+        }
+      `}</style>
       {chatCss && <style dangerouslySetInnerHTML={{ __html: chatCss }} />}
       
       {/* Header */}
@@ -609,14 +670,19 @@ export const ChatView = ({
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} className="absolute inset-0 overflow-y-auto px-4 pt-[calc(env(safe-area-inset-top)+80px)] pb-[calc(env(safe-area-inset-bottom)+120px)] flex flex-col scrollbar-hide z-10">
+      <div 
+        ref={scrollRef} 
+        className="absolute inset-0 overflow-y-auto px-4 pt-[calc(env(safe-area-inset-top)+80px)] flex flex-col scrollbar-hide z-10" 
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 72px)' }}
+        onClick={() => { if (activeMenuMsgId) setActiveMenuMsgId(null); }}
+      >
         {messages.map((msg, i) => {
           const isMe = msg.sender === 'me';
           const avatar = isMe ? (avatar1 || '') : (avatar2 || '');
           
           const nextMsg = messages[i + 1];
           const isGroupedNext = nextMsg && nextMsg.sender === msg.sender && nextMsg.time === msg.time && nextMsg.type !== 'call' && nextMsg.type !== 'nudge' && msg.type !== 'call' && msg.type !== 'nudge';
-          const marginBottom = isGroupedNext ? 'mb-1' : 'mb-5';
+          const marginBottom = isGroupedNext ? 'mb-2.5' : 'mb-6';
 
           // isRead if there's any message from them after this, or if it was marked as ignored
           const isRead = messages.slice(i + 1).some(m => m.sender === 'them') || msg.isIgnored;
@@ -684,10 +750,57 @@ export const ChatView = ({
                   </div>}
                 </div>
               )}
-              <div onDoubleClick={() => setReplyingTo(msg)} className={`flex flex-col ${isMe ? "items-end" : "items-start"} max-w-[70%]`}>
+              <div 
+                onDoubleClick={() => setReplyingTo(msg)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveMenuMsgId(activeMenuMsgId === msg.id ? null : msg.id);
+                }}
+                className={`flex flex-col ${isMe ? "items-end" : "items-start"} max-w-[70%] relative cursor-pointer`}
+              >
+                {activeMenuMsgId === msg.id && (
+                  <div className={`absolute -top-10 z-[9999] bg-slate-900/95 backdrop-blur-md text-white text-[11px] rounded-[10px] px-2 py-1 shadow-lg flex items-center gap-1 animate-in fade-in zoom-in-95 duration-100 select-none border border-white/15 ${isMe ? 'right-0' : 'left-0'}`}>
+                    {isMe && (
+                      <>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setMessages(prev => prev.filter(m => m.id !== msg.id));
+                            setActiveMenuMsgId(null);
+                          }}
+                          className="px-1.5 py-0.5 hover:text-red-300 font-semibold active:scale-95 transition-all shrink-0"
+                        >
+                          撤回
+                        </button>
+                        <div className="w-px h-3 bg-white/20 shrink-0" />
+                      </>
+                    )}
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setReplyingTo(msg);
+                        setActiveMenuMsgId(null);
+                      }}
+                      className="px-1.5 py-0.5 hover:text-blue-300 font-semibold active:scale-95 transition-all shrink-0"
+                    >
+                      回复
+                    </button>
+                  </div>
+                )}
                 {msg.replyTo && (
-                  <div className={`text-[12px] px-3 py-1.5 mb-1 rounded-[12px] opacity-70 truncate max-w-full ${isMe ? "bg-black/10 text-black" : "bg-white/50 text-black/60"} border border-black/5`}>
-                    回复: {msg.replyTo}
+                  <div 
+                    className={`text-[11px] px-2.5 py-1.5 mb-1.5 max-w-full rounded-[14px] flex items-center gap-1 border backdrop-blur-sm transition-all shadow-[0_2px_8px_rgba(0,0,0,0.02)] ${
+                      isMe 
+                        ? "bg-black/8 text-black/75 border-black/5" 
+                        : "bg-white/60 text-black/80 border-white/40"
+                    }`}
+                    style={{ 
+                      borderLeft: `3px solid ${isMe ? bubbleColor : '#A1A1A1'}`,
+                    }}
+                  >
+                    <span className="font-serif opacity-60 leading-none mr-0.5 mt-1">“</span>
+                    <span className="truncate italic font-light">{msg.replyTo}</span>
+                    <span className="font-serif opacity-60 leading-none ml-0.5 mt-1">”</span>
                   </div>
                 )}
                 {msg.type === 'sticker' ? (
@@ -706,12 +819,12 @@ export const ChatView = ({
                     }
                     style={chatBubbleStyle === 'system' ? {
                       backgroundColor: isMe ? bubbleColor : '#E9E9EB',
-                      color: isMe ? '#fff' : '#000',
+                      color: '#000000',
                       minWidth: `${Math.min(200, 80 + (msg.voiceDuration || 1) * 5)}px`
                     } : {
                       backgroundColor: isMe ? `${bubbleColor}66` : 'rgba(255,255,255,0.15)',
-                      color: '#fff',
-                      textShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                      color: '#000000',
+                      textShadow: 'none',
                       minWidth: `${Math.min(200, 80 + (msg.voiceDuration || 1) * 5)}px`
                     }}
                     onClick={() => {
@@ -757,7 +870,7 @@ export const ChatView = ({
                     {isMe ? <span className="text-[14px]">{msg.voiceDuration}s</span> : <Mic size={18} />}
                     <div className="flex-1 flex justify-center space-x-1">
                       {Array.from({ length: Math.min(10, Math.max(3, (msg.voiceDuration || 1))) }).map((_, i) => (
-                        <div key={i} className={`w-1 rounded-full ${playingVoiceId === msg.id ? 'animate-pulse' : ''} ${chatBubbleStyle === 'system' && !isMe ? 'bg-black/40' : 'bg-white/70'}`} style={{ height: `${Math.random() * 12 + 4}px`, animationDelay: `${i * 0.1}s` }}></div>
+                        <div key={i} className={`w-1 rounded-full ${playingVoiceId === msg.id ? 'animate-pulse' : ''} bg-black/45`} style={{ height: `${Math.random() * 12 + 4}px`, animationDelay: `${i * 0.1}s` }}></div>
                       ))}
                     </div>
                     {isMe ? <Mic size={18} /> : <span className="text-[14px]">{msg.voiceDuration}s</span>}
@@ -767,17 +880,16 @@ export const ChatView = ({
                 ) : (
                   <div 
                     className={chatBubbleStyle === 'system' ? 
-                      `chat-bubble px-4 py-2.5 text-[15px] leading-relaxed ${isMe ? 'rounded-[20px] rounded-tr-[4px]' : 'rounded-[20px] rounded-tl-[4px]'}` :
-                      `chat-bubble px-4 py-2.5 text-[15px] leading-relaxed shadow-[0_4px_16px_rgba(0,0,0,0.06),inset_0_1px_3px_rgba(255,255,255,0.4)] backdrop-blur-3xl ${isMe ? 'border border-white/30' : 'border border-white/40'} ${isMe ? 'rounded-[20px] rounded-tr-[4px]' : 'rounded-[20px] rounded-tl-[4px]'}`
+                      `chat-bubble px-4 py-2.5 text-[15px] leading-relaxed ${isMe ? 'rounded-[20px] rounded-tr-[4px] me' : 'rounded-[20px] rounded-tl-[4px] them'}` :
+                      `chat-bubble px-4 py-2.5 text-[15px] leading-relaxed shadow-[0_4px_16px_rgba(0,0,0,0.06),inset_0_1px_3px_rgba(255,255,255,0.4)] backdrop-blur-3xl ${isMe ? 'border border-white/30 me' : 'border border-white/40 them'} ${isMe ? 'rounded-[20px] rounded-tr-[4px]' : 'rounded-[20px] rounded-tl-[4px]'}`
                     }
-                    style={chatBubbleStyle === 'system' ? {
-                      backgroundColor: isMe ? bubbleColor : '#E9E9EB',
-                      color: isMe ? '#fff' : '#000'
-                    } : {
-                      backgroundColor: isMe ? `${bubbleColor}66` : 'rgba(255,255,255,0.15)',
-                      color: '#fff',
-                      textShadow: '0 1px 2px rgba(0,0,0,0.1)'
-                    }}
+                    style={{
+                      '--bubble-bg': chatBubbleStyle === 'system' 
+                        ? (isMe ? bubbleColor : '#E9E9EB') 
+                        : (isMe ? `${bubbleColor}66` : 'rgba(255,255,255,0.15)'),
+                      '--bubble-color': '#000000',
+                      '--bubble-text-shadow': 'none'
+                    } as React.CSSProperties}
                   >
                     {msg.content}
                   </div>
@@ -817,9 +929,9 @@ export const ChatView = ({
                 `chat-bubble px-4 py-3 rounded-[20px] rounded-tl-[4px] bg-[#E9E9EB] flex space-x-1.5 items-center` :
                 `chat-bubble px-4 py-3 rounded-[20px] rounded-tl-[4px] bg-white/15 backdrop-blur-3xl border border-white/40 shadow-[0_4px_16px_rgba(0,0,0,0.06),inset_0_1px_3px_rgba(255,255,255,0.4)] flex space-x-1.5 items-center`
               }>
-                <motion.div className={`w-1.5 h-1.5 rounded-full ${chatBubbleStyle === 'system' ? 'bg-black/40' : 'bg-white/80'}`} animate={{y: [0, -4, 0]}} transition={{repeat: Infinity, duration: 0.8}} />
-                <motion.div className={`w-1.5 h-1.5 rounded-full ${chatBubbleStyle === 'system' ? 'bg-black/40' : 'bg-white/80'}`} animate={{y: [0, -4, 0]}} transition={{repeat: Infinity, duration: 0.8, delay: 0.2}} />
-                <motion.div className={`w-1.5 h-1.5 rounded-full ${chatBubbleStyle === 'system' ? 'bg-black/40' : 'bg-white/80'}`} animate={{y: [0, -4, 0]}} transition={{repeat: Infinity, duration: 0.8, delay: 0.4}} />
+                <motion.div className="w-1.5 h-1.5 rounded-full bg-black/40" animate={{y: [0, -4, 0]}} transition={{repeat: Infinity, duration: 0.8}} />
+                <motion.div className="w-1.5 h-1.5 rounded-full bg-black/40" animate={{y: [0, -4, 0]}} transition={{repeat: Infinity, duration: 0.8, delay: 0.2}} />
+                <motion.div className="w-1.5 h-1.5 rounded-full bg-black/40" animate={{y: [0, -4, 0]}} transition={{repeat: Infinity, duration: 0.8, delay: 0.4}} />
               </div>
            </div>
         )}
@@ -832,7 +944,8 @@ export const ChatView = ({
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            className="absolute bottom-[calc(4rem+env(safe-area-inset-bottom))] left-3 right-3 bg-white/70 backdrop-blur-xl rounded-[16px] py-4 flex justify-around px-2 items-center z-20 shadow-[0_10px_40px_rgba(0,0,0,0.08)] border border-white/50"
+            className="absolute left-3 right-3 bg-white/70 backdrop-blur-xl rounded-[16px] py-4 flex justify-around px-2 items-center z-20 shadow-[0_10px_40px_rgba(0,0,0,0.08)] border border-white/50"
+            style={{ bottom: 'calc(env(safe-area-inset-bottom) + 60px)' }}
           >
              <button className="flex flex-col items-center gap-2 group w-[64px]" onClick={() => { initiateCall(); setShowPlusMenu(false); }}>
                 <div className="w-[50px] h-[50px] rounded-[16px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><Video size={24} strokeWidth={1.5} /></div>
@@ -864,7 +977,8 @@ export const ChatView = ({
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            className="absolute bottom-[calc(4rem+env(safe-area-inset-bottom))] left-2 right-2 bg-white/80 backdrop-blur-3xl rounded-[20px] p-4 z-20 shadow-[0_20px_40px_rgba(0,0,0,0.1)] border border-white/60 h-[240px] flex flex-col"
+            className="absolute left-2 right-2 bg-white/80 backdrop-blur-3xl rounded-[20px] p-4 z-20 shadow-[0_20px_40px_rgba(0,0,0,0.1)] border border-white/60 h-[240px] flex flex-col"
+            style={{ bottom: 'calc(env(safe-area-inset-bottom) + 60px)' }}
           >
              <div className="flex justify-between items-center mb-3">
                <span className="text-[13px] font-bold text-gray-700">表情包</span>
@@ -879,7 +993,7 @@ export const ChatView = ({
                 sender: "me",
                 type: "sticker",
                 content: url,
-                replyTo: replyingTo ? (replyingTo.type === "text" ? replyingTo.content : (replyingTo.type === "voice" ? "[语音]" : "[图片/表情]")) : undefined,
+                replyTo: replyingTo ? (replyingTo.type === "text" ? (replyingTo.content.length > 40 ? replyingTo.content.substring(0, 40) + '...' : replyingTo.content) : (replyingTo.type === "voice" ? "[语音]" : "[图片/表情]")) : undefined,
                 time: getFormatTime(),
                 isIgnored: ignored
               };
@@ -887,11 +1001,11 @@ export const ChatView = ({
               setReplyingTo(null);
                      setShowStickerPane(false);
                      if(!ignored) simulateReply();
-                 }} className="aspect-square bg-black/5 rounded-[12px] flex items-center justify-center cursor-pointer active:scale-95 transition-transform overflow-hidden">
-                    <img src={url} alt="sticker" className="w-full h-full object-cover" />
+                 }} className="h-[76px] w-full bg-black/5 rounded-[12px] flex items-center justify-center cursor-pointer active:scale-95 transition-transform overflow-hidden">
+                    <img src={url} alt="sticker" className="max-w-full max-h-full object-contain p-1" />
                  </div>
                ))}
-               <div onClick={() => newStickerInputRef.current?.click()} className="aspect-square bg-gray-100 rounded-[12px] flex flex-col items-center justify-center cursor-pointer active:scale-95 transition-transform border border-dashed border-gray-300">
+               <div onClick={() => newStickerInputRef.current?.click()} className="h-[76px] w-full bg-gray-100 rounded-[12px] flex flex-col items-center justify-center cursor-pointer active:scale-95 transition-transform border border-dashed border-gray-300">
                   <Plus size={24} className="text-gray-400 mb-1" />
                </div>
              </div>
@@ -901,66 +1015,100 @@ export const ChatView = ({
       </AnimatePresence>
 
       {/* Input Area */}
-      <div className="absolute bottom-0 left-0 right-0 px-3 pt-2 w-full flex items-center space-x-2 z-30 bg-transparent" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.5rem)" }}>
-        <button 
-          className={`w-[42px] h-[42px] rounded-full flex items-center justify-center shrink-0 border border-white/20 text-white shadow-[0_4px_12px_rgba(0,0,0,0.1),inset_0_2px_4px_rgba(255,255,255,0.3)] active:scale-95 transition-all ${showPlusMenu || showStickerPane ? 'rotate-45' : ''}`}
-          style={{ backgroundColor: bubbleColor }}
-          onClick={() => {
-            if (showStickerPane) {
-               setShowStickerPane(false);
-            } else {
-               setShowPlusMenu(!showPlusMenu);
-            }
-          }}
-        >
-          <Plus size={22} strokeWidth={2.5} />
-        </button>
-        <div className={`flex-1 h-[42px] rounded-full flex items-center px-4 bg-white/20 backdrop-blur-3xl border ${isRecording ? 'border-primary shadow-[0_0_20px_rgba(0,122,255,0.2)] bg-white/30' : 'border-white/40 shadow-[0_4px_16px_rgba(0,0,0,0.06),inset_0_2px_4px_rgba(255,255,255,0.3)]'} overflow-hidden relative transition-all duration-300`}>
-          {isRecording ? (
-            <div className="flex-1 flex items-center justify-between text-white font-medium text-[15px] animate-in fade-in">
-               <div className="flex items-center space-x-2">
-                 <div className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
-                 <span>正在录音 {Math.floor(recordingTime / 60).toString().padStart(2, '0')}:{(recordingTime % 60).toString().padStart(2, '0')}</span>
-               </div>
-               <div className="flex items-center space-x-4">
-                 <button onClick={cancelRecording} className="text-white/70 hover:text-white shrink-0 flex items-center text-[13px]"><X size={16} className="mr-0.5"/>取消</button>
-                 <button onClick={stopRecording} className="text-white shrink-0 flex items-center text-[13px] active:scale-95 bg-[#007AFF] px-2 py-1 rounded-full shadow-sm"><Send size={14} className="mr-1"/>发送</button>
-               </div>
-            </div>
-          ) : (
-            <input 
-              type="text"
-              className="flex-1 bg-transparent border-none outline-none text-[15px] p-0 text-white placeholder-white/70"
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleSend()}
-              placeholder="发送消息..."
-              onFocus={() => setShowPlusMenu(false)}
-            />
+      <div 
+        className="absolute bottom-0 left-0 right-0 w-full z-30 flex flex-col pointer-events-none"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 12px)' }}
+      >
+        {/* Reply Indicator banner */}
+        <AnimatePresence>
+          {replyingTo && (
+            <motion.div 
+              initial={{ opacity: 0, y: 15, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 15, scale: 0.98 }}
+              className="mx-3 mb-2 px-4 py-2.5 bg-white/80 backdrop-blur-3xl rounded-[18px] border border-white/60 shadow-[0_8px_24px_rgba(0,0,0,0.12)] flex items-center justify-between gap-3 pointer-events-auto transition-all"
+              style={{ borderLeft: `4px solid ${bubbleColor}` }}
+            >
+              <div className="flex flex-col min-w-0 pr-4">
+                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: bubbleColor }} />
+                  正在引用 {replyingTo.sender === 'me' ? '自己' : charId} 的话
+                </span>
+                <span className="text-[13px] text-gray-800 font-medium truncate mt-0.5">
+                  {replyingTo.type === "text" ? replyingTo.content : (replyingTo.type === "voice" ? "[语音]" : "[图片/表情]")}
+                </span>
+              </div>
+              <button 
+                onClick={() => setReplyingTo(null)}
+                className="w-6 h-6 rounded-full bg-black/5 hover:bg-black/10 flex items-center justify-center text-gray-500 shrink-0 select-none active:scale-90 transition-all cursor-pointer"
+              >
+                <X size={13} strokeWidth={2.5} />
+              </button>
+            </motion.div>
           )}
+        </AnimatePresence>
 
-          {!isRecording && (
-             <div className="flex items-center space-x-3 ml-2 pr-1">
-                {!input.trim() ? (
-                  <>
-                    <button onClick={() => simulateReply()} className="active:scale-95 transition-transform" style={{ color: bubbleColor }}>
-                       <Sparkles size={20} strokeWidth={2} />
+        <div className="px-3 pt-2 w-full flex items-center space-x-2 bg-transparent pointer-events-auto">
+          <button 
+            className={`w-[42px] h-[42px] rounded-full flex items-center justify-center shrink-0 border border-white/20 text-white shadow-[0_4px_12px_rgba(0,0,0,0.1),inset_0_2px_4px_rgba(255,255,255,0.3)] active:scale-95 transition-all ${showPlusMenu || showStickerPane ? 'rotate-45' : ''}`}
+            style={{ backgroundColor: bubbleColor }}
+            onClick={() => {
+              if (showStickerPane) {
+                 setShowStickerPane(false);
+              } else {
+                 setShowPlusMenu(!showPlusMenu);
+              }
+            }}
+          >
+            <Plus size={22} strokeWidth={2.5} />
+          </button>
+          <div className={`flex-1 h-[42px] rounded-full flex items-center px-4 bg-white/20 backdrop-blur-3xl border ${isRecording ? 'border-primary shadow-[0_0_20px_rgba(0,122,255,0.2)] bg-white/30' : 'border-white/40 shadow-[0_4px_16px_rgba(0,0,0,0.06),inset_0_2px_4px_rgba(255,255,255,0.3)]'} overflow-hidden relative transition-all duration-300`}>
+            {isRecording ? (
+              <div className="flex-1 flex items-center justify-between text-white font-medium text-[15px] animate-in fade-in">
+                 <div className="flex items-center space-x-2">
+                   <div className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
+                   <span>正在录音 {Math.floor(recordingTime / 60).toString().padStart(2, '0')}:{(recordingTime % 60).toString().padStart(2, '0')}</span>
+                 </div>
+                 <div className="flex items-center space-x-4">
+                   <button onClick={cancelRecording} className="text-white/70 hover:text-white shrink-0 flex items-center text-[13px]"><X size={16} className="mr-0.5"/>取消</button>
+                   <button onClick={stopRecording} className="text-white shrink-0 flex items-center text-[13px] active:scale-95 bg-[#007AFF] px-2 py-1 rounded-full shadow-sm"><Send size={14} className="mr-1"/>发送</button>
+                 </div>
+              </div>
+            ) : (
+              <input 
+                type="text"
+                className="flex-1 bg-transparent border-none outline-none text-[15px] p-0 text-white placeholder-white/70"
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSend()}
+                placeholder="发送消息..."
+                onFocus={() => setShowPlusMenu(false)}
+              />
+            )}
+
+            {!isRecording && (
+               <div className="flex items-center space-x-3 ml-2 pr-1">
+                  {!input.trim() ? (
+                    <>
+                      <button onClick={() => simulateReply()} className="active:scale-95 transition-transform" style={{ color: bubbleColor }}>
+                         <Sparkles size={20} strokeWidth={2} />
+                      </button>
+                      <button 
+                        onClick={() => isRecording ? stopRecording() : startRecording()}
+                        className="active:scale-95 transition-transform"
+                        style={{ color: bubbleColor }}
+                      >
+                         <Mic size={20} strokeWidth={2} />
+                      </button>
+                    </>
+                  ) : (
+                    <button onClick={() => handleSend()} className="active:scale-95 transition-transform w-[28px] h-[28px] rounded-full flex items-center justify-center shadow-sm text-white" style={{ backgroundColor: bubbleColor }}>
+                       <Send size={15} strokeWidth={2.5} className="-ml-0.5 mt-0.5" />
                     </button>
-                    <button 
-                      onClick={() => isRecording ? stopRecording() : startRecording()}
-                      className="active:scale-95 transition-transform"
-                      style={{ color: bubbleColor }}
-                    >
-                       <Mic size={20} strokeWidth={2} />
-                    </button>
-                  </>
-                ) : (
-                  <button onClick={() => handleSend()} className="active:scale-95 transition-transform w-[28px] h-[28px] rounded-full flex items-center justify-center shadow-sm text-white" style={{ backgroundColor: bubbleColor }}>
-                     <Send size={15} strokeWidth={2.5} className="-ml-0.5 mt-0.5" />
-                  </button>
-                )}
-             </div>
-          )}
+                  )}
+               </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1041,7 +1189,6 @@ export const ChatView = ({
           </motion.div>
         )}
       </AnimatePresence>
-
     </div>
   );
 }

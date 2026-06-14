@@ -6,6 +6,10 @@ const SILENT_AUDIO_BASE64 = "data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAAD
 export const KeepAlivePlayer: React.FC = () => {
   const [keepAlive] = useLocalState("app_chatKeepAlive", false);
   const [customAudio, setCustomAudio] = useIDBState("app_keepalive_audio", "");
+  const [keepaliveIcon] = useIDBState<string>("app_keepalive_icon", "");
+  const [chatAvatar2] = useIDBState<string>("app_chatAvatar2", "");
+  const [avatar2] = useIDBState<string>("app_avatar2", "");
+  const [mjNickname] = useLocalState<string>("app_mjNickname", "梦角");
   const audioRef = useRef<HTMLAudioElement>(null);
   const previousAudioRef = useRef<string>("");
 
@@ -17,6 +21,14 @@ export const KeepAlivePlayer: React.FC = () => {
     };
     window.addEventListener("keepalive_audio_changed", handleAudioUpdate);
     return () => window.removeEventListener("keepalive_audio_changed", handleAudioUpdate);
+  }, []);
+
+  useEffect(() => {
+    const handleIconUpdate = (e: any) => {
+      // Force trigger state sync if dispatched
+    };
+    window.addEventListener("keepalive_icon_changed", handleIconUpdate);
+    return () => window.removeEventListener("keepalive_icon_changed", handleIconUpdate);
   }, []);
 
   useEffect(() => {
@@ -33,10 +45,13 @@ export const KeepAlivePlayer: React.FC = () => {
 
     if (keepAlive) {
       if ("mediaSession" in navigator) {
+        const iconSrc = keepaliveIcon || chatAvatar2 || avatar2;
+        const artwork = iconSrc ? [{ src: iconSrc, sizes: "96x96", type: "image/png" }] : [];
         navigator.mediaSession.metadata = new MediaMetadata({
           title: "后台运行中",
-          artist: "保活服务",
-          album: "状态"
+          artist: mjNickname || "保活服务",
+          album: "状态",
+          artwork
         });
       }
 
@@ -70,7 +85,7 @@ export const KeepAlivePlayer: React.FC = () => {
     return () => {
        abortController.abort();
     };
-  }, [keepAlive, customAudio]);
+  }, [keepAlive, customAudio, keepaliveIcon, chatAvatar2, avatar2, mjNickname]);
 
   useEffect(() => {
     const handleInteraction = () => {

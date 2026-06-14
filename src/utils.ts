@@ -7,6 +7,13 @@ export function useIDBState<T>(key: string, initialValue: T): [T, Dispatch<SetSt
   const hasModifiedRef = useRef(false);
 
   useEffect(() => {
+    const handleCustomChange = (e: CustomEvent) => {
+      if (e.detail?.key === key) {
+        setState(e.detail.newValue);
+      }
+    };
+    window.addEventListener("idbStateChanged", handleCustomChange as EventListener);
+
     get(key).then((val) => {
       if (hasModifiedRef.current) return;
       if (val !== undefined) {
@@ -23,6 +30,10 @@ export function useIDBState<T>(key: string, initialValue: T): [T, Dispatch<SetSt
       }
       isLoadedRef.current = true;
     });
+
+    return () => {
+      window.removeEventListener("idbStateChanged", handleCustomChange as EventListener);
+    };
   }, [key]);
 
   const setValue = (value: SetStateAction<T>) => {
@@ -32,6 +43,7 @@ export function useIDBState<T>(key: string, initialValue: T): [T, Dispatch<SetSt
       try {
         const valueToStore = value instanceof Function ? (value as any)(prev) : value;
         set(key, valueToStore).catch(console.error);
+        window.dispatchEvent(new CustomEvent("idbStateChanged", { detail: { key, newValue: valueToStore } }));
         return valueToStore;
       } catch (error) {
         console.error(error);
