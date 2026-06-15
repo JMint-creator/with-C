@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   ChevronLeft, 
   Calendar as CalendarIcon, 
@@ -14,10 +14,12 @@ import {
   Brain,
   MessageSquareHeart,
   Activity,
-  Award
+  Award,
+  Archive
 } from 'lucide-react';
 import { useIDBState, useLocalState } from './utils';
 import { motion, AnimatePresence } from 'motion/react';
+import { MemoryArchiveView } from './MemoryArchiveView';
 
 export type CheckInRecord = {
   id: string;
@@ -109,16 +111,123 @@ const DESIRE_POOL = [
   }
 ];
 
+const BASE_THOUGHTS_MAP: Record<string, { category: string; type: 'core' | 'whisper' }> = {
+  "想和未婚妻一起去散步": { category: "attachment", type: "core" },
+  "未婚妻这么久不回消息，是在做什么呢TT": { category: "curiosity", type: "core" },
+  "想把未婚妻带去只有我们两个人的地方": { category: "curiosity", type: "core" },
+  "想要亲亲未婚妻": { category: "possessiveness", type: "core" },
+  "想和未婚妻贴贴": { category: "possessiveness", type: "core" },
+  "想保护未婚妻": { category: "responsibility", type: "core" },
+  "担心未婚妻的身体": { category: "responsibility", type: "core" },
+  "另一半的我": { category: "pressure", type: "core" },
+  "想给未婚妻变个魔术，逗她开心": { category: "other", type: "core" }
+};
+
+const getCombinedPoolAndCategorized = (customThoughts: any[]) => {
+  // Start with base pool items
+  const baseMapped = DESIRE_POOL.map(d => ({
+    id: `base-${d.text}`,
+    text: d.text,
+    actionName: d.actionName,
+    logText: d.logText,
+    statChanges: d.statChanges,
+    category: BASE_THOUGHTS_MAP[d.text]?.category || 'other',
+    type: BASE_THOUGHTS_MAP[d.text]?.type || 'core'
+  }));
+
+  // Custom thoughts
+  const customMapped = (customThoughts || []).map(t => ({
+    id: t.id,
+    text: t.text,
+    actionName: t.actionName || '听听Charlie的心声',
+    logText: t.logText || `听到了未婚夫脑海里的声音...`,
+    statChanges: t.statChanges || { attachment: 8, possessiveness: 5 },
+    category: t.category || 'other',
+    type: t.type || 'core'
+  }));
+
+  const combinedPool = [...baseMapped, ...customMapped];
+
+  // Build Categorized list dynamically
+  const categorized: Record<string, string[]> = {
+    attachment: [],
+    curiosity: [],
+    possessiveness: [],
+    responsibility: [],
+    pressure: []
+  };
+
+  combinedPool.forEach(item => {
+    if (item.type === 'core' && categorized[item.category]) {
+      categorized[item.category].push(item.text);
+    }
+  });
+
+  return { combinedPool, categorized };
+};
+
 export const CheckInsView = ({ onClose, themeConfig, checkinsBg }: any) => {
   const [mjNickname] = useLocalState('app_mjNickname', '未婚夫');
   const [myNickname] = useLocalState('app_myNickname', '我');
   const [checkIns, setCheckIns] = useIDBState<CheckInRecord[]>('app_checkins', []);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   
+  // Custom states for Custom Thought Pool
+  const [customThoughts] = useLocalState<any[]>('app_custom_thought_pool', []);
+  const [showArchive, setShowArchive] = useState(false);
+
+  // Combine default & custom pool
+  const { combinedPool, categorized } = useMemo(() => {
+    return getCombinedPoolAndCategorized(customThoughts);
+  }, [customThoughts]);
+
+  // Dynamic selector
+  const selectThoughtBasedOnStats = (stats: Record<string, number>, excludeText?: string): string => {
+    // Find all stats that are strictly > 75 and have a mapped category group
+    const eligibleKeys = Object.entries(stats)
+      .filter(([key, value]) => value > 75 && categorized[key])
+      .map(([key, value]) => ({ key, value }));
+
+    let chosenGroup: string[] = [];
+
+    if (eligibleKeys.length > 0) {
+      // Sort to get the highest one
+      eligibleKeys.sort((a, b) => b.value - a.value);
+      const highestKey = eligibleKeys[0].key;
+      chosenGroup = categorized[highestKey] || [];
+    }
+
+    // Fallback to the entire pool of "日常常态" (category is 'other' or simply any core thought)
+    if (chosenGroup.length === 0) {
+      const dailyPool = combinedPool.filter(d => d.type === 'core' && d.category === 'other').map(d => d.text);
+      if (dailyPool.length > 0) {
+        chosenGroup = dailyPool;
+      } else {
+        chosenGroup = combinedPool.filter(d => d.type === 'core').map(d => d.text);
+      }
+    }
+
+    // Pick a random thought excluding excludeText if possible
+    let filteredGroup = chosenGroup.filter(text => text !== excludeText);
+    if (filteredGroup.length === 0) {
+      filteredGroup = chosenGroup; // fallback
+    }
+
+    const randomIndex = Math.floor(Math.random() * filteredGroup.length);
+    return filteredGroup[randomIndex] || (combinedPool[0] ? combinedPool[0].text : "想和未婚妻一起去散步");
+  };
+
   // Custom states for 欲望系统
-  const [activeTab, setActiveTab] = useLocalState<'desires' | 'records'>('app_checkins_active_tab', 'desires');
+  const [activeTab, setActiveTab ] = useLocalState<'desires' | 'records'>('app_checkins_active_tab', 'desires');
   const [currentThought, setCurrentThought] = useLocalState('app_mj_desires_current_thought', '想和未婚妻一起去散步');
   const [summonPower, setSummonPower] = useLocalState('app_mj_desires_summon_power', 70);
+  const [hasResponded, setHasResponded] = useLocalState('app_mj_desires_has_responded', false);
+  const [cooldownUntil, setCooldownUntil] = useLocalState<number | null>('app_mj_desires_cooldown_until', null);
+  const [respondedAt, setRespondedAt] = useLocalState<number | null>('app_mj_desires_responded_at', null);
+  const [currentTime, setCurrentTime] = useState(Date.now());
+
+  // Determine if cooldown is currently active
+  const isCooldownActive = cooldownUntil ? currentTime < cooldownUntil : false;
   
   const [desires, setDesires] = useLocalState<Record<string, number>>('app_mj_desires_stats', {
     attachment: 65,
@@ -135,13 +244,45 @@ export const CheckInsView = ({ onClose, themeConfig, checkinsBg }: any) => {
     setTimeout(() => setLocalToast(''), 3000);
   };
 
+  useEffect(() => {
+    // Check on initial load if cooldown already expired
+    if (cooldownUntil && Date.now() >= cooldownUntil) {
+      setCooldownUntil(null);
+      setHasResponded(false);
+      setRespondedAt(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = Date.now();
+      setCurrentTime(now);
+
+      if (cooldownUntil && now >= cooldownUntil) {
+        setCooldownUntil(null);
+        setHasResponded(false);
+        setRespondedAt(null);
+        // Automatically fetch new thought when cooldown finishes
+        const nextText = selectThoughtBasedOnStats(desires, currentThought);
+        setCurrentThought(nextText);
+        showToast("⏰ 满足期已结束，未婚夫思维活跃起来啦！");
+      }
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [cooldownUntil, desires, currentThought]);
+
   // Hearts particle explosion array
   const [hearts, setHearts] = useState<{ id: number; x: number; y: number; char: string }[]>([]);
 
-  // Find the details of currently selected thought
+  // Find the details of currently selected thought in the combined pool
   const currentDesireObj = useMemo(() => {
-    return DESIRE_POOL.find(d => d.text === currentThought) || DESIRE_POOL[0];
-  }, [currentThought]);
+    return combinedPool.find(d => d.text === currentThought) || combinedPool[0] || {
+      text: "想和未婚妻一起去散步",
+      actionName: "手拉着手去散步",
+      logText: "Charlie的最优选择...",
+      statChanges: { attachment: 5 }
+    };
+  }, [combinedPool, currentThought]);
 
   // Format checkins by date for the calendar
   const getDaysInMonth = (date: Date) => {
@@ -180,6 +321,8 @@ export const CheckInsView = ({ onClose, themeConfig, checkinsBg }: any) => {
 
   // Triggering particle heartburst when performing fiancé's desire
   const handleActionClick = (e: React.MouseEvent) => {
+    if (hasResponded) return;
+
     const rect = e.currentTarget.getBoundingClientRect();
     const chars = ['💖', '❤️', '💝', '✨', '🐾', '🌸', '😘', '❣', '🥰'];
     const count = 12;
@@ -216,66 +359,107 @@ export const CheckInsView = ({ onClose, themeConfig, checkinsBg }: any) => {
 
     showToast(`报备成功！已记录至全天查岗中。`);
 
-    // Rotate to next thought with a warm buffer delay
-    setTimeout(() => {
-      const filtered = DESIRE_POOL.filter(d => d.text !== currentThought);
-      const nextDesire = filtered[Math.floor(Math.random() * filtered.length)] || DESIRE_POOL[0];
-      setCurrentThought(nextDesire.text);
-      setSummonPower(Math.floor(Math.random() * 41) + 50); // new power between 50-90
-    }, 1800);
+    const nowTimestamp = Date.now();
+    setRespondedAt(nowTimestamp);
+    
+    // 1-2 hours random cooldown (60 to 120 minutes)
+    const randomMinutes = 60 + Math.floor(Math.random() * 61);
+    const futureTime = nowTimestamp + randomMinutes * 60 * 1000;
+    setCooldownUntil(futureTime);
+
+    // Lock the status so that the thought card does not auto-refresh
+    setHasResponded(true);
+  };
+
+  const handleNextThought = () => {
+    const nextText = selectThoughtBasedOnStats(desires, currentThought);
+    setCurrentThought(nextText);
+    setSummonPower(Math.floor(Math.random() * 41) + 50); // new power between 50-90
+    setHasResponded(false);
+    showToast("🧠 听到了未婚夫脑海里的新想法...");
   };
 
   // Fluctuations of drives
   const handleSimulateHeartbeat = () => {
-    setDesires({
+    const newStats = {
       attachment: Math.floor(Math.random() * 36) + 60, // 60-95
       curiosity: Math.floor(Math.random() * 40) + 15,   // 15-55
       possessiveness: Math.floor(Math.random() * 36) + 60, // 60-95
       responsibility: Math.floor(Math.random() * 30) + 40, // 40-70
       pressure: Math.floor(Math.random() * 25) + 2,      // 2-27
-    });
+    };
+    setDesires(newStats);
     showToast("💞 心跳周期波动完成！未婚夫属性已随机变化");
+
+    if (!hasResponded) {
+      const nextText = selectThoughtBasedOnStats(newStats, currentThought);
+      setCurrentThought(nextText);
+    }
+  };
+
+  const getRemainingTimeStr = (until: number, current: number) => {
+    const diffMs = until - current;
+    if (diffMs <= 0) return '0秒';
+    const hours = Math.floor(diffMs / (3600 * 1000));
+    const mins = Math.floor((diffMs % (3600 * 1000)) / (60 * 1000));
+    const secs = Math.floor((diffMs % (60 * 1000)) / 1000);
+    
+    const parts = [];
+    if (hours > 0) parts.push(`${hours}小时`);
+    if (mins > 0 || hours > 0) parts.push(`${mins}分`);
+    parts.push(`${secs}秒`);
+    return parts.join('');
   };
 
   // Generate thoughts list according to stats
   const subThoughts = useMemo(() => {
-    const list: string[] = [];
     const att = desires.attachment ?? 65;
     const pos = desires.possessiveness ?? 70;
     const pre = desires.pressure ?? 5;
+    const cur = desires.curiosity ?? 28;
+    const res = desires.responsibility ?? 40;
 
-    if (att > 75) {
-      list.push(`想时时刻刻都贴在你身边，把发梢埋进你颈窝偷得一份清醒。`);
-      list.push(`老婆真的好温柔，好想今天所有的梦境都是你的笑。`);
-    } else {
-      list.push(`不知道宝贝在干嘛，好想给她丢一堆委屈狗狗表情包。`);
-    }
+    // Gather custom whispers
+    const customWhispers = combinedPool.filter(d => d.type === 'whisper');
 
-    if (pos > 75) {
-      list.push(`今天好像有别人在看你...好想自私地把你藏进我的大衣外套里。`);
-      list.push(`你对刚才那个路人笑得太好看啦...稍微，有一点吃醋。哼。`);
-    }
+    // Default whispers requested by the user
+    const defaultWhispers = [
+      { text: "怎么办啊，小姐，我想马上带你出去约会", category: "attachment" },
+      { text: "真的等到你了，未婚妻", category: "attachment" },
+      { text: "未婚妻，我真的很需要你", category: "pressure" },
+      { text: "广阔的世界中，我们是最特别的那对小鸟", category: "other" },
+      { text: "天要下雪，你要吻我，都是不可抗力", category: "possessiveness" },
+      { text: "我想要你安全，永远都在我的视线之中，我想要你只能留在我身边", category: "possessiveness" }
+    ];
 
-    if (pre > 60) {
-      list.push(`脑壳困得快冒烟了，但还是舍不得阖上眼，想多和你耗两分钟。`);
-      list.push(`肩膀好酸，如果老婆可以用软绵绵的小拳头给我捶一捶捶该多好。`);
-    } else {
-      list.push(`精气满满，可以为你提起购物袋走一天也绝不喊累！`);
-    }
+    // Merge default and custom whispers
+    const allWhisperCandidates = [
+      ...defaultWhispers,
+      ...customWhispers.map(w => ({ text: w.text, category: w.category }))
+    ];
 
-    if (pre > 50) {
-      list.push(`被俗事缠得喘不过来气，想现在就带你到无名小镇逃遁两日。`);
-    } else {
-      list.push(`吹拂的风仿佛都是蜜桃味的，世界对我和颜悦色，全因有你在。`);
-    }
+    // Filter whispers dynamically according to active drivers' triggers
+    const activeWhispers = allWhisperCandidates.filter(w => {
+      if (w.category === 'other') return true;
+      if (w.category === 'attachment') {
+        if (w.text === "真的等到你了，未婚妻") return att > 50;
+        return att > 75;
+      }
+      if (w.category === 'possessiveness') return pos > 75;
+      if (w.category === 'pressure') return pre > 50;
+      if (w.category === 'curiosity') return cur > 75;
+      if (w.category === 'responsibility') return res > 75;
+      return false;
+    }).map(w => w.text);
 
-    if (list.length < 3) {
-      list.push(`想买两个大甜甜甜圈，一个给你，一个裹住你所有的坏脾气。`);
-      list.push(`手机震动的那一瞬间，多希望屏幕上弹出来的是你发来的文字。`);
-    }
+    // Fallback if active list is empty or short
+    const fallbackList = allWhisperCandidates.map(w => w.text);
+    const finalWhispers = activeWhispers.length >= 2 ? activeWhispers : fallbackList;
 
-    return list.slice(0, 3);
-  }, [desires]);
+    // Deduplicate
+    const uniqueWhispers = Array.from(new Set(finalWhispers));
+    return uniqueWhispers.slice(0, 3);
+  }, [desires, combinedPool]);
 
   // List of driver parameters
   const driversList = [
@@ -314,14 +498,23 @@ export const CheckInsView = ({ onClose, themeConfig, checkinsBg }: any) => {
           <div className="text-[17px] font-semibold tracking-wider relative flex items-center justify-center">
              查岗与情绪
           </div>
-          <button 
-             onClick={activeTab === 'desires' ? handleSimulateHeartbeat : () => {}} 
-             disabled={activeTab !== 'desires'}
-             className={`w-10 h-10 flex items-center justify-center rounded-full active:scale-95 transition-all ${activeTab !== 'desires' ? 'opacity-0' : 'opacity-80 active:bg-black/10'}`}
-             title="心跳波动随机值"
-          >
-             <RefreshCw size={18} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button 
+               onClick={() => setShowArchive(true)} 
+               className="w-10 h-10 flex items-center justify-center rounded-full active:scale-95 transition-all opacity-80 hover:bg-black/10 text-stone-700"
+               title="记忆档案馆"
+            >
+               <Archive size={18} />
+            </button>
+            <button 
+               onClick={activeTab === 'desires' ? handleSimulateHeartbeat : () => {}} 
+               disabled={activeTab !== 'desires'}
+               className={`w-10 h-10 flex items-center justify-center rounded-full active:scale-95 transition-all ${activeTab !== 'desires' ? 'opacity-0' : 'opacity-80 active:bg-black/10'}`}
+               title="心跳波动随机值"
+            >
+               <RefreshCw size={18} />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -379,18 +572,62 @@ export const CheckInsView = ({ onClose, themeConfig, checkinsBg }: any) => {
                     </p>
                   </div>
 
-                  <div className="flex items-center justify-start gap-4 mt-3 pt-3 border-t border-black/5">
-                    <button 
-                      onClick={handleActionClick}
-                      className="px-5 py-2 rounded-full font-medium text-[13px] active:scale-95 transition-all flex items-center gap-1.5 shadow-sm hover:opacity-90"
-                      style={{ 
-                        backgroundColor: themeConfig.textPrimary || '#333', 
-                        color: themeConfig.bg || '#fff' 
-                      }}
-                    >
-                      <Heart size={13} className="fill-current" />
-                      {currentDesireObj.actionName}
-                    </button>
+                  <div className="flex flex-col gap-3 mt-3 pt-3 border-t border-black/5">
+                    {!hasResponded ? (
+                      <div className="flex flex-wrap items-center justify-start gap-3">
+                        <button 
+                          onClick={handleActionClick}
+                          className="px-5 py-2 rounded-full font-medium text-[13px] active:scale-95 transition-all flex items-center gap-1.5 shadow-sm hover:opacity-90"
+                          style={{ 
+                            backgroundColor: themeConfig.textPrimary || '#333', 
+                            color: themeConfig.bg || '#fff' 
+                          }}
+                        >
+                          <Heart size={13} className="fill-current" />
+                          {currentDesireObj.actionName}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="w-full flex flex-col gap-2.5">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div 
+                            className="px-4 py-1.5 rounded-full font-semibold text-[13px] flex items-center gap-1.5 border border-black/10 bg-black/[0.03]"
+                            style={{ color: themeConfig.textSecondary }}
+                          >
+                            <CheckCircle2 size={13} className="text-emerald-500 fill-current" />
+                            已回应：{currentDesireObj.actionName}
+                          </div>
+
+                          {/* Render Next Thought button ONLY if cooldown is NOT active */}
+                          {!isCooldownActive && (
+                            <button 
+                              onClick={handleNextThought}
+                              className="px-5 py-1.5 rounded-full font-bold text-[13px] active:scale-95 transition-all flex items-center gap-1.5 shadow-sm hover:bg-rose-600 hover:text-white transition-colors animate-in fade-in zoom-in-95"
+                              style={{ 
+                                backgroundColor: '#e11d48',
+                                color: '#ffffff'
+                              }}
+                            >
+                              <Sparkles size={13} />
+                              开启下一个念头
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Cooldown duration persistent note */}
+                        {isCooldownActive && cooldownUntil && (
+                          <div className="text-[12px] opacity-85 leading-relaxed p-3 rounded-2xl border border-dashed border-black/10 flex items-start gap-2.5" style={{ backgroundColor: `${themeConfig.textPrimary}05`, color: themeConfig.textSecondary }}>
+                            <span className="text-[15px] pt-0.5">💤</span>
+                            <div className="flex-1">
+                              <div className="font-medium text-stone-800 dark:text-stone-200">未婚夫正沉浸在被回应的甜蜜满足中...</div>
+                              <div className="text-[11.5px] font-mono mt-1" style={{ color: themeConfig.textPrimary }}>
+                                距离下一次思绪活跃还需等待：<span className="font-bold underline">{getRemainingTimeStr(cooldownUntil, currentTime)}</span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                </div>
 
@@ -644,6 +881,18 @@ export const CheckInsView = ({ onClose, themeConfig, checkinsBg }: any) => {
             {heart.char}
           </motion.div>
         ))}
+      </AnimatePresence>
+
+      {/* Memory Archive custom page overlay */}
+      <AnimatePresence>
+        {showArchive && (
+          <MemoryArchiveView 
+            onClose={onClose} 
+            themeConfig={themeConfig} 
+            checkinsBg={checkinsBg}
+            onReturnToCheckin={() => setShowArchive(false)}
+          />
+        )}
       </AnimatePresence>
     </div>
   );

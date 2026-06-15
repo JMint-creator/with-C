@@ -34,7 +34,8 @@ import {
   ListMusic,
   Aperture,
   Search,
-  Wallet
+  Wallet,
+  Archive
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { ChatView } from './ChatView';
@@ -43,6 +44,7 @@ import { WishlistView } from './WishlistView';
 import { ChatSettingsView } from './ChatSettingsView';
 import { CheckInsView } from './CheckInsView';
 import { DataView } from './DataView';
+import { MemoryArchiveView } from './MemoryArchiveView';
 import { AccountingView } from './AccountingView';
 import { TodoView } from './TodoView';
 import { MailboxView } from './MailboxView';
@@ -389,7 +391,7 @@ const BackgroundLayer = ({ bg, image, show }: { bg: string, image: string, show:
 };
 
 export default function App() {
-  const [view, setView] = useState<'home' | 'appearance' | 'data' | 'library' | 'decide' | 'chat' | 'chat_settings' | 'music_manager' | 'moments' | 'wishlist' | 'check_in' | 'accounting' | 'todo' | 'mailbox'>('home');
+  const [view, setView] = useState<'home' | 'appearance' | 'data' | 'library' | 'decide' | 'chat' | 'chat_settings' | 'music_manager' | 'moments' | 'wishlist' | 'check_in' | 'accounting' | 'todo' | 'mailbox' | 'memory_archive'>('home');
   const [appearanceTab, setAppearanceTab] = useState<'global' | 'chat' | 'component' | 'wallpaper'>('global');
 
   // Library States
@@ -1881,6 +1883,10 @@ export default function App() {
     return <><CheckInsView onClose={() => setView('home')} themeConfig={currentThemeConfig} checkinsBg={checkinsBg} /><VideoCallOverlay /></>;
   }
 
+  if (view === 'memory_archive') {
+    return <><MemoryArchiveView onClose={() => setView('home')} themeConfig={currentThemeConfig} checkinsBg={checkinsBg} /><VideoCallOverlay /></>;
+  }
+
   if (view === 'accounting') {
     return <><AccountingView onClose={() => setView('home')} themeConfig={currentThemeConfig} name1={myNickname} name2={mjNickname} avatar2={chatAvatar2 || avatar2} cardGroups={cardGroups} /><VideoCallOverlay /></>;
   }
@@ -2149,7 +2155,7 @@ export default function App() {
     currentBgImage = chatBg ? `url(${chatBg})` : (wallpaper ? `url(${wallpaper})` : 'none');
   } else if (view === 'wishlist') {
     currentBgImage = wishlistBg ? `url(${wishlistBg})` : (wallpaper ? `url(${wallpaper})` : 'none');
-  } else if (view === 'check_in') {
+  } else if (view === 'check_in' || view === 'memory_archive') {
     currentBgImage = checkinsBg ? `url(${checkinsBg})` : (wallpaper ? `url(${wallpaper})` : 'none');
   } else if (view === 'todo') {
     currentBgImage = wallpaper ? `url(${wallpaper})` : 'none';
