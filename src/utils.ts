@@ -42,8 +42,13 @@ export function useIDBState<T>(key: string, initialValue: T): [T, Dispatch<SetSt
     setState(prev => {
       try {
         const valueToStore = value instanceof Function ? (value as any)(prev) : value;
-        set(key, valueToStore).catch(console.error);
-        window.dispatchEvent(new CustomEvent("idbStateChanged", { detail: { key, newValue: valueToStore } }));
+        
+        // Defer side effects using setTimeout to move them out of the React render phase
+        setTimeout(() => {
+          set(key, valueToStore).catch(console.error);
+          window.dispatchEvent(new CustomEvent("idbStateChanged", { detail: { key, newValue: valueToStore } }));
+        }, 0);
+        
         return valueToStore;
       } catch (error) {
         console.error(error);
@@ -122,10 +127,21 @@ export function useLocalState<T>(key: string, initialValue: T): [T, Dispatch<Set
 
   const setValue = (value: SetStateAction<T>) => {
     try {
-      const valueToStore = value instanceof Function ? (value as any)(state) : value;
-      setState(valueToStore);
-      window.localStorage.setItem(key, JSON.stringify(valueToStore));
-      window.dispatchEvent(new CustomEvent("localStateChanged", { detail: { key, newValue: valueToStore } }));
+      setState(prev => {
+        const valueToStore = value instanceof Function ? (value as any)(prev) : value;
+        
+        // Defer side effects using setTimeout to move them out of the React render phase
+        setTimeout(() => {
+          try {
+            window.localStorage.setItem(key, JSON.stringify(valueToStore));
+            window.dispatchEvent(new CustomEvent("localStateChanged", { detail: { key, newValue: valueToStore } }));
+          } catch (e) {
+            console.error(e);
+          }
+        }, 0);
+
+        return valueToStore;
+      });
     } catch (error) {
       console.error(error);
     }

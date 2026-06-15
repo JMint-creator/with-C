@@ -448,7 +448,7 @@ export default function App() {
   
   // Social Settings
   const [myNickname, setMyNickname] = useLocalState('app_myNickname', '我');
-  const [mjNickname, setMjNickname] = useLocalState('app_mjNickname', '梦角');
+  const [mjNickname, setMjNickname] = useLocalState('app_mjNickname', '未婚夫');
   const [keepaliveIcon, setKeepaliveIcon] = useIDBState('app_keepalive_icon', '');
   const [momentsBg, setMomentsBg] = useIDBState('app_moments_bg', '');
   const [wishlistBg, setWishlistBg] = useIDBState('app_wishlist_bg', '');
@@ -667,11 +667,11 @@ export default function App() {
     if (keepaliveIcon) {
       setConfirmModal({
         title: "管理锁屏图标",
-        msg: "是否清除已上传的锁屏/灵动岛封面图，恢复默认使用梦角头像作为封面？",
+        msg: "是否清除已上传的锁屏/灵动岛封面图，恢复默认使用未婚夫头像作为封面？",
         onConfirm: () => {
           setKeepaliveIcon('');
           window.dispatchEvent(new CustomEvent('keepalive_icon_changed', { detail: '' }));
-          showToast('已恢复为默认梦角头像');
+          showToast('已恢复为默认未婚夫头像');
         }
       });
     } else {
@@ -1615,7 +1615,7 @@ export default function App() {
                    <div className="text-[12px] font-medium text-[#8E8E93] mb-3 px-1 tracking-wide uppercase">基本信息</div>
                    <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-[#F2F2F7]">
                       <SettingItem icon={Type} label="我方全局昵称" value={myNickname} onChange={setMyNickname} />
-                      <SettingItem icon={Type} label="梦角全局昵称" value={mjNickname} onChange={setMjNickname} hideBorder={true} />
+                      <SettingItem icon={Type} label="未婚夫全局昵称" value={mjNickname} onChange={setMjNickname} hideBorder={true} />
                    </div>
                 </div>
                 <div>
@@ -1687,7 +1687,7 @@ export default function App() {
                        <SettingItem 
                            icon={ImageIcon} 
                            label="锁屏/灵动岛封面小图标" 
-                           value={keepaliveIcon ? '已自定' : '未设置 (默认使用梦角头像)'} 
+                           value={keepaliveIcon ? '已自定' : '未设置 (默认使用未婚夫头像)'} 
                            onClick={handleKeepaliveIconClick} 
                            hideBorder={true}
                        />
@@ -1824,7 +1824,7 @@ export default function App() {
                       <SettingItem 
                           icon={ImageIcon} 
                           label="锁屏/灵动岛封面小图标" 
-                          value={keepaliveIcon ? '已自定' : '未设置 (默认使用梦角头像)'} 
+                          value={keepaliveIcon ? '已自定' : '未设置 (默认使用未婚夫头像)'} 
                           onClick={handleKeepaliveIconClick} 
                           hideBorder={true}
                       />
