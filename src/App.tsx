@@ -34,7 +34,8 @@ import {
   ListMusic,
   Aperture,
   Search,
-  Wallet
+  Wallet,
+  AtSign
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { ChatView } from './ChatView';
@@ -449,6 +450,8 @@ export default function App() {
   // Social Settings
   const [myNickname, setMyNickname] = useLocalState('app_myNickname', '我');
   const [mjNickname, setMjNickname] = useLocalState('app_mjNickname', '梦角');
+  const [myHandle, setMyHandle] = useLocalState('app_myHandle', 'me');
+  const [mjHandle, setMjHandle] = useLocalState('app_mjHandle', 'mengjiao');
   const [keepaliveIcon, setKeepaliveIcon] = useIDBState('app_keepalive_icon', '');
   const [momentsBg, setMomentsBg] = useIDBState('app_moments_bg', '');
   const [wishlistBg, setWishlistBg] = useIDBState('app_wishlist_bg', '');
@@ -1616,6 +1619,18 @@ export default function App() {
                    <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-[#F2F2F7]">
                       <SettingItem icon={Type} label="我方全局昵称" value={myNickname} onChange={setMyNickname} />
                       <SettingItem icon={Type} label="梦角全局昵称" value={mjNickname} onChange={setMjNickname} hideBorder={true} />
+                    </div>
+                 </div>
+                 <div>
+                    <div className="text-[12px] font-medium text-[#8E8E93] mb-3 px-1 tracking-wide uppercase">信箱身份名片与账号ID</div>
+                    <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-[#F2F2F7]">
+                       <SettingItem icon={User} label="我方信箱昵称" value={myNickname} onChange={setMyNickname} />
+                       <SettingItem icon={AtSign} label="我方账号/ID (@)" value={myHandle} onChange={setMyHandle} />
+                       <SettingItem icon={Users} label="我方信箱头像" value={avatar1 ? '已设置' : '未设置 (默认首字)'} onClick={() => avatar1InputRef.current?.click()} />
+                       
+                       <SettingItem icon={User} label="梦角信箱昵称" value={mjNickname} onChange={setMjNickname} />
+                       <SettingItem icon={AtSign} label="梦角账号/ID (@)" value={mjHandle} onChange={setMjHandle} />
+                       <SettingItem icon={Users} label="梦角信箱头像" value={avatar2 ? '已设置' : '未设置 (默认首字)'} onClick={() => avatar2InputRef.current?.click()} hideBorder={true} />
                    </div>
                 </div>
                 <div>
@@ -1890,7 +1905,7 @@ export default function App() {
   }
 
   if (view === 'mailbox') {
-    return <><MailboxView onClose={() => setView('home')} themeConfig={currentThemeConfig} cardGroups={cardGroups} /><VideoCallOverlay /></>;
+    return <><MailboxView onClose={() => setView('home')} themeConfig={currentThemeConfig} cardGroups={cardGroups} myNickname={myNickname} mjNickname={mjNickname} myHandle={myHandle} mjHandle={mjHandle} avatar1={chatAvatar1 || avatar1} avatar2={chatAvatar2 || avatar2} /><VideoCallOverlay /></>;
   }
 
     if (view === 'home') {
