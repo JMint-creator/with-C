@@ -34,8 +34,7 @@ import {
   ListMusic,
   Aperture,
   Search,
-  Wallet,
-  Archive
+  Wallet
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { ChatView } from './ChatView';
@@ -44,7 +43,6 @@ import { WishlistView } from './WishlistView';
 import { ChatSettingsView } from './ChatSettingsView';
 import { CheckInsView } from './CheckInsView';
 import { DataView } from './DataView';
-import { MemoryArchiveView } from './MemoryArchiveView';
 import { AccountingView } from './AccountingView';
 import { TodoView } from './TodoView';
 import { MailboxView } from './MailboxView';
@@ -57,7 +55,7 @@ const apps = [
   { name: '信箱', icon: Mail },
   { name: '查岗', icon: Radar },
   { name: '朋友圈', icon: Aperture },
-  { name: '心愿清单', icon: Gift },
+  { name: '书影音记录', icon: BookHeart },
   { name: '记账', icon: Wallet },
   { name: 'Todo', icon: CheckSquare },
   { name: '帮我决定', icon: Dices },
@@ -391,7 +389,7 @@ const BackgroundLayer = ({ bg, image, show }: { bg: string, image: string, show:
 };
 
 export default function App() {
-  const [view, setView] = useState<'home' | 'appearance' | 'data' | 'library' | 'decide' | 'chat' | 'chat_settings' | 'music_manager' | 'moments' | 'wishlist' | 'check_in' | 'accounting' | 'todo' | 'mailbox' | 'memory_archive'>('home');
+  const [view, setView] = useState<'home' | 'appearance' | 'data' | 'library' | 'decide' | 'chat' | 'chat_settings' | 'music_manager' | 'moments' | 'wishlist' | 'check_in' | 'accounting' | 'todo' | 'mailbox'>('home');
   const [appearanceTab, setAppearanceTab] = useState<'global' | 'chat' | 'component' | 'wallpaper'>('global');
 
   // Library States
@@ -450,7 +448,7 @@ export default function App() {
   
   // Social Settings
   const [myNickname, setMyNickname] = useLocalState('app_myNickname', '我');
-  const [mjNickname, setMjNickname] = useLocalState('app_mjNickname', '未婚夫');
+  const [mjNickname, setMjNickname] = useLocalState('app_mjNickname', '梦角');
   const [keepaliveIcon, setKeepaliveIcon] = useIDBState('app_keepalive_icon', '');
   const [momentsBg, setMomentsBg] = useIDBState('app_moments_bg', '');
   const [wishlistBg, setWishlistBg] = useIDBState('app_wishlist_bg', '');
@@ -669,11 +667,11 @@ export default function App() {
     if (keepaliveIcon) {
       setConfirmModal({
         title: "管理锁屏图标",
-        msg: "是否清除已上传的锁屏/灵动岛封面图，恢复默认使用未婚夫头像作为封面？",
+        msg: "是否清除已上传的锁屏/灵动岛封面图，恢复默认使用梦角头像作为封面？",
         onConfirm: () => {
           setKeepaliveIcon('');
           window.dispatchEvent(new CustomEvent('keepalive_icon_changed', { detail: '' }));
-          showToast('已恢复为默认未婚夫头像');
+          showToast('已恢复为默认梦角头像');
         }
       });
     } else {
@@ -1617,7 +1615,7 @@ export default function App() {
                    <div className="text-[12px] font-medium text-[#8E8E93] mb-3 px-1 tracking-wide uppercase">基本信息</div>
                    <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-[#F2F2F7]">
                       <SettingItem icon={Type} label="我方全局昵称" value={myNickname} onChange={setMyNickname} />
-                      <SettingItem icon={Type} label="未婚夫全局昵称" value={mjNickname} onChange={setMjNickname} hideBorder={true} />
+                      <SettingItem icon={Type} label="梦角全局昵称" value={mjNickname} onChange={setMjNickname} hideBorder={true} />
                    </div>
                 </div>
                 <div>
@@ -1689,7 +1687,7 @@ export default function App() {
                        <SettingItem 
                            icon={ImageIcon} 
                            label="锁屏/灵动岛封面小图标" 
-                           value={keepaliveIcon ? '已自定' : '未设置 (默认使用未婚夫头像)'} 
+                           value={keepaliveIcon ? '已自定' : '未设置 (默认使用梦角头像)'} 
                            onClick={handleKeepaliveIconClick} 
                            hideBorder={true}
                        />
@@ -1731,7 +1729,7 @@ export default function App() {
                         </div>
                         <div>
                             <div className="flex justify-between text-[14px] text-[#333] mb-3">
-                                <span className="font-semibold">心愿清单卡片背景</span>
+                                <span className="font-semibold">书影音卡片背景</span>
                                 <span className="font-mono font-bold text-[14px]" style={{ color: currentThemeConfig.textPrimary }}>{wishlistCardOpacity}%</span>
                             </div>
                             <input 
@@ -1763,7 +1761,7 @@ export default function App() {
                       <SettingItem icon={ImageIcon} label="主界面壁纸" value={wallpaper ? '已上传' : '未设置'} onClick={() => wallpaperInputRef.current?.click()} />
                       <SettingItem icon={ImageIcon} label="朋友圈背景图" value={momentsBg ? '已上传' : '未设置'} onClick={() => momentsBgInputRef.current?.click()} />
                       <SettingItem icon={ImageIcon} label="查岗背景图" value={checkinsBg ? '已上传' : '未设置'} onClick={() => checkinsBgInputRef.current?.click()} />
-                      <SettingItem icon={ImageIcon} label="心愿清单背景图" value={wishlistBg ? '已上传' : '未设置'} onClick={() => wishlistBgInputRef.current?.click()} hideBorder={true}/>
+                      <SettingItem icon={ImageIcon} label="书影音背景图" value={wishlistBg ? '已上传' : '未设置'} onClick={() => wishlistBgInputRef.current?.click()} hideBorder={true}/>
                    </div>
                 </div>
              </motion.div>
@@ -1806,7 +1804,7 @@ export default function App() {
                        </div>
                        <div>
                            <div className="flex justify-between text-[14px] text-[#333] mb-3">
-                               <span className="font-semibold">心愿清单卡片背景</span>
+                               <span className="font-semibold">书影音卡片背景</span>
                                <span className="font-mono font-bold text-[14px]" style={{ color: currentThemeConfig.textPrimary }}>{wishlistCardOpacity}%</span>
                            </div>
                            <input 
@@ -1826,7 +1824,7 @@ export default function App() {
                       <SettingItem 
                           icon={ImageIcon} 
                           label="锁屏/灵动岛封面小图标" 
-                          value={keepaliveIcon ? '已自定' : '未设置 (默认使用未婚夫头像)'} 
+                          value={keepaliveIcon ? '已自定' : '未设置 (默认使用梦角头像)'} 
                           onClick={handleKeepaliveIconClick} 
                           hideBorder={true}
                       />
@@ -1881,10 +1879,6 @@ export default function App() {
 
   if (view === 'check_in') {
     return <><CheckInsView onClose={() => setView('home')} themeConfig={currentThemeConfig} checkinsBg={checkinsBg} /><VideoCallOverlay /></>;
-  }
-
-  if (view === 'memory_archive') {
-    return <><MemoryArchiveView onClose={() => setView('home')} themeConfig={currentThemeConfig} checkinsBg={checkinsBg} /><VideoCallOverlay /></>;
   }
 
   if (view === 'accounting') {
@@ -2076,7 +2070,7 @@ export default function App() {
                 if (app.name === '帮我决定') setView('decide');
                 if (app.name === '聊天') setView('chat');
                 if (app.name === '朋友圈') setView('moments');
-                if (app.name === '心愿清单') setView('wishlist');
+                if (app.name === '书影音记录') setView('wishlist');
                 if (app.name === '查岗') setView('check_in');
                 if (app.name === '记账') setView('accounting');
                 if (app.name === 'Todo') setView('todo');
@@ -2155,7 +2149,7 @@ export default function App() {
     currentBgImage = chatBg ? `url(${chatBg})` : (wallpaper ? `url(${wallpaper})` : 'none');
   } else if (view === 'wishlist') {
     currentBgImage = wishlistBg ? `url(${wishlistBg})` : (wallpaper ? `url(${wallpaper})` : 'none');
-  } else if (view === 'check_in' || view === 'memory_archive') {
+  } else if (view === 'check_in') {
     currentBgImage = checkinsBg ? `url(${checkinsBg})` : (wallpaper ? `url(${wallpaper})` : 'none');
   } else if (view === 'todo') {
     currentBgImage = wallpaper ? `url(${wallpaper})` : 'none';

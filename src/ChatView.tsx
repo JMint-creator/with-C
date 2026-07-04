@@ -185,30 +185,31 @@ export const ChatView = ({
   const stickerInputRef = useRef<HTMLInputElement>(null);
   const newStickerInputRef = useRef<HTMLInputElement>(null);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, isSticker: boolean) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, isSticker: boolean) => {
      if (e.target.files && e.target.files[0]) {
-        const file = e.target.files[0];
-        const reader = new FileReader();
-        reader.onload = (e) => {
-           if (e.target?.result) {
-              const ignored = readNoReply && Math.random() < 0.05;
-              const newMsg: Message = {
-                id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
-                sender: 'me',
-                type: isSticker ? 'sticker' : 'sticker', // For now use sticker type for any image
-                content: e.target.result as string,
-                time: getFormatTime(),
-                isIgnored: ignored
-              };
-              setMessages(prev => [...prev, newMsg]);
-              setShowPlusMenu(false);
-              
-              if (!ignored) {
-                 simulateReply();
-              }
+        try {
+           const file = e.target.files[0];
+           const dataUrl = await compressImage(file, 1000, 1000, 0.8);
+           const ignored = readNoReply && Math.random() < 0.05;
+           const newMsg: Message = {
+             id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
+             sender: 'me',
+             type: isSticker ? 'sticker' : 'image',
+             content: dataUrl,
+             time: getFormatTime(),
+             isIgnored: ignored
+           };
+           setMessages(prev => [...prev, newMsg]);
+           setShowPlusMenu(false);
+           
+           if (!ignored) {
+              simulateReply();
            }
-        };
-        reader.readAsDataURL(file);
+        } catch (err) {
+           console.error('Failed to upload and compress image:', err);
+        } finally {
+           e.target.value = '';
+        }
      }
   };
 
@@ -223,6 +224,7 @@ export const ChatView = ({
            }
         };
         reader.readAsDataURL(file);
+        e.target.value = '';
      }
   };
 
@@ -630,6 +632,8 @@ export const ChatView = ({
            setCheckInImage(dataUrl);
         } catch (err) {
            console.error(err);
+        } finally {
+           e.target.value = '';
         }
      }
   };
@@ -963,9 +967,6 @@ export const ChatView = ({
                 <div className="w-[50px] h-[50px] rounded-[16px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><Heart size={24} strokeWidth={1.5} /></div>
                 <span className="text-[11px] text-black/50">拍一拍</span>
              </button>
-             
-             
-             <input type="file" ref={imageInputRef} className="hidden" accept="image/*" onChange={(e) => handleImageUpload(e, false)} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -1009,7 +1010,6 @@ export const ChatView = ({
                   <Plus size={24} className="text-gray-400 mb-1" />
                </div>
              </div>
-             <input type="file" ref={newStickerInputRef} className="hidden" accept="image/*" onChange={handleNewStickerUpload} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -1166,7 +1166,6 @@ export const ChatView = ({
                      <span className="text-[14px] font-medium drop-shadow-sm">拍摄或从相册选择</span>
                    </button>
                 )}
-                <input type="file" ref={checkInImgInputRef} className="hidden" accept="image/*" onChange={handleCheckInImageUpload} />
 
                 <textarea
                   value={checkInText}
@@ -1189,6 +1188,11 @@ export const ChatView = ({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Hidden file inputs kept mounted to prevent unmounting during dialog active states */}
+      <input type="file" ref={imageInputRef} className="hidden" accept="image/*" onChange={(e) => handleImageUpload(e, false)} />
+      <input type="file" ref={newStickerInputRef} className="hidden" accept="image/*" onChange={handleNewStickerUpload} />
+      <input type="file" ref={checkInImgInputRef} className="hidden" accept="image/*" onChange={handleCheckInImageUpload} />
     </div>
   );
 }
