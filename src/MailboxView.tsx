@@ -26,6 +26,7 @@ interface MailLetter {
   speed: 'express' | 'standard' | 'slow';
   category: 'daily' | 'long_letter' | 'questionnaire';
   questions?: string[];
+  questionOptions?: string[][];
 }
 
 interface MailboxViewProps {
@@ -51,17 +52,28 @@ const generateReply = (letter: MailLetter, allAvailableCards: string[]) => {
   // 1. 梦向问卷 (questionnaire)
   if (letter.category === 'questionnaire') {
     const qs = letter.questions || [];
+    const qOpts = letter.questionOptions || [];
     if (qs.length === 0) {
       return '梦向问卷中未包含任何有效问题。';
     }
-    // 梦向问卷无论投递速度如何，每个问题都只回复1-2个字卡
     return qs.map((q, idx) => {
-      const cardCount = Math.floor(Math.random() * 2) + 1; // 1 or 2 cards
-      const cards = [];
-      for (let i = 0; i < cardCount; i++) {
-        cards.push(drawCard());
+      const opts = (qOpts[idx] || []).filter(o => o.trim().length > 0);
+      let answer = '';
+      if (opts.length > 0) {
+        // Companion chooses one option
+        const chosenIdx = Math.floor(Math.random() * opts.length);
+        const chosenOpt = opts[chosenIdx];
+        const letterPrefix = String.fromCharCode(65 + chosenIdx); // A, B, C, D...
+        answer = `${letterPrefix}. ${chosenOpt}`;
+      } else {
+        // Fallback: draw random cards
+        const cardCount = Math.floor(Math.random() * 2) + 1; // 1 or 2 cards
+        const cards = [];
+        for (let i = 0; i < cardCount; i++) {
+          cards.push(drawCard());
+        }
+        answer = cards.join(' ');
       }
-      const answer = cards.join(' ');
       return `Q${idx + 1}：${q}\nA${idx + 1}：${answer}`;
     }).join('\n\n');
   }
@@ -178,10 +190,18 @@ export function MailboxView({
 
   // Default romantic questionnaires to inspire the user
   const [questionnaireQuestions, setQuestionnaireQuestions] = useState<string[]>(() => [
-    '你今天过得怎么样？有想我吗？',
-    '你觉得跟我在一块最浪漫的事情是什么？',
-    '送我一句今天的心意寄语吧！'
+    '今天见面你想穿什么风格的衣服？',
+    '如果送你一个手工礼物，你最想要什么？',
+    '今晚我们去哪里散步更好？'
   ]);
+
+  const [questionnaireOptions, setQuestionnaireOptions] = useState<string[][]>(() => [
+    ['温柔学院风', '慵懒休闲风', '优雅正装', '神秘酷黑风'],
+    ['针织围巾', '陶艺杯子', '手绘相框', '定制香薰'],
+    ['静谧的湖边公园', '霓虹闪烁的闹市街区', '可以看星星的山顶', '温馨的学校操场']
+  ]);
+
+  const [tempOptionInputs, setTempOptionInputs] = useState<{[key: number]: string}>({});
 
   // Auto-replies check
   useEffect(() => {
@@ -241,16 +261,23 @@ export function MailboxView({
       replyContent: null,
       speed: selectedSpeed,
       category: selectedCategory,
-      questions: qs
+      questions: qs,
+      questionOptions: selectedCategory === 'questionnaire' ? questionnaireOptions : undefined
     };
 
     setLetters([newLetter, ...letters]);
     setContent('');
     setQuestionnaireQuestions([
-      '你今天过得怎么样？有想我吗？',
-      '你觉得跟我在一块最浪漫的事情是什么？',
-      '送我一句今天的心意寄语吧！'
+      '今天见面你想穿什么风格的衣服？',
+      '如果送你一个手工礼物，你最想要什么？',
+      '今晚我们去哪里散步更好？'
     ]);
+    setQuestionnaireOptions([
+      ['温柔学院风', '慵懒休闲风', '优雅正装', '神秘酷黑风'],
+      ['针织围巾', '陶艺杯子', '手绘相框', '定制香薰'],
+      ['静谧的湖边公园', '霓虹闪烁的闹市街区', '可以看星星的山顶', '温馨的学校操场']
+    ]);
+    setTempOptionInputs({});
     setSelectedSpeed('standard');
     setSelectedCategory('daily');
     setShowCompose(false);
@@ -599,15 +626,16 @@ export function MailboxView({
                   
                   <div className="space-y-3">
                     {questionnaireQuestions.map((q, idx) => (
-                      <div key={idx} className="flex items-center gap-2">
-                        <div 
-                          className="flex-1 flex items-center gap-2.5 px-3 py-2.5 rounded-xl border transition-all" 
-                          style={{ 
-                            backgroundColor: themeConfig.cardBg || '#FFFFFF', 
-                            borderColor: 'rgba(0,0,0,0.06)' 
-                          }}
-                        >
-                          <span className="text-[12.5px] font-mono font-bold text-gray-400">Q{idx + 1}</span>
+                      <div 
+                        key={idx} 
+                        className="p-3.5 rounded-2xl border transition-all space-y-3"
+                        style={{ 
+                          backgroundColor: themeConfig.cardBg || '#FFFFFF', 
+                          borderColor: 'rgba(0,0,0,0.06)' 
+                        }}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-[13px] font-mono font-bold text-gray-400 shrink-0">Q{idx + 1}</span>
                           <input
                             type="text"
                             value={q}
@@ -617,22 +645,123 @@ export function MailboxView({
                               setQuestionnaireQuestions(newQs);
                             }}
                             placeholder={`请输入你想问的问题 ${idx + 1}`}
-                            className="flex-1 bg-transparent border-none outline-none text-[13.5px] font-medium"
+                            className="flex-1 bg-transparent border-none outline-none text-[13.5px] font-semibold"
                             style={{ color: themeConfig.textPrimary }}
                           />
+                          {questionnaireQuestions.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newQs = questionnaireQuestions.filter((_, i) => i !== idx);
+                                const newOpts = questionnaireOptions.filter((_, i) => i !== idx);
+                                setQuestionnaireQuestions(newQs);
+                                setQuestionnaireOptions(newOpts);
+                              }}
+                              className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 active:opacity-60 transition-colors rounded-full shrink-0"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          )}
                         </div>
-                        {questionnaireQuestions.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const newQs = questionnaireQuestions.filter((_, i) => i !== idx);
-                              setQuestionnaireQuestions(newQs);
-                            }}
-                            className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 active:opacity-60 transition-colors rounded-full"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        )}
+
+                        {/* Options Section */}
+                        <div className="pl-6 space-y-2 border-t border-black/5 dark:border-white/5 pt-2.5">
+                          <div className="flex justify-between items-center text-[10.5px] font-bold text-gray-400 dark:text-zinc-500 tracking-wider uppercase">
+                            <span>选项供梦角选择 (选填，不填则抽字卡回答)</span>
+                            <span>{ (questionnaireOptions[idx] || []).length } 个选项</span>
+                          </div>
+
+                          <div className="space-y-1.5 min-h-[20px]">
+                            {(questionnaireOptions[idx] || []).map((opt, optIdx) => {
+                              const letterPrefix = String.fromCharCode(65 + optIdx);
+                              return (
+                                <div 
+                                  key={optIdx} 
+                                  className="flex items-center justify-between px-3 py-1.5 rounded-xl border transition-all text-[12px]"
+                                  style={{
+                                    backgroundColor: `${themeConfig.numColor || '#007AFF'}04`,
+                                    borderColor: `${themeConfig.numColor || '#007AFF'}10`,
+                                    color: themeConfig.textPrimary
+                                  }}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <span 
+                                      className="font-mono font-bold px-1.5 py-0.5 rounded text-[10px] min-w-[20px] text-center shrink-0"
+                                      style={{
+                                        backgroundColor: `${themeConfig.numColor || '#007AFF'}12`,
+                                        color: themeConfig.numColor || '#007AFF'
+                                      }}
+                                    >
+                                      {letterPrefix}
+                                    </span>
+                                    <span className="font-semibold">{opt}</span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const newOpts = [...questionnaireOptions];
+                                      newOpts[idx] = (newOpts[idx] || []).filter((_, i) => i !== optIdx);
+                                      setQuestionnaireOptions(newOpts);
+                                    }}
+                                    className="text-gray-400 hover:text-red-500 font-bold px-1.5 py-0.5 rounded transition-all text-[13px] shrink-0"
+                                  >
+                                    ×
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          <div className="flex gap-2 items-center">
+                            <input
+                              type="text"
+                              value={tempOptionInputs[idx] || ''}
+                              placeholder="输入选项，按回车或点击右侧 + 键添加"
+                              onChange={(e) => {
+                                setTempOptionInputs({
+                                  ...tempOptionInputs,
+                                  [idx]: e.target.value
+                                });
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  const val = (tempOptionInputs[idx] || '').trim();
+                                  if (val) {
+                                    const newOpts = [...questionnaireOptions];
+                                    newOpts[idx] = [...(newOpts[idx] || []), val];
+                                    setQuestionnaireOptions(newOpts);
+                                    setTempOptionInputs({
+                                      ...tempOptionInputs,
+                                      [idx]: ''
+                                    });
+                                  }
+                                }
+                              }}
+                              className="flex-1 bg-transparent border-b border-black/10 dark:border-white/10 py-1 outline-none text-[12px]"
+                              style={{ color: themeConfig.textPrimary }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const val = (tempOptionInputs[idx] || '').trim();
+                                if (val) {
+                                  const newOpts = [...questionnaireOptions];
+                                  newOpts[idx] = [...(newOpts[idx] || []), val];
+                                  setQuestionnaireOptions(newOpts);
+                                  setTempOptionInputs({
+                                    ...tempOptionInputs,
+                                    [idx]: ''
+                                  });
+                                }
+                              }}
+                              className="text-[14px] font-bold px-2 py-0.5 rounded transition-all hover:bg-black/5"
+                              style={{ color: themeConfig.numColor || '#007AFF' }}
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -642,6 +771,7 @@ export function MailboxView({
                       type="button"
                       onClick={() => {
                         setQuestionnaireQuestions([...questionnaireQuestions, '']);
+                        setQuestionnaireOptions([...questionnaireOptions, []]);
                       }}
                       className="w-full py-2.5 border border-dashed rounded-xl text-[13px] font-semibold text-center flex items-center justify-center gap-1.5 transition-all hover:bg-black/5"
                       style={{ 
@@ -765,12 +895,36 @@ export function MailboxView({
 
                 {viewingLetter.category === 'questionnaire' && viewingLetter.questions ? (
                   <div className="space-y-4">
-                    {viewingLetter.questions.map((q, idx) => (
-                      <div key={idx} className="flex gap-2.5 text-[14.5px] items-start p-3 rounded-xl bg-black/5 dark:bg-white/5">
-                        <span className="font-mono font-bold text-gray-400 mt-0.5 shrink-0">Q{idx + 1}</span>
-                        <p className="font-semibold" style={{ color: themeConfig.textPrimary }}>{q}</p>
-                      </div>
-                    ))}
+                    {viewingLetter.questions.map((q, idx) => {
+                      const opts = viewingLetter.questionOptions?.[idx] || [];
+                      return (
+                        <div key={idx} className="p-3.5 rounded-xl bg-black/5 dark:bg-white/5 space-y-2">
+                          <div className="flex gap-2.5 text-[13.5px] items-start">
+                            <span className="font-mono font-bold text-gray-400 mt-0.5 shrink-0">Q{idx + 1}</span>
+                            <p className="font-semibold" style={{ color: themeConfig.textPrimary }}>{q}</p>
+                          </div>
+                          {opts.length > 0 && (
+                            <div className="pl-7 pt-1 space-y-1.5">
+                              {opts.map((opt, optIdx) => {
+                                const letterPrefix = String.fromCharCode(65 + optIdx);
+                                return (
+                                  <div 
+                                    key={optIdx} 
+                                    className="text-[13px] font-medium flex items-center gap-2"
+                                    style={{ color: themeConfig.textSecondary }}
+                                  >
+                                    <span className="font-mono font-bold px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/5 text-[10.5px] min-w-[20px] text-center shrink-0 opacity-80">
+                                      {letterPrefix}
+                                    </span>
+                                    <span>{opt}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 ) : (
                   <p className="text-[14.5px] leading-relaxed break-words whitespace-pre-wrap font-medium" style={{ color: themeConfig.textPrimary }}>
