@@ -181,6 +181,22 @@ export const ChatView = ({
   const [showPlusMenu, setShowPlusMenu] = useState(false);
   const [showStickerPane, setShowStickerPane] = useState(false);
 
+  const [isWatchingMovie, setIsWatchingMovie] = useState(false);
+  const [movieUrl, setMovieUrl] = useState<string>('');
+  const [movieFileName, setMovieFileName] = useState<string>('');
+  const movieInputRef = useRef<HTMLInputElement>(null);
+
+  const handleMovieUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const url = URL.createObjectURL(file);
+      setMovieUrl(url);
+      setMovieFileName(file.name);
+      setIsWatchingMovie(true);
+    }
+    e.target.value = '';
+  };
+
   const imageInputRef = useRef<HTMLInputElement>(null);
   const stickerInputRef = useRef<HTMLInputElement>(null);
   const newStickerInputRef = useRef<HTMLInputElement>(null);
@@ -349,6 +365,53 @@ export const ChatView = ({
   const [minWait] = useLocalState('app_chatMinWait', 10);
   const [maxWait] = useLocalState('app_chatMaxWait', 50);
 
+  // Movie Watch Together Proactive Replies Loop
+  useEffect(() => {
+    if (!isWatchingMovie) return;
+
+    let timeoutId: any;
+
+    const scheduleNextMovieComment = () => {
+      // Calculate random delay based on user settings
+      const delay = Math.random() * (maxWait - minWait) * 1000 + minWait * 1000;
+      
+      timeoutId = setTimeout(() => {
+        // Send a card!
+        if (replyCards.length > 0) {
+          const randomCard = replyCards[Math.floor(Math.random() * replyCards.length)].content;
+          
+          setMessages(prev => [...prev, {
+            id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
+            sender: 'them',
+            type: 'text',
+            content: randomCard,
+            time: getFormatTime()
+          }]);
+
+          // Trigger push notification if allowed
+          const pushNotify = window.localStorage.getItem('app_chatPushNotify');
+          const isPushEnabled = pushNotify ? JSON.parse(pushNotify) : true;
+          if (isPushEnabled && 'Notification' in window && window.Notification.permission === 'granted') {
+            new window.Notification(charId, { 
+              body: randomCard,
+              icon: avatar2 || undefined 
+            });
+          }
+        }
+        
+        // Schedule next comment
+        scheduleNextMovieComment();
+      }, delay);
+    };
+
+    // Schedule the first comment after initial delay
+    scheduleNextMovieComment();
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [isWatchingMovie, replyCards, minWait, maxWait, charId, avatar2]);
+
   const declineCheckIn = (id: string) => {
      setMessages(msgs => msgs.map(m => m.id === id ? { ...m, checkInStatus: 'rejected' } : m));
   };
@@ -403,6 +466,22 @@ export const ChatView = ({
       setIsTyping(false);
       const newMsgs: Message[] = [];
       let baseId = Date.now();
+
+      if (isWatchingMovie) {
+        let content = '陪你一块看';
+        if (replyCards.length > 0) {
+          content = replyCards[Math.floor(Math.random() * replyCards.length)].content;
+        }
+        newMsgs.push({
+          id: (++baseId).toString(),
+          sender: 'them',
+          type: 'text',
+          content,
+          time: getFormatTime()
+        });
+        setMessages(prev => [...prev, ...newMsgs]);
+        return;
+      }
 
       if (Math.random() < 0.03) {
         const storedNudges = window.localStorage.getItem('app_nudges');
@@ -651,32 +730,68 @@ export const ChatView = ({
       {chatCss && <style dangerouslySetInnerHTML={{ __html: chatCss }} />}
       
       {/* Header */}
-      <div className="absolute top-[max(1rem,env(safe-area-inset-top))] left-4 right-4 flex items-start justify-between z-20">
-        <button onClick={onClose} className="w-[42px] h-[42px] rounded-full flex items-center justify-center bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_2px_12px_rgba(0,0,0,0.06),inset_0_2px_4px_rgba(255,255,255,0.3)] active:scale-95 transition-transform" style={{ color: themeConfig.textPrimary || '#333' }}>
-          <ChevronLeft size={22} strokeWidth={2.5} className="-ml-0.5" />
-        </button>
-        <div className="flex flex-col items-center">
-           <div className="w-[52px] h-[52px] rounded-full bg-black/10 overflow-hidden shadow-[0_4px_12px_rgba(0,0,0,0.1)] border border-white/30 z-10 -mb-3.5 relative">
-               {avatar2 ? <img src={avatar2} alt="" className="w-full h-full object-cover" /> : null}
-           </div>
-           <div className="bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_4px_16px_rgba(0,0,0,0.06),inset_0_2px_4px_rgba(255,255,255,0.4)] px-6 pt-5 pb-2 rounded-[20px] text-center min-w-[120px]">
-               <input 
-                 value={charId}
-                 onChange={e => setCharId(e.target.value)}
-                 className="text-[15px] font-bold text-center bg-transparent outline-none m-0 p-0 leading-none"
-                 style={{ width: `${Math.max(1, charId.length) * 1.05 + 0.5}em`, color: themeConfig.textPrimary || '#111' }}
-               />
-           </div>
+      {!isWatchingMovie ? (
+        <div className="absolute top-[max(1rem,env(safe-area-inset-top))] left-4 right-4 flex items-start justify-between z-20">
+          <button onClick={onClose} className="w-[42px] h-[42px] rounded-full flex items-center justify-center bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_2px_12px_rgba(0,0,0,0.06),inset_0_2px_4px_rgba(255,255,255,0.3)] active:scale-95 transition-transform" style={{ color: themeConfig.textPrimary || '#333' }}>
+            <ChevronLeft size={22} strokeWidth={2.5} className="-ml-0.5" />
+          </button>
+          <div className="flex flex-col items-center">
+             <div className="w-[52px] h-[52px] rounded-full bg-black/10 overflow-hidden shadow-[0_4px_12px_rgba(0,0,0,0.1)] border border-white/30 z-10 -mb-3.5 relative">
+                 {avatar2 ? <img src={avatar2} alt="" className="w-full h-full object-cover" /> : null}
+             </div>
+             <div className="bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_4px_16px_rgba(0,0,0,0.06),inset_0_2px_4px_rgba(255,255,255,0.4)] px-6 pt-5 pb-2 rounded-[20px] text-center min-w-[120px]">
+                 <input 
+                   value={charId}
+                   onChange={e => setCharId(e.target.value)}
+                   className="text-[15px] font-bold text-center bg-transparent outline-none m-0 p-0 leading-none"
+                   style={{ width: `${Math.max(1, charId.length) * 1.05 + 0.5}em`, color: themeConfig.textPrimary || '#111' }}
+                 />
+             </div>
+          </div>
+          <button onClick={() => onOpenSettings(themeConfig)} className="w-[42px] h-[42px] rounded-full flex items-center justify-center bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_2px_12px_rgba(0,0,0,0.06),inset_0_2px_4px_rgba(255,255,255,0.3)] active:scale-95 transition-transform" style={{ color: themeConfig.textPrimary || '#333' }}>
+            <MoreHorizontal size={22} strokeWidth={2.5} />
+          </button>
         </div>
-        <button onClick={() => onOpenSettings(themeConfig)} className="w-[42px] h-[42px] rounded-full flex items-center justify-center bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_2px_12px_rgba(0,0,0,0.06),inset_0_2px_4px_rgba(255,255,255,0.3)] active:scale-95 transition-transform" style={{ color: themeConfig.textPrimary || '#333' }}>
-          <MoreHorizontal size={22} strokeWidth={2.5} />
-        </button>
-      </div>
+      ) : (
+        <div className="absolute top-0 left-0 right-0 bg-zinc-950 z-30 shadow-2xl flex flex-col overflow-hidden pb-1 border-b border-white/10">
+          <div className="px-4 py-3 flex items-center justify-between text-white/90 bg-zinc-900/90 backdrop-blur-md border-b border-zinc-800">
+            <div className="flex items-center gap-2 overflow-hidden mr-3">
+              <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shrink-0" />
+              <div className="flex flex-col min-w-0">
+                <span className="text-[12px] font-bold text-zinc-100 truncate max-w-[180px]">{movieFileName || '精彩视频'}</span>
+                <span className="text-[10px] text-zinc-400">正在与 {charId} 一起观影</span>
+              </div>
+            </div>
+            <button 
+              onClick={() => {
+                setIsWatchingMovie(false);
+                if (movieUrl) {
+                  URL.revokeObjectURL(movieUrl);
+                  setMovieUrl('');
+                }
+              }} 
+              className="px-3 py-1.5 rounded-xl bg-red-500 hover:bg-red-600 text-white active:scale-95 transition-all text-[11px] font-semibold flex items-center gap-1 shadow-md"
+            >
+              <X size={13} strokeWidth={2.5} />
+              <span>退出观影</span>
+            </button>
+          </div>
+          <div className="relative w-full aspect-video max-h-[250px] bg-black flex items-center justify-center">
+            <video 
+              src={movieUrl} 
+              controls 
+              autoPlay
+              playsInline
+              className="w-full h-full object-contain max-h-[250px]"
+            />
+          </div>
+        </div>
+      )}
 
       {/* Messages */}
       <div 
         ref={scrollRef} 
-        className="absolute inset-0 overflow-y-auto px-4 pt-[calc(env(safe-area-inset-top)+80px)] flex flex-col scrollbar-hide z-10" 
+        className={`absolute inset-0 overflow-y-auto px-4 ${isWatchingMovie ? 'pt-[310px]' : 'pt-[calc(env(safe-area-inset-top)+80px)]'} flex flex-col scrollbar-hide z-10`} 
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 72px)' }}
         onClick={() => { if (activeMenuMsgId) setActiveMenuMsgId(null); }}
       >
@@ -955,6 +1070,10 @@ export const ChatView = ({
                 <div className="w-[50px] h-[50px] rounded-[16px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><Video size={24} strokeWidth={1.5} /></div>
                 <span className="text-[11px] text-black/50">视频通话</span>
              </button>
+             <button className="flex flex-col items-center gap-2 group w-[64px]" onClick={() => { movieInputRef.current?.click(); setShowPlusMenu(false); }}>
+                <div className="w-[50px] h-[50px] rounded-[16px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><MonitorPlay size={24} strokeWidth={1.5} /></div>
+                <span className="text-[11px] text-black/50">一起观影</span>
+             </button>
              <div className="flex flex-col items-center gap-2 group cursor-pointer w-[64px]" onClick={() => { imageInputRef.current?.click(); setShowPlusMenu(false); }}>
                 <div className="w-[50px] h-[50px] rounded-[16px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><ImageIcon size={24} strokeWidth={1.5} /></div>
                 <span className="text-[11px] text-black/50">图片</span>
@@ -1193,6 +1312,7 @@ export const ChatView = ({
       <input type="file" ref={imageInputRef} className="hidden" accept="image/*" onChange={(e) => handleImageUpload(e, false)} />
       <input type="file" ref={newStickerInputRef} className="hidden" accept="image/*" onChange={handleNewStickerUpload} />
       <input type="file" ref={checkInImgInputRef} className="hidden" accept="image/*" onChange={handleCheckInImageUpload} />
+      <input type="file" ref={movieInputRef} className="hidden" accept="video/*" onChange={handleMovieUpload} />
     </div>
   );
 }
