@@ -761,7 +761,7 @@ export function MomentsView({
                                   return (
                                     <div 
                                       key={reply.id} 
-                                      className="break-all cursor-pointer active:bg-black/5 rounded-sm px-1 ml-4 border-l-2 border-[#576b95]/15 pl-2 text-[13px]"
+                                      className="break-all cursor-pointer active:bg-black/5 rounded-sm px-1 -mx-0.5 text-[13px]"
                                       onClick={() => {
                                         if (replyAuthor !== (name1 || '我')) {
                                           setReplyInputVisible(moment.id);
