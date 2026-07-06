@@ -634,16 +634,71 @@ export const ChatView = ({
         }
       }
 
-      setMessages(prev => [...prev, ...newMsgs]);
-      
-      const pushNotify = window.localStorage.getItem('app_chatPushNotify');
-      const isPushEnabled = pushNotify ? JSON.parse(pushNotify) : true;
-      if (isPushEnabled && 'Notification' in window && window.Notification.permission === 'granted') {
-        new window.Notification(charId, { 
-          body: newMsgs[0].content,
-          icon: avatar2 || undefined 
-        });
-      }
+      // Now, instead of dumping all at once:
+      // We will define a recursive function to send them one by one.
+      const sendNextMessage = (index: number) => {
+        if (index >= newMsgs.length) {
+          setIsTyping(false);
+          return;
+        }
+
+        const currentMsg = newMsgs[index];
+
+        // For nudges, there's no typing state required, we can just send it immediately
+        if (currentMsg.type === 'nudge') {
+          setMessages(prev => [...prev, currentMsg]);
+          // Next message after a tiny delay
+          setTimeout(() => {
+            sendNextMessage(index + 1);
+          }, 300);
+          return;
+        }
+
+        // If it is the first message (index === 0), we already waited for the full initial pacing delay,
+        // so we don't need another typing duration. We can send it immediately!
+        if (index === 0) {
+          setMessages(prev => [...prev, currentMsg]);
+
+          const pushNotify = window.localStorage.getItem('app_chatPushNotify');
+          const isPushEnabled = pushNotify ? JSON.parse(pushNotify) : true;
+          if (isPushEnabled && 'Notification' in window && window.Notification.permission === 'granted') {
+            new window.Notification(charId, { 
+              body: currentMsg.type === 'text' ? currentMsg.content : (currentMsg.type === 'voice' ? '[语音]' : '[图片/表情]'),
+              icon: avatar2 || undefined 
+            });
+          }
+
+          // Schedule the next message (if any) with a brief gap
+          setTimeout(() => {
+            sendNextMessage(index + 1);
+          }, 400 + Math.random() * 400);
+          return;
+        }
+
+        // For subsequent messages, show typing indicator before each text/emoji/sticker/voice message
+        setIsTyping(true);
+
+        // Calculate a realistic typing time for this message (1.2s to 2.5s for text, 0.8s to 1.4s for emoji/sticker)
+        let typingDuration = 1200 + Math.random() * 1300;
+        if (currentMsg.type === 'sticker' || currentMsg.type === 'emoji') {
+          typingDuration = 800 + Math.random() * 600;
+        }
+
+        setTimeout(() => {
+          setIsTyping(false);
+          setMessages(prev => [...prev, currentMsg]);
+
+          // Schedule the next message after a tiny pause of thinking/gap between messages (e.g. 400ms to 800ms)
+          setTimeout(() => {
+            sendNextMessage(index + 1);
+          }, 400 + Math.random() * 400);
+
+        }, typingDuration);
+      };
+
+      // Start the sequential sender!
+      sendNextMessage(0);
+
     }, delay);
   };
 

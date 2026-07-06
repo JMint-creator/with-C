@@ -8,45 +8,71 @@ interface MoviePlayerProps {
 export const MoviePlayer = React.memo(function MoviePlayer({ movieUrl }: MoviePlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isStalled, setIsStalled] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
+  const stallTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Buffer state tracking
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
+    const startStallTimer = () => {
+      // Clear any existing timer first
+      if (stallTimeoutRef.current) {
+        clearTimeout(stallTimeoutRef.current);
+      }
+      // Only show the buffering overlay if it has stalled for more than 800ms
+      // This prevents annoying flashing during normal, micro-second buffer hiccups
+      stallTimeoutRef.current = setTimeout(() => {
+        setIsStalled(true);
+      }, 800);
+    };
+
+    const clearStallTimer = () => {
+      if (stallTimeoutRef.current) {
+        clearTimeout(stallTimeoutRef.current);
+        stallTimeoutRef.current = null;
+      }
+      setIsStalled(false);
+    };
+
     const handleStalled = () => {
-      console.warn('MoviePlayer: Video stalled, buffering...');
-      setIsStalled(true);
+      console.warn('MoviePlayer: Video stalled, scheduling buffering overlay...');
+      startStallTimer();
     };
 
     const handleWaiting = () => {
-      setIsStalled(true);
+      startStallTimer();
     };
 
     const handlePlaying = () => {
-      setIsStalled(false);
+      clearStallTimer();
     };
 
     const handleCanPlay = () => {
-      setIsStalled(false);
+      clearStallTimer();
     };
 
     const handleTimeUpdate = () => {
-      setCurrentTime(video.currentTime);
+      // If the time is updating, the video is actively playing and not stalled
+      clearStallTimer();
     };
 
     video.addEventListener('stalled', handleStalled);
     video.addEventListener('waiting', handleWaiting);
     video.addEventListener('playing', handlePlaying);
     video.addEventListener('canplay', handleCanPlay);
+    video.addEventListener('seeked', handlePlaying);
     video.addEventListener('timeupdate', handleTimeUpdate);
 
     return () => {
+      if (stallTimeoutRef.current) {
+        clearTimeout(stallTimeoutRef.current);
+      }
       video.removeEventListener('stalled', handleStalled);
       video.removeEventListener('waiting', handleWaiting);
       video.removeEventListener('playing', handlePlaying);
       video.removeEventListener('canplay', handleCanPlay);
+      video.removeEventListener('seeked', handlePlaying);
       video.removeEventListener('timeupdate', handleTimeUpdate);
     };
   }, []);
@@ -83,7 +109,8 @@ export const MoviePlayer = React.memo(function MoviePlayer({ movieUrl }: MoviePl
         controls 
         autoPlay
         playsInline
-        preload="auto"
+        webkit-playsinline="true"
+        preload="metadata" // CRITICAL: 'metadata' prevents Safari from trying to cache the entire 1GB file in RAM at once, preventing iOS crashes
         className="w-full h-full object-contain max-h-[250px]"
       />
       
