@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, Video, Settings, Smile, Hand, Plus, Image as ImageIcon, Send, X, PhoneCall, PhoneMissed, Phone, MicOff, Mic, CameraOff, MonitorPlay, Check, CheckCheck, MessageCircle, MoreHorizontal, Heart, Sparkles, Camera } from 'lucide-react';
 import { useLocalState, useIDBState, compressImage } from './utils';
 import { useCallStore, callStore } from './callStore';
+import { MoviePlayer } from './components/MoviePlayer';
 
 type Message = {
   id: string;
@@ -753,7 +754,10 @@ export const ChatView = ({
           </button>
         </div>
       ) : (
-        <div className="absolute top-0 left-0 right-0 bg-zinc-950 z-30 shadow-2xl flex flex-col overflow-hidden pb-1 border-b border-white/10">
+        <div 
+          className="absolute top-0 left-0 right-0 bg-zinc-950 z-30 shadow-2xl flex flex-col overflow-hidden pb-1 border-b border-white/10"
+          style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+        >
           <div className="px-4 py-3 flex items-center justify-between text-white/90 bg-zinc-900/90 backdrop-blur-md border-b border-zinc-800">
             <div className="flex items-center gap-2 overflow-hidden mr-3">
               <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shrink-0" />
@@ -770,28 +774,21 @@ export const ChatView = ({
                   setMovieUrl('');
                 }
               }} 
-              className="px-3 py-1.5 rounded-xl bg-red-500 hover:bg-red-600 text-white active:scale-95 transition-all text-[11px] font-semibold flex items-center gap-1 shadow-md"
+              className="px-3 py-1.5 rounded-xl bg-red-500 hover:bg-red-600 active:bg-red-700 text-white active:scale-95 transition-all text-[11px] font-semibold flex items-center gap-1 shadow-md z-40"
+              style={{ minHeight: '36px', minWidth: '80px' }}
             >
               <X size={13} strokeWidth={2.5} />
               <span>退出观影</span>
             </button>
           </div>
-          <div className="relative w-full aspect-video max-h-[250px] bg-black flex items-center justify-center">
-            <video 
-              src={movieUrl} 
-              controls 
-              autoPlay
-              playsInline
-              className="w-full h-full object-contain max-h-[250px]"
-            />
-          </div>
+          <MoviePlayer movieUrl={movieUrl} />
         </div>
       )}
 
       {/* Messages */}
       <div 
         ref={scrollRef} 
-        className={`absolute inset-0 overflow-y-auto px-4 ${isWatchingMovie ? 'pt-[310px]' : 'pt-[calc(env(safe-area-inset-top)+80px)]'} flex flex-col scrollbar-hide z-10`} 
+        className={`absolute inset-0 overflow-y-auto px-4 ${isWatchingMovie ? 'pt-[calc(env(safe-area-inset-top)+315px)]' : 'pt-[calc(env(safe-area-inset-top)+80px)]'} flex flex-col scrollbar-hide z-10`} 
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 72px)' }}
         onClick={() => { if (activeMenuMsgId) setActiveMenuMsgId(null); }}
       >
