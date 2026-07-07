@@ -464,7 +464,6 @@ export const ChatView = ({
     
     setIsTyping(true);
     setTimeout(() => {
-      setIsTyping(false);
       const newMsgs: Message[] = [];
       let baseId = Date.now();
 
@@ -480,225 +479,208 @@ export const ChatView = ({
           content,
           time: getFormatTime()
         });
-        setMessages(prev => [...prev, ...newMsgs]);
-        return;
-      }
-
-      if (Math.random() < 0.03) {
-        const storedNudges = window.localStorage.getItem('app_nudges');
-        const nudgesArr = storedNudges ? JSON.parse(storedNudges) : ['拍了拍你'];
-        const randomNudge = nudgesArr.length > 0 ? nudgesArr[Math.floor(Math.random() * nudgesArr.length)] : '拍了拍你';
-        newMsgs.push({
-          id: (++baseId).toString(),
-          sender: 'them',
-          type: 'nudge',
-          content: randomNudge,
-          time: getFormatTime()
-        });
-      }
-
-      if (Math.random() < 0.05) {
-        newMsgs.push({
-          id: (++baseId).toString(),
-          sender: 'them',
-          type: 'check_in',
-          content: `${charId} 想知道你在干什么`,
-          checkInStatus: 'pending',
-          time: getFormatTime()
-        });
-      }
-
-      // Add small chance of real-time proactive video call on conversation response!
-      if (Math.random() < 0.04 && mockVideo && videoCallState === 'none') {
-        setTimeout(() => {
-          triggerIncomingVideoCall();
-        }, 1500);
-      }
-
-      const r = Math.random();
-      let replyCount = 1;
-      if (r > 0.95) replyCount = 3;
-      else if (r > 0.75) replyCount = 2;
-      
-      for(let i=0; i<replyCount; i++) {
-        const shouldSendVoice = Math.random() < 0.12 && (voiceCards || []).length > 0;
-
-        if (shouldSendVoice) {
-          const randomVoice = (voiceCards || [])[Math.floor(Math.random() * (voiceCards || []).length)];
+      } else {
+        if (Math.random() < 0.03) {
+          const storedNudges = window.localStorage.getItem('app_nudges');
+          const nudgesArr = storedNudges ? JSON.parse(storedNudges) : ['拍了拍你'];
+          const randomNudge = nudgesArr.length > 0 ? nudgesArr[Math.floor(Math.random() * nudgesArr.length)] : '拍了拍你';
           newMsgs.push({
             id: (++baseId).toString(),
             sender: 'them',
-            type: 'voice',
-            content: '',
-            audioUrl: randomVoice.url,
-            voiceDuration: randomVoice.duration,
+            type: 'nudge',
+            content: randomNudge,
             time: getFormatTime()
           });
-        } else {
-          let content = '嗯嗯';
-          if (replyCards.length > 0) {
-             const condRand = Math.random();
-             if (condRand < 0.15 && replyCards.length >= 2) {
-               const countToConcat = Math.min(Math.random() < 0.5 ? 2 : 3, replyCards.length);
-               const shuffled = [...replyCards].sort(() => Math.random() - 0.5);
-               content = shuffled.slice(0, countToConcat).map(c => c.content).join(' ');
-             } else {
-               content = replyCards[Math.floor(Math.random() * replyCards.length)].content;
-             }
-          }
+        }
 
-          let replyToMsg: string | undefined = undefined;
-          if (Math.random() < 0.3) {
-             const myMsgs = messages.filter(m => m.sender === 'me');
-             const recentMyMsgs = myMsgs.slice(-10);
-             if (recentMyMsgs.length > 0) {
-                const chosen = recentMyMsgs[Math.floor(Math.random() * recentMyMsgs.length)];
-                if (chosen.type === 'text') {
-                  replyToMsg = chosen.content.length > 40 ? chosen.content.substring(0, 40) + '...' : chosen.content;
-                } else if (chosen.type === 'voice') {
-                  replyToMsg = '[语音]';
-                } else if (chosen.type === 'image') {
-                  replyToMsg = '[图片]';
-                } else if (chosen.type === 'sticker') {
-                  replyToMsg = '[表情]';
-                } else if (chosen.type === 'check_in') {
-                  replyToMsg = '[汇报]';
-                } else {
-                  replyToMsg = '[消息]';
-                }
-             }
-          }
-          
-          let emojiContent = '';
-          let sendEmojiSeparate = false;
-          if (Math.random() < 0.2 && emojis.length > 0) {
-            const emoji = emojis[Math.floor(Math.random() * emojis.length)];
-            if (mixEmoji) {
-               if (Math.random() < 0.5) content = emoji + content;
-               else content = content + emoji;
-            } else {
-               emojiContent = emoji;
-               sendEmojiSeparate = true;
-            }
-          }
-
+        if (Math.random() < 0.05) {
           newMsgs.push({
             id: (++baseId).toString(),
             sender: 'them',
-            type: 'text',
-            content,
-            replyTo: replyToMsg,
+            type: 'check_in',
+            content: `${charId} 想知道你在干什么`,
+            checkInStatus: 'pending',
             time: getFormatTime()
           });
+        }
 
-          if (sendEmojiSeparate) {
+        // Add small chance of real-time proactive video call on conversation response!
+        if (Math.random() < 0.04 && mockVideo && videoCallState === 'none') {
+          setTimeout(() => {
+            triggerIncomingVideoCall();
+          }, 1500);
+        }
+
+        const r = Math.random();
+        let replyCount = 1;
+        if (r > 0.95) replyCount = 3;
+        else if (r > 0.75) replyCount = 2;
+        
+        for(let i=0; i<replyCount; i++) {
+          const shouldSendVoice = Math.random() < 0.12 && (voiceCards || []).length > 0;
+
+          if (shouldSendVoice) {
+            const randomVoice = (voiceCards || [])[Math.floor(Math.random() * (voiceCards || []).length)];
             newMsgs.push({
               id: (++baseId).toString(),
               sender: 'them',
-              type: 'emoji',
-              content: emojiContent,
+              type: 'voice',
+              content: '',
+              audioUrl: randomVoice.url,
+              voiceDuration: randomVoice.duration,
               time: getFormatTime()
             });
-          }
-        }
+          } else {
+            let content = '嗯嗯';
+            if (replyCards.length > 0) {
+               const condRand = Math.random();
+               if (condRand < 0.15 && replyCards.length >= 2) {
+                 const countToConcat = Math.min(Math.random() < 0.5 ? 2 : 3, replyCards.length);
+                 const shuffled = [...replyCards].sort(() => Math.random() - 0.5);
+                 content = shuffled.slice(0, countToConcat).map(c => c.content).join(' ');
+               } else {
+                 content = replyCards[Math.floor(Math.random() * replyCards.length)].content;
+               }
+            }
 
-        // Find Dream Character's stickers from word card groups (must be valid image strings)
-        const mjStickers: string[] = [];
-        cardGroups.forEach(g => {
-          if (g.cards && Array.isArray(g.cards)) {
-            g.cards.forEach((c: string) => {
-              if (c && typeof c === 'string') {
-                const trimmed = c.trim();
-                const isImg = trimmed.startsWith('data:image/') || /^https?:\/\/.*\.(png|jpg|jpeg|gif|webp|svg)/i.test(trimmed);
-                if (isImg) {
-                  if (!mjStickers.includes(trimmed)) {
-                    mjStickers.push(trimmed);
+            let replyToMsg: string | undefined = undefined;
+            if (Math.random() < 0.3) {
+               const myMsgs = messages.filter(m => m.sender === 'me');
+               const recentMyMsgs = myMsgs.slice(-10);
+               if (recentMyMsgs.length > 0) {
+                  const chosen = recentMyMsgs[Math.floor(Math.random() * recentMyMsgs.length)];
+                  if (chosen.type === 'text') {
+                    replyToMsg = chosen.content.length > 40 ? chosen.content.substring(0, 40) + '...' : chosen.content;
+                  } else if (chosen.type === 'voice') {
+                    replyToMsg = '[语音]';
+                  } else if (chosen.type === 'image') {
+                    replyToMsg = '[图片]';
+                  } else if (chosen.type === 'sticker') {
+                    replyToMsg = '[表情]';
+                  } else if (chosen.type === 'check_in') {
+                    replyToMsg = '[汇报]';
+                  } else {
+                    replyToMsg = '[消息]';
+                  }
+               }
+            }
+            
+            let emojiContent = '';
+            let sendEmojiSeparate = false;
+            if (Math.random() < 0.2 && emojis.length > 0) {
+              const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+              if (mixEmoji) {
+                 if (Math.random() < 0.5) content = emoji + content;
+                 else content = content + emoji;
+              } else {
+                 emojiContent = emoji;
+                 sendEmojiSeparate = true;
+              }
+            }
+
+            newMsgs.push({
+              id: (++baseId).toString(),
+              sender: 'them',
+              type: 'text',
+              content,
+              replyTo: replyToMsg,
+              time: getFormatTime()
+            });
+
+            if (sendEmojiSeparate) {
+              newMsgs.push({
+                id: (++baseId).toString(),
+                sender: 'them',
+                type: 'emoji',
+                content: emojiContent,
+                time: getFormatTime()
+              });
+            }
+          }
+
+          // Find Dream Character's stickers from word card groups (must be valid image strings)
+          const mjStickers: string[] = [];
+          cardGroups.forEach(g => {
+            if (g.cards && Array.isArray(g.cards)) {
+              g.cards.forEach((c: string) => {
+                if (c && typeof c === 'string') {
+                  const trimmed = c.trim();
+                  const isImg = trimmed.startsWith('data:image/') || /^https?:\/\/.*\.(png|jpg|jpeg|gif|webp|svg)/i.test(trimmed);
+                  if (isImg) {
+                    if (!mjStickers.includes(trimmed)) {
+                      mjStickers.push(trimmed);
+                    }
                   }
                 }
-              }
+              });
+            }
+          });
+
+          const availableStickers = mjStickers.length > 0 ? mjStickers : stickers;
+
+          if (Math.random() < 0.2 && availableStickers.length > 0) {
+            const sticker = availableStickers[Math.floor(Math.random() * availableStickers.length)];
+            newMsgs.push({
+               id: (++baseId).toString(),
+               sender: 'them',
+               type: 'sticker',
+               content: sticker,
+               time: getFormatTime()
             });
           }
-        });
-
-        const availableStickers = mjStickers.length > 0 ? mjStickers : stickers;
-
-        if (Math.random() < 0.2 && availableStickers.length > 0) {
-          const sticker = availableStickers[Math.floor(Math.random() * availableStickers.length)];
-          newMsgs.push({
-             id: (++baseId).toString(),
-             sender: 'them',
-             type: 'sticker',
-             content: sticker,
-             time: getFormatTime()
-          });
         }
       }
 
-      // Now, instead of dumping all at once:
-      // We will define a recursive function to send them one by one.
-      const sendNextMessage = (index: number) => {
-        if (index >= newMsgs.length) {
+      if (newMsgs.length === 0) {
+        setIsTyping(false);
+        return;
+      }
+
+      // Send messages sequentially with simple typing indicator intervals
+      let currentIndex = 0;
+
+      const sendNextMessage = () => {
+        if (currentIndex >= newMsgs.length) {
           setIsTyping(false);
           return;
         }
 
-        const currentMsg = newMsgs[index];
-
-        // For nudges, there's no typing state required, we can just send it immediately
-        if (currentMsg.type === 'nudge') {
-          setMessages(prev => [...prev, currentMsg]);
-          // Next message after a tiny delay
-          setTimeout(() => {
-            sendNextMessage(index + 1);
-          }, 300);
-          return;
-        }
-
-        // If it is the first message (index === 0), we already waited for the full initial pacing delay,
-        // so we don't need another typing duration. We can send it immediately!
-        if (index === 0) {
-          setMessages(prev => [...prev, currentMsg]);
-
-          const pushNotify = window.localStorage.getItem('app_chatPushNotify');
-          const isPushEnabled = pushNotify ? JSON.parse(pushNotify) : true;
-          if (isPushEnabled && 'Notification' in window && window.Notification.permission === 'granted') {
-            new window.Notification(charId, { 
-              body: currentMsg.type === 'text' ? currentMsg.content : (currentMsg.type === 'voice' ? '[语音]' : '[图片/表情]'),
-              icon: avatar2 || undefined 
-            });
-          }
-
-          // Schedule the next message (if any) with a brief gap
-          setTimeout(() => {
-            sendNextMessage(index + 1);
-          }, 400 + Math.random() * 400);
-          return;
-        }
-
-        // For subsequent messages, show typing indicator before each text/emoji/sticker/voice message
+        // Show typing indicator
         setIsTyping(true);
 
-        // Calculate a realistic typing time for this message (1.2s to 2.5s for text, 0.8s to 1.4s for emoji/sticker)
-        let typingDuration = 1200 + Math.random() * 1300;
-        if (currentMsg.type === 'sticker' || currentMsg.type === 'emoji') {
-          typingDuration = 800 + Math.random() * 600;
-        }
+        // Simple fixed typing delay (e.g. 1.8 seconds)
+        const typingDuration = 1800;
 
         setTimeout(() => {
           setIsTyping(false);
+          const currentMsg = newMsgs[currentIndex];
+          
           setMessages(prev => [...prev, currentMsg]);
 
-          // Schedule the next message after a tiny pause of thinking/gap between messages (e.g. 400ms to 800ms)
-          setTimeout(() => {
-            sendNextMessage(index + 1);
-          }, 400 + Math.random() * 400);
+          // System push notification for this message (or just the first one)
+          if (currentIndex === 0) {
+            const pushNotify = window.localStorage.getItem('app_chatPushNotify');
+            const isPushEnabled = pushNotify ? JSON.parse(pushNotify) : true;
+            if (isPushEnabled && 'Notification' in window && window.Notification.permission === 'granted') {
+              new window.Notification(charId, { 
+                body: currentMsg.content || (currentMsg.type === 'voice' ? '[语音]' : '[图片/表情]'),
+                icon: avatar2 || undefined 
+              });
+            }
+          }
 
+          currentIndex++;
+          
+          if (currentIndex < newMsgs.length) {
+            // Wait for a brief realistic gap before typing the next one
+            setTimeout(() => {
+              sendNextMessage();
+            }, 800);
+          }
         }, typingDuration);
       };
 
-      // Start the sequential sender!
-      sendNextMessage(0);
-
+      sendNextMessage();
     }, delay);
   };
 

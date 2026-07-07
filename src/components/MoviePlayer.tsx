@@ -52,17 +52,10 @@ export const MoviePlayer = React.memo(function MoviePlayer({ movieUrl }: MoviePl
       clearStallTimer();
     };
 
-    const handleTimeUpdate = () => {
-      // If the time is updating, the video is actively playing and not stalled
-      clearStallTimer();
-    };
-
     video.addEventListener('stalled', handleStalled);
     video.addEventListener('waiting', handleWaiting);
     video.addEventListener('playing', handlePlaying);
     video.addEventListener('canplay', handleCanPlay);
-    video.addEventListener('seeked', handlePlaying);
-    video.addEventListener('timeupdate', handleTimeUpdate);
 
     return () => {
       if (stallTimeoutRef.current) {
@@ -72,8 +65,6 @@ export const MoviePlayer = React.memo(function MoviePlayer({ movieUrl }: MoviePl
       video.removeEventListener('waiting', handleWaiting);
       video.removeEventListener('playing', handlePlaying);
       video.removeEventListener('canplay', handleCanPlay);
-      video.removeEventListener('seeked', handlePlaying);
-      video.removeEventListener('timeupdate', handleTimeUpdate);
     };
   }, []);
 

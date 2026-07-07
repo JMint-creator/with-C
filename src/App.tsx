@@ -416,9 +416,9 @@ export default function App() {
   const [nudges, setNudges] = useLocalState<string[]>('app_nudges', ['拍了拍我的 脑袋', '拍了拍我的 肩膀']);
 
   useEffect(() => {
-    // Ensure "记账回复" group exists and remove "Todo回复" system group as requested
+    // Ensure "记账回复" group exists and remove "Todo回复"
     setCardGroups(prev => {
-      let next = prev.filter(g => g.id !== 'sys_todo' && g.name !== 'Todo回复');
+      let next = prev.filter(g => g.id !== 'sys_todo' && g.name !== 'Todo回复' && g.name !== 'Todo添加' && g.name !== 'Todo完成' && g.name !== 'Todo逾期');
       if (!next.find(g => g.name === '记账回复' || g.name === '记账')) {
         next.push({ id: 'sys_accounting', name: '记账回复', cards: ['记得合理分配生活开销哦~', '钱花在刀刃上！今天有什么收获？', '记账是个好习惯，继续保持！'] });
       }
