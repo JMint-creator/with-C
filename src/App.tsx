@@ -601,18 +601,21 @@ export default function App() {
   useEffect(() => {
     if (!isMusicPlaying || !mjMusicSessionActive || playQueue.length <= 1) return;
 
+    // 每15秒有3%的概率小概率随机切歌，使听歌互动更加自然和不可预测
     const interval = setInterval(() => {
-      let nextIndex = currentMusicIndex;
-      if (playQueue.length > 1) {
-        while (nextIndex === currentMusicIndex) {
-          nextIndex = Math.floor(Math.random() * playQueue.length);
+      if (Math.random() < 0.03) {
+        let nextIndex = currentMusicIndex;
+        if (playQueue.length > 1) {
+          while (nextIndex === currentMusicIndex) {
+            nextIndex = Math.floor(Math.random() * playQueue.length);
+          }
         }
+        
+        setCurrentMusicIndex(nextIndex);
+        const songName = playQueue[nextIndex]?.name || '好听的歌';
+        showToast(`🎵 ${mjNickname} 帮你切了歌，现在听《${songName}》吧～`);
       }
-      
-      setCurrentMusicIndex(nextIndex);
-      const songName = playQueue[nextIndex]?.name || '好听的歌';
-      showToast(`🎵 ${mjNickname} 帮你切了歌，现在听《${songName}》吧～`);
-    }, 180000);
+    }, 15000);
 
     return () => clearInterval(interval);
   }, [isMusicPlaying, mjMusicSessionActive, playQueue, currentMusicIndex, mjNickname]);

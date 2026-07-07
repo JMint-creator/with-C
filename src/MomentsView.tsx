@@ -41,6 +41,34 @@ interface Moment {
   notified?: boolean; // Track if user was notified of this post
 }
 
+function formatMomentTime(timestamp: number): string {
+  const date = new Date(timestamp);
+  if (isNaN(date.getTime())) return '';
+  const now = new Date();
+  
+  const isSameDay = date.getFullYear() === now.getFullYear() &&
+                    date.getMonth() === now.getMonth() &&
+                    date.getDate() === now.getDate();
+                    
+  const yesterday = new Date();
+  yesterday.setDate(now.getDate() - 1);
+  const isYesterday = date.getFullYear() === yesterday.getFullYear() &&
+                      date.getMonth() === yesterday.getMonth() &&
+                      date.getDate() === yesterday.getDate();
+
+  const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  if (isSameDay) {
+    return `今天 ${timeStr}`;
+  } else if (isYesterday) {
+    return `昨天 ${timeStr}`;
+  } else if (date.getFullYear() === now.getFullYear()) {
+    return `${date.getMonth() + 1}月${date.getDate()}日 ${timeStr}`;
+  } else {
+    return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 ${timeStr}`;
+  }
+}
+
 export function MomentsView({
   onClose,
   themeConfig,
@@ -531,7 +559,7 @@ export function MomentsView({
                         {getAuthorName(moment.authorName, moment.type)}
                       </div>
                       <div className="text-[11px] text-gray-400 mt-0.5">
-                        {new Date(moment.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {formatMomentTime(moment.timestamp)}
                       </div>
                     </div>
                     {moment.type === 'user' && (
@@ -682,7 +710,7 @@ export function MomentsView({
                   <div className="flex justify-between items-center mt-3 relative">
                     <div className="flex items-center gap-3">
                       <span className="text-[12px] text-gray-400">
-                        {new Date(moment.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {formatMomentTime(moment.timestamp)}
                       </span>
                       {moment.type === 'user' && (
                         <button 

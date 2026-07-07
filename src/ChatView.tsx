@@ -1,9 +1,97 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronLeft, Video, Settings, Smile, Hand, Plus, Image as ImageIcon, Send, X, PhoneCall, PhoneMissed, Phone, MicOff, Mic, CameraOff, MonitorPlay, Check, CheckCheck, MessageCircle, MoreHorizontal, Heart, Sparkles, Camera, Music } from 'lucide-react';
+import { ChevronLeft, Video, Settings, Smile, Hand, Plus, Image as ImageIcon, Send, X, PhoneCall, PhoneMissed, Phone, MicOff, Mic, CameraOff, MonitorPlay, Check, CheckCheck, MessageCircle, MoreHorizontal, Heart, Sparkles, Camera, Music, Disc, Film } from 'lucide-react';
 import { useLocalState, useIDBState, compressImage } from './utils';
 import { useCallStore, callStore } from './callStore';
 import { MoviePlayer } from './components/MoviePlayer';
+
+function mixColorWithWhite(hex: string, weight = 0.12): string {
+  if (!hex || typeof hex !== 'string') return '#f9fafb';
+  let color = hex.replace('#', '').trim();
+  if (color.length === 3) {
+    color = color[0] + color[0] + color[1] + color[1] + color[2] + color[2];
+  }
+  if (color.length !== 6) return '#f9fafb';
+  const r = parseInt(color.slice(0, 2), 16) || 0;
+  const g = parseInt(color.slice(2, 4), 16) || 0;
+  const b = parseInt(color.slice(4, 6), 16) || 0;
+
+  const mixedR = Math.round(r * weight + 255 * (1 - weight));
+  const mixedG = Math.round(g * weight + 255 * (1 - weight));
+  const mixedB = Math.round(b * weight + 255 * (1 - weight));
+
+  const toHex = (c: number) => {
+    const s = Math.min(255, Math.max(0, c)).toString(16);
+    return s.length === 1 ? '0' + s : s;
+  };
+
+  return `#${toHex(mixedR)}${toHex(mixedG)}${toHex(mixedB)}`;
+}
+
+function getMeCardColors(bg: string, defaultBubble: string) {
+  const cleanBg = (bg || '').toUpperCase();
+  
+  // Hand-crafted Morandi palette with perfectly balanced, sweet, non-grey pastel backgrounds and borders
+  if (cleanBg.includes('EBE7DF')) { // warm
+    return {
+      solidBg: '#F5EAE1',      // Cozy warm peach-cream (clearly colored, yet gentle and pastel)
+      solidBorder: '#E2CDBC',  // Beautiful warm terracotta border
+      accent: '#A38380'       // Morandi earthy rose accent
+    };
+  }
+  if (cleanBg.includes('E3EBE6')) { // mint
+    return {
+      solidBg: '#E7EFEB',      // Soft creamy mint (refreshing but calm pastel, not grey)
+      solidBorder: '#CDDAD1',  // Gentle sage-mint border
+      accent: '#7C8B7A'       // Morandi sage green accent
+    };
+  }
+  if (cleanBg.includes('EBE2E4')) { // sakura
+    return {
+      solidBg: '#F6EBED',      // Cozy warm sakura blush cream
+      solidBorder: '#DFCCD0',  // Soft rose-dust border
+      accent: '#A18488'       // Morandi rose accent
+    };
+  }
+  if (cleanBg.includes('E0E7ED')) { // blue
+    return {
+      solidBg: '#E5ECF2',      // Beautiful soft misty-blue cream
+      solidBorder: '#CCD7E2',  // Soft slate-blue border
+      accent: '#748796'       // Morandi slate blue accent
+    };
+  }
+  if (cleanBg.includes('E6E0ED')) { // purple
+    return {
+      solidBg: '#E9E5F0',      // Soft elegant plum lavender cream
+      solidBorder: '#D0C6DA',  // Soft lavender-plum border
+      accent: '#847590'       // Morandi lavender-plum accent
+    };
+  }
+  if (cleanBg.includes('EDE0E0')) { // red
+    return {
+      solidBg: '#F5E7E7',      // Warm brick-clay blush cream
+      solidBorder: '#DFCECE',  // Soft brick-rose dust border
+      accent: '#947474'       // Morandi brick rose accent
+    };
+  }
+
+  // Fallback for custom bubble color
+  const b = (defaultBubble || '').toUpperCase();
+  if (b && b !== '#333333' && b !== '#2C3A33' && b !== '#3B2A2D' && b !== '#2B3A4A' && b !== '#3A2B4A' && b !== '#4A2B2B' && b !== '#A894A7') {
+    return {
+      solidBg: mixColorWithWhite(defaultBubble, 0.22),
+      solidBorder: mixColorWithWhite(defaultBubble, 0.42),
+      accent: defaultBubble
+    };
+  }
+
+  // General elegant Morandi rose fallback
+  return {
+    solidBg: '#F6EBED',
+    solidBorder: '#DFCCD0',
+    accent: '#A18488'
+  };
+}
 
 type Message = {
   id: string;
@@ -20,7 +108,7 @@ type Message = {
   voiceDuration?: number;
   isIgnored?: boolean;
   inviteType?: 'music' | 'movie';
-  inviteStatus?: 'pending' | 'accepted' | 'declined';
+  inviteStatus?: 'pending' | 'accepted' | 'declined' | 'busy';
   songName?: string;
   movieName?: string;
 };
@@ -261,6 +349,7 @@ export const ChatView = ({
   const primaryColor = themeConfig.textPrimary || '#a894a7';
   const [chatBubbleColor] = useLocalState('app_chatBubbleColor', '');
   const bubbleColor = chatBubbleColor || primaryColor;
+  const { solidBg: rootSolidMeBg, solidBorder: rootSolidMeBorder, accent: rootAccentColor } = getMeCardColors(themeConfig?.bg, bubbleColor);
 
   const [inviteModal, setInviteModal] = useState<{ show: boolean; type: 'music' | 'movie'; direction: 'me' | 'them' }>({ show: false, type: 'music', direction: 'me' });
   const [inviteInputVal, setInviteInputVal] = useState('');
@@ -304,8 +393,9 @@ export const ChatView = ({
     
     if (!ignored) {
       setTimeout(() => {
-        setMessages(msgs => msgs.map(m => m.id === newMsg.id ? { ...m, inviteStatus: 'accepted' } : m));
-        if (type === 'music') {
+        const isBusy = Math.random() < 0.10;
+        setMessages(msgs => msgs.map(m => m.id === newMsg.id ? { ...m, inviteStatus: isBusy ? 'busy' : 'accepted' } : m));
+        if (!isBusy && type === 'music') {
           window.dispatchEvent(new CustomEvent('app_mj_music_session_start'));
         }
       }, 2000);
@@ -940,11 +1030,16 @@ export const ChatView = ({
           const avatar = isMe ? (avatar1 || '') : (avatar2 || '');
           
           const nextMsg = messages[i + 1];
+          const prevMsg = i > 0 ? messages[i - 1] : null;
           const isGroupedNext = nextMsg && nextMsg.sender === msg.sender && nextMsg.time === msg.time && nextMsg.type !== 'call' && nextMsg.type !== 'nudge' && msg.type !== 'call' && msg.type !== 'nudge';
+          const isGroupedPrev = prevMsg && prevMsg.sender === msg.sender && prevMsg.time === msg.time && prevMsg.type !== 'call' && prevMsg.type !== 'nudge' && msg.type !== 'call' && msg.type !== 'nudge';
           const marginBottom = isGroupedNext ? 'mb-2.5' : 'mb-6';
 
           // isRead if there's any message from them after this, or if it was marked as ignored
           const isRead = messages.slice(i + 1).some(m => m.sender === 'them') || msg.isIgnored;
+
+          // Compute solid soft colors for "me" cards (opaque pastel background & matching border)
+          const { solidBg: solidMeBg, solidBorder: solidMeBorder, accent: accentColor } = getMeCardColors(themeConfig?.bg, bubbleColor);
 
           if (msg.type === 'nudge') {
             return (
@@ -975,7 +1070,7 @@ export const ChatView = ({
             <div key={`${msg.id}-${i}`} className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'} ${marginBottom}`}>
               {!isMe && (
                 <div className="w-[38px] h-[38px] shrink-0 mr-2.5">
-                  {!isGroupedNext && <div className="w-full h-full rounded-full bg-black/10 overflow-hidden shadow-sm border border-white/20">
+                  {!isGroupedPrev && <div className="w-full h-full rounded-full bg-black/10 overflow-hidden shadow-sm border border-white/20">
                     {avatar ? <img src={avatar} alt="" className="w-full h-full object-cover" /> : null}
                   </div>}
                 </div>
@@ -1109,72 +1204,88 @@ export const ChatView = ({
                   <div className="text-[48px] leading-none drop-shadow-sm">{msg.content}</div>
                 ) : msg.type === 'invite' ? (
                   <div 
-                    className={`p-3.5 rounded-[18px] w-[230px] sm:w-[250px] shadow-[0_8px_24px_rgba(0,0,0,0.03)] border relative overflow-hidden flex flex-col ${
+                    className={`p-5 pb-4 rounded-[22px] w-[275px] sm:w-[315px] shadow-[0_12px_32px_rgba(0,0,0,0.04)] border relative overflow-hidden flex flex-col group transition-all duration-300 hover:shadow-[0_16px_36px_rgba(0,0,0,0.06)] ${
                       isMe ? 'rounded-tr-[4px]' : 'rounded-tl-[4px]'
                     } ${
                       isMe 
-                        ? 'text-gray-800 backdrop-blur-md' 
+                        ? 'text-gray-800' 
                         : 'text-gray-800 bg-white border-black/[0.06]'
                     }`}
                     style={{
-                      background: isMe 
-                        ? `linear-gradient(135deg, ${bubbleColor}16, ${bubbleColor}08)` 
-                        : undefined,
-                      borderColor: isMe ? `${bubbleColor}26` : undefined
+                      backgroundColor: isMe ? solidMeBg : '#ffffff',
+                      borderColor: isMe ? solidMeBorder : 'rgba(0,0,0,0.06)',
+                      backgroundImage: isMe 
+                        ? `radial-gradient(circle, ${accentColor}1e 1.2px, transparent 1.2px)` 
+                        : `radial-gradient(circle, ${accentColor}0a 1.2px, transparent 1.2px)`,
+                      backgroundSize: '12px 12px'
                     }}
                   >
-                    {/* Header */}
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className={`w-7 h-7 rounded-full flex items-center justify-center border`}
-                           style={isMe ? { backgroundColor: `${bubbleColor}1c`, borderColor: `${bubbleColor}26`, color: bubbleColor } : { backgroundColor: `${bubbleColor}12`, borderColor: 'rgba(0,0,0,0.08)', color: bubbleColor }}>
-                        {msg.inviteType === 'music' ? <Music size={14} /> : <MonitorPlay size={14} />}
-                      </div>
-                      <span className="text-[12px] font-bold tracking-wide" style={{ color: isMe ? bubbleColor : '#374151' }}>
-                        {isMe 
-                          ? `我发起了一起${msg.inviteType === 'music' ? '听歌' : '观影'}` 
-                          : `${charId} 发起了一起${msg.inviteType === 'music' ? '听歌' : '观影'}`
-                        }
-                      </span>
+                    {/* Watermark Big Background SVG Icon */}
+                    {msg.inviteType === 'music' ? (
+                      <Disc size={110} strokeWidth={1} className="absolute -right-5 -bottom-5 opacity-[0.08] pointer-events-none select-none rotate-12 transition-transform duration-[1500ms] ease-out group-hover:rotate-[60deg]" style={{ color: accentColor }} />
+                    ) : (
+                      <Film size={110} strokeWidth={1} className="absolute -right-5 -bottom-5 opacity-[0.08] pointer-events-none select-none -rotate-12 transition-transform duration-[1500ms] ease-out group-hover:rotate-[-45deg]" style={{ color: accentColor }} />
+                    )}
+
+                    {/* Tagline Header */}
+                    <div className="text-[9px] font-extrabold tracking-[0.2em] uppercase select-none mb-2.5 flex items-center gap-1.5" style={{ color: accentColor }}>
+                      {msg.inviteType === 'music' ? (
+                        <>
+                          <Music size={11} strokeWidth={2.5} />
+                          <span>MUSIC SESSION</span>
+                        </>
+                      ) : (
+                        <>
+                          <Film size={11} strokeWidth={2.5} />
+                          <span>CINEMA SESSION</span>
+                        </>
+                      )}
                     </div>
 
-                    {/* Divider */}
-                    <div className="border-t my-1.5" style={{ borderColor: isMe ? `${bubbleColor}1c` : 'rgba(0,0,0,0.06)' }} />
-
-                    {/* Content Section */}
-                    <div className="flex flex-col mb-2.5">
-                      <span className="text-[14px] font-semibold tracking-wide truncate" style={{ color: isMe ? '#111827' : '#111827' }}>
+                    {/* Title & Description Text */}
+                    <div className="flex flex-col min-w-0 flex-1 pr-6 mb-5 relative z-10">
+                      <h4 className="text-[16px] font-extrabold text-gray-800 leading-snug tracking-tight">
+                        {isMe ? (
+                          msg.inviteType === 'music' ? (msg.songName || '一起听歌') : (msg.movieName || '一起观影')
+                        ) : (
+                          msg.inviteType === 'music' ? '一起听歌' : '一起观影'
+                        )}
+                      </h4>
+                      <p className="text-[12px] text-gray-500/90 leading-relaxed mt-2 select-none">
                         {isMe ? (
                           msg.inviteType === 'music' 
-                            ? (msg.songName ? `《${msg.songName}》` : '浪漫聆听 · 一起听歌') 
-                            : (msg.movieName ? `《${msg.movieName}》` : '温馨影院 · 一起观影')
+                            ? '想和未婚夫一起听歌，未婚夫不会拒绝我这个小小的心愿吧' 
+                            : '想和未婚夫一起看电影，未婚夫不会拒绝我这个小小的心愿吧'
                         ) : (
-                          msg.inviteType === 'music' ? '想和未婚妻一起听歌' : '想和未婚妻一起看电影'
+                          msg.inviteType === 'music' 
+                            ? '未婚妻辛苦啦，和未婚夫一起听歌放松一下吧' 
+                            : '未婚妻辛苦啦，和未婚夫一起看电影放松一下吧'
                         )}
-                      </span>
+                      </p>
                     </div>
 
                     {/* Actions / Status */}
-                    <div className="w-full">
+                    <div className="w-full mt-auto relative z-10">
                       {msg.inviteStatus === 'pending' ? (
                         isMe ? (
-                          <div className="w-full py-1.5 rounded-[10px] text-center text-[11px] font-medium border"
-                               style={{ backgroundColor: `${bubbleColor}06`, borderColor: `${bubbleColor}18`, color: `${bubbleColor}a0` }}>
-                            等待对方回应...
+                          <div className="w-full py-2 rounded-[12px] text-center text-[11.5px] font-bold border bg-white/70 shadow-sm"
+                               style={{ borderColor: solidMeBorder, color: accentColor }}>
+                            等待回应中...
                           </div>
                         ) : (
                           <div className="flex space-x-2 w-full">
                             <button 
-                              className="flex-1 py-1.5 rounded-[10px] bg-black/[0.04] hover:bg-black/[0.08] active:scale-95 text-gray-700 text-[11px] font-medium transition-all border border-black/[0.05]"
+                              className="flex-1 py-2 rounded-[12px] bg-black/[0.04] hover:bg-black/[0.08] active:scale-95 text-gray-700 text-[11.5px] font-bold transition-all border border-black/[0.05]"
                               onClick={(e) => { e.stopPropagation(); handleDeclineInvite(msg.id); }}
                             >
-                              拒绝
+                              委婉拒绝
                             </button>
                             <button 
-                              className="flex-1 py-1.5 rounded-[10px] text-white text-[11px] font-bold active:scale-95 transition-all"
-                              style={{ backgroundColor: bubbleColor }}
+                              className="flex-1 py-2 rounded-[12px] text-white text-[11.5px] font-bold active:scale-95 shadow-sm transition-all hover:brightness-95"
+                              style={{ backgroundColor: accentColor }}
                               onClick={(e) => { e.stopPropagation(); handleAcceptInvite(msg.id, msg.inviteType); }}
                             >
-                              接受
+                              欣然接受
                             </button>
                           </div>
                         )
@@ -1182,79 +1293,92 @@ export const ChatView = ({
                         msg.inviteType === 'movie' ? (
                           <button 
                             onClick={(e) => { e.stopPropagation(); handleStartAction(msg.inviteType); }}
-                            className={`w-full py-1.5 rounded-[10px] text-center text-[11px] font-bold active:scale-95 transition-all flex items-center justify-center gap-1 text-white shadow-[0_4px_12px_rgba(0,0,0,0.08)]`}
-                            style={{ backgroundColor: bubbleColor }}
+                            className="w-full py-2.5 rounded-[12px] text-center text-[11.5px] font-bold active:scale-95 transition-all flex items-center justify-center gap-1.5 text-white shadow-[0_4px_12px_rgba(0,0,0,0.08)] hover:brightness-95"
+                            style={{ backgroundColor: accentColor }}
                           >
-                            点击开始观影
+                            <Film size={13} />
+                            点击进入放映厅
                           </button>
                         ) : (
-                          <div className="w-full py-1.5 rounded-[10px] text-center text-[11px] font-medium flex items-center justify-center gap-1 bg-black/[0.03] text-gray-500 border border-black/[0.04]">
-                            <Check size={12} /> 已开始听歌
+                          <div className="w-full py-2 rounded-[12px] text-center text-[11.5px] font-bold flex items-center justify-center gap-1.5 bg-black/[0.03] text-gray-500 border border-black/[0.04]">
+                            <Check size={13} strokeWidth={2.5} /> 专属音频已开启
                           </div>
                         )
+                      ) : msg.inviteStatus === 'busy' ? (
+                        <div className="w-full py-2.5 px-3 rounded-[12px] text-center text-[11.5px] font-bold border flex items-center justify-center gap-1.5"
+                             style={{ 
+                               backgroundColor: isMe ? `${accentColor}12` : 'rgba(0,0,0,0.02)', 
+                               borderColor: isMe ? `${accentColor}2c` : 'rgba(0,0,0,0.04)',
+                               color: accentColor
+                             }}>
+                          老婆等我一下下，忙完马上来陪你！
+                        </div>
                       ) : (
-                        <div className="w-full py-1.5 rounded-[10px] text-center text-[11px] font-medium bg-black/[0.03] text-gray-400 border border-black/[0.04]">
-                          已拒绝或已结束
+                        <div className="w-full py-2 rounded-[12px] text-center text-[11.5px] font-medium bg-black/[0.02] text-gray-400 border border-black/[0.03]">
+                          已谢绝或已结束
                         </div>
                       )}
                     </div>
                   </div>
                 ) : msg.type === 'check_in' ? (
                   <div 
-                    className={`p-3.5 rounded-[18px] w-[230px] sm:w-[250px] shadow-[0_8px_24px_rgba(0,0,0,0.03)] border relative overflow-hidden flex flex-col ${
+                    className={`p-5 pb-4 rounded-[22px] w-[275px] sm:w-[315px] shadow-[0_12px_32px_rgba(0,0,0,0.04)] border relative overflow-hidden flex flex-col group transition-all duration-300 hover:shadow-[0_16px_36px_rgba(0,0,0,0.06)] ${
                       isMe ? 'rounded-tr-[4px]' : 'rounded-tl-[4px]'
                     } ${
                       isMe 
-                        ? 'text-gray-800 backdrop-blur-md' 
+                        ? 'text-gray-800' 
                         : 'text-gray-800 bg-white border-black/[0.06]'
                     }`}
                     style={{
-                      background: isMe 
-                        ? `linear-gradient(135deg, ${bubbleColor}16, ${bubbleColor}08)` 
-                        : undefined,
-                      borderColor: isMe ? `${bubbleColor}26` : undefined
+                      backgroundColor: isMe ? solidMeBg : '#ffffff',
+                      borderColor: isMe ? solidMeBorder : 'rgba(0,0,0,0.06)',
+                      backgroundImage: isMe 
+                        ? `radial-gradient(circle, ${accentColor}1e 1.2px, transparent 1.2px)` 
+                        : `radial-gradient(circle, ${accentColor}0a 1.2px, transparent 1.2px)`,
+                      backgroundSize: '12px 12px'
                     }}
                   >
-                    {/* Header */}
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className={`w-7 h-7 rounded-full flex items-center justify-center border`}
-                           style={isMe ? { backgroundColor: `${bubbleColor}1c`, borderColor: `${bubbleColor}26`, color: bubbleColor } : { backgroundColor: `${bubbleColor}12`, borderColor: 'rgba(0,0,0,0.08)', color: bubbleColor }}>
-                        <Camera size={14} />
-                      </div>
-                      <span className="text-[12px] font-bold tracking-wide" style={{ color: isMe ? bubbleColor : '#374151' }}>
-                        {isMe ? '互动查岗' : `${charId} 互动查岗`}
-                      </span>
+                    {/* Watermark Big Background SVG Icon */}
+                    <Camera size={110} strokeWidth={1} className="absolute -right-5 -bottom-5 opacity-[0.08] pointer-events-none select-none rotate-12 transition-transform duration-[1500ms] ease-out group-hover:rotate-[35deg]" style={{ color: accentColor }} />
+
+                    {/* Tagline Header */}
+                    <div className="text-[9px] font-extrabold tracking-[0.2em] uppercase select-none mb-2.5 flex items-center gap-1.5" style={{ color: accentColor }}>
+                      <Camera size={11} strokeWidth={2.5} />
+                      <span>STATUS REQUEST</span>
                     </div>
 
-                    {/* Divider */}
-                    <div className="border-t my-1.5" style={{ borderColor: isMe ? `${bubbleColor}1c` : 'rgba(0,0,0,0.06)' }} />
-
-                    {/* Content Section */}
-                    <div className="flex flex-col mb-2.5">
-                      <span className="text-[14px] font-semibold tracking-wide" style={{ color: isMe ? '#111827' : '#111827' }}>
-                        {msg.content || '想知道你在干什么'}
-                      </span>
+                    {/* Title & Description Text */}
+                    <div className="flex flex-col min-w-0 flex-1 pr-6 mb-5 relative z-10">
+                      <h4 className="text-[16px] font-extrabold text-gray-800 leading-snug tracking-tight">
+                        {isMe ? '互动查岗' : `${charId} 正在查岗`}
+                      </h4>
+                      <p className="text-[12px] text-gray-500/90 leading-relaxed mt-2 select-none">
+                        {isMe 
+                          ? '已发出查岗指令，等待未婚妻的即刻状态回报' 
+                          : '拍张照片或者写点什么，让未婚夫知道你现在的状态吧'
+                        }
+                      </p>
                     </div>
 
                     {/* Actions / Status */}
-                    <div className="w-full">
+                    <div className="w-full mt-auto relative z-10">
                       {msg.checkInStatus === 'pending' ? (
                         isMe ? (
-                          <div className="w-full py-1.5 rounded-[10px] text-center text-[11px] font-medium border"
-                               style={{ backgroundColor: `${bubbleColor}06`, borderColor: `${bubbleColor}18`, color: `${bubbleColor}a0` }}>
-                            等待回复...
+                          <div className="w-full py-2 rounded-[12px] text-center text-[11.5px] font-bold border bg-white/70 shadow-sm"
+                               style={{ borderColor: solidMeBorder, color: accentColor }}>
+                            等待回报中...
                           </div>
                         ) : (
                           <div className="flex space-x-2 w-full">
                             <button 
-                              className="flex-1 py-1.5 rounded-[10px] bg-black/[0.04] hover:bg-black/[0.08] active:scale-95 text-gray-700 text-[11px] font-medium transition-all border border-black/[0.05]"
+                              className="flex-1 py-2 rounded-[12px] bg-black/[0.04] hover:bg-black/[0.08] active:scale-95 text-gray-700 text-[11.5px] font-bold transition-all border border-black/[0.05]"
                               onClick={(e) => { e.stopPropagation(); declineCheckIn(msg.id); }}
                             >
                               忽略
                             </button>
                             <button 
-                              className="flex-1 py-1.5 rounded-[10px] text-white text-[11px] font-bold active:scale-95 transition-all"
-                              style={{ backgroundColor: bubbleColor }}
+                              className="flex-1 py-2 rounded-[12px] text-white text-[11.5px] font-bold active:scale-95 shadow-sm transition-all hover:brightness-95"
+                              style={{ backgroundColor: accentColor }}
                               onClick={(e) => { e.stopPropagation(); openCheckInModal(msg.id); }}
                             >
                               查岗汇报
@@ -1262,54 +1386,60 @@ export const ChatView = ({
                           </div>
                         )
                       ) : msg.checkInStatus === 'rejected' ? (
-                        <div className="w-full py-1.5 rounded-[10px] text-center text-[11px] font-medium bg-black/[0.03] text-gray-400 border border-black/[0.04]">
+                        <div className="w-full py-2 rounded-[12px] text-center text-[11.5px] font-medium bg-black/[0.02] text-gray-400 border border-black/[0.03]">
                           已忽略
                         </div>
                       ) : (
-                        <div className="w-full py-1.5 rounded-[10px] text-center text-[11px] font-medium flex items-center justify-center gap-1 bg-black/[0.03] text-gray-500 border border-black/[0.04]">
-                          <Check size={12} /> {charId}已收到
+                        <div className="w-full py-2 rounded-[12px] text-center text-[11.5px] font-bold flex items-center justify-center gap-1.5 bg-black/[0.03] text-gray-500 border border-black/[0.04]">
+                          <Check size={13} strokeWidth={2.5} /> 已收到汇报
                         </div>
                       )}
                     </div>
                   </div>
                 ) : msg.type === 'check_in_feedback' ? (
                   <div 
-                    className={`rounded-[18px] w-[230px] sm:w-[250px] shadow-[0_8px_24px_rgba(0,0,0,0.03)] border overflow-hidden flex flex-col ${
+                    className={`rounded-[22px] w-[275px] sm:w-[315px] shadow-[0_12px_32px_rgba(0,0,0,0.04)] border relative overflow-hidden flex flex-col group transition-all duration-300 hover:shadow-[0_16px_36px_rgba(0,0,0,0.06)] ${
                       isMe ? 'rounded-tr-[4px]' : 'rounded-tl-[4px]'
                     } ${
                       isMe 
-                        ? 'text-gray-800 backdrop-blur-md' 
+                        ? 'text-gray-800' 
                         : 'text-gray-800 bg-white border-black/[0.06]'
                     }`}
                     style={{
-                      background: isMe 
-                        ? `linear-gradient(135deg, ${bubbleColor}16, ${bubbleColor}08)` 
-                        : undefined,
-                      borderColor: isMe ? `${bubbleColor}26` : undefined
+                      backgroundColor: isMe ? solidMeBg : '#ffffff',
+                      borderColor: isMe ? solidMeBorder : 'rgba(0,0,0,0.06)',
+                      backgroundImage: isMe 
+                        ? `radial-gradient(circle, ${accentColor}1e 1.2px, transparent 1.2px)` 
+                        : `radial-gradient(circle, ${accentColor}0a 1.2px, transparent 1.2px)`,
+                      backgroundSize: '12px 12px'
                     }}
                   >
-                    {/* Feedback Image */}
+                    {/* Watermark Big Background SVG Icon */}
+                    <Camera size={110} strokeWidth={1} className="absolute -right-5 -bottom-5 opacity-[0.08] pointer-events-none select-none rotate-12 transition-transform duration-[1500ms] ease-out group-hover:rotate-[35deg]" style={{ color: accentColor }} />
+
+                    {/* Tagline Header */}
+                    <div className="text-[9px] font-extrabold tracking-[0.2em] uppercase select-none mb-3 p-5 pb-0 flex items-center gap-1.5" style={{ color: accentColor }}>
+                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: accentColor }} />
+                      <span>{isMe ? 'MY STATUS RESPONSE' : 'STATUS RESPONSE'}</span>
+                    </div>
+
+                    {/* Feedback Image Inset */}
                     {msg.imageUrl && (
-                      <div className="w-full aspect-[4/3] bg-gray-100/30 overflow-hidden relative border-b border-black/[0.03]">
-                        <img 
-                          src={msg.imageUrl} 
-                          alt="Check In Feedback" 
-                          className="w-full h-full object-cover"
-                          referrerPolicy="no-referrer"
-                        />
+                      <div className="px-5 mb-3 relative z-10">
+                        <div className="w-full aspect-[4/3] bg-gray-100/30 overflow-hidden rounded-[14px] border border-black/[0.04] relative">
+                          <img 
+                            src={msg.imageUrl} 
+                            alt="Check In Feedback" 
+                            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                            referrerPolicy="no-referrer"
+                          />
+                        </div>
                       </div>
                     )}
 
                     {/* Feedback Info Box */}
-                    <div className="p-3.5 flex flex-col">
-                      <div className="flex items-center gap-1 text-[10px] tracking-wider font-bold mb-1.5 uppercase select-none" style={{ color: isMe ? bubbleColor : '#a1a1aa' }}>
-                        <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: isMe ? bubbleColor : '#52525b' }} />
-                        <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: isMe ? `${bubbleColor}66` : '#d4d4d8' }} />
-                        <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: isMe ? `${bubbleColor}33` : '#e4e4e7' }} />
-                        <span className="ml-1">{isMe ? 'MY CHECK-IN' : 'CHECK-IN RESPONSE'}</span>
-                      </div>
-
-                      <span className="text-[14px] font-bold leading-snug whitespace-pre-wrap text-gray-900">
+                    <div className="p-5 pt-1 pb-4 flex flex-col relative z-10">
+                      <span className="text-[14px] font-semibold leading-relaxed whitespace-pre-wrap text-gray-800">
                         {msg.content || '我来汇报啦~'}
                       </span>
                     </div>
@@ -1349,7 +1479,7 @@ export const ChatView = ({
               </div>
               {isMe && (
                 <div className="w-[38px] h-[38px] shrink-0 ml-2.5">
-                  {!isGroupedNext && <div className="w-full h-full rounded-full bg-black/10 overflow-hidden shadow-sm border border-white/20">
+                  {!isGroupedPrev && <div className="w-full h-full rounded-full bg-black/10 overflow-hidden shadow-sm border border-white/20">
                     {avatar ? <img src={avatar} alt="" className="w-full h-full object-cover" /> : null}
                   </div>}
                 </div>
@@ -1386,22 +1516,12 @@ export const ChatView = ({
           >
              <button className="flex flex-col items-center gap-2 group w-[64px]" onClick={() => { initiateCall(); setShowPlusMenu(false); }}>
                 <div className="w-[50px] h-[50px] rounded-[16px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><Video size={24} strokeWidth={1.5} /></div>
-                <span className="text-[11px] text-black/50">视频通话</span>
-             </button>
-             
-             <button className="flex flex-col items-center gap-2 group w-[64px]" onClick={() => { setInviteModal({ show: true, type: 'music', direction: 'me' }); setShowPlusMenu(false); }}>
-                <div className="w-[50px] h-[50px] rounded-[16px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><Music size={24} strokeWidth={1.5} /></div>
-                <span className="text-[11px] text-black/50">一起听歌</span>
-             </button>
-             
-             <button className="flex flex-col items-center gap-2 group w-[64px]" onClick={() => { setInviteModal({ show: true, type: 'movie', direction: 'me' }); setShowPlusMenu(false); }}>
-                <div className="w-[50px] h-[50px] rounded-[16px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><MonitorPlay size={24} strokeWidth={1.5} /></div>
-                <span className="text-[11px] text-black/50">一起观影</span>
+                <span className="text-[11px] text-black/50">视频</span>
              </button>
              
              <div className="flex flex-col items-center gap-2 group cursor-pointer w-[64px]" onClick={() => { imageInputRef.current?.click(); setShowPlusMenu(false); }}>
                 <div className="w-[50px] h-[50px] rounded-[16px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><ImageIcon size={24} strokeWidth={1.5} /></div>
-                <span className="text-[11px] text-black/50">图片</span>
+                <span className="text-[11px] text-black/50">照片</span>
              </div>
              
              <div className="flex flex-col items-center gap-2 group cursor-pointer w-[64px]" onClick={() => { setShowPlusMenu(false); setShowStickerPane(true); }}>
@@ -1412,6 +1532,16 @@ export const ChatView = ({
              <button className="flex flex-col items-center gap-2 group w-[64px]" onClick={() => { handleNudge(); setShowPlusMenu(false); }}>
                 <div className="w-[50px] h-[50px] rounded-[16px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><Heart size={24} strokeWidth={1.5} /></div>
                 <span className="text-[11px] text-black/50">拍一拍</span>
+             </button>
+
+             <button className="flex flex-col items-center gap-2 group w-[64px] col-start-2" onClick={() => { setInviteModal({ show: true, type: 'movie', direction: 'me' }); setShowPlusMenu(false); }}>
+                <div className="w-[50px] h-[50px] rounded-[16px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><MonitorPlay size={24} strokeWidth={1.5} /></div>
+                <span className="text-[11px] text-black/50">一起观影</span>
+             </button>
+
+             <button className="flex flex-col items-center gap-2 group w-[64px]" onClick={() => { setInviteModal({ show: true, type: 'music', direction: 'me' }); setShowPlusMenu(false); }}>
+                <div className="w-[50px] h-[50px] rounded-[16px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><Music size={24} strokeWidth={1.5} /></div>
+                <span className="text-[11px] text-black/50">一起听歌</span>
              </button>
 
 
@@ -1569,36 +1699,38 @@ export const ChatView = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex justify-center p-4 pt-32"
+            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
           >
             <motion.div 
-              initial={{ y: 50, scale: 0.95 }}
+              initial={{ y: 30, scale: 0.95 }}
               animate={{ y: 0, scale: 1 }}
               exit={{ y: 20, scale: 0.95 }}
-              className="bg-white/20 backdrop-blur-3xl border border-white/40 shadow-[0_16px_40px_rgba(0,0,0,0.2),inset_0_2px_4px_rgba(255,255,255,0.4)] rounded-[32px] p-6 w-full max-w-[360px] h-max relative overflow-hidden"
+              className="shadow-[0_24px_60px_rgba(0,0,0,0.18)] rounded-[32px] p-6 w-full max-w-[360px] h-max relative overflow-hidden border transition-colors duration-300"
+              style={{ backgroundColor: rootSolidMeBg, borderColor: rootSolidMeBorder }}
             >
               <button 
                 onClick={() => setCheckInModalVisible(false)} 
-                className="absolute right-5 top-5 w-8 h-8 flex items-center justify-center rounded-full bg-white/20 border border-white/30 text-white active:scale-95 transition-transform z-10 shadow-[inset_0_1px_3px_rgba(255,255,255,0.4)]"
+                className="absolute right-5 top-5 w-8 h-8 flex items-center justify-center rounded-full bg-black/5 hover:bg-black/10 text-gray-500 active:scale-95 transition-transform z-10 border border-black/5"
               >
                 <X size={18} strokeWidth={2.5} />
               </button>
               
-              <div className="flex flex-col items-center mb-6 mt-2 relative z-10 text-white">
-                 <div className="w-14 h-14 bg-white/20 border border-white/30 shadow-[inset_0_2px_4px_rgba(255,255,255,0.4)] rounded-full flex items-center justify-center text-white mb-3">
+              <div className="flex flex-col items-center mb-6 mt-2 relative z-10">
+                 <div className="w-14 h-14 rounded-full flex items-center justify-center mb-3 shadow-[0_4px_12px_rgba(0,0,0,0.03)] border transition-colors duration-300"
+                      style={{ backgroundColor: '#ffffff', borderColor: rootSolidMeBorder, color: rootAccentColor }}>
                     <Camera size={24} strokeWidth={2.5}/>
                  </div>
-                 <h3 className="text-[19px] font-semibold tracking-wide drop-shadow-sm">{charId}正在查岗</h3>
-                 <p className="text-[13px] text-white/80 mt-1 text-center">拍张照或者写点什么，让他知道你的状态吧</p>
+                 <h3 className="text-[18px] font-bold tracking-wide text-gray-800">{charId}正在查岗</h3>
+                 <p className="text-[12.5px] text-gray-500 mt-1.5 text-center px-1">拍张照或者写点什么，让他知道你的状态吧</p>
               </div>
               
               <div className="space-y-4 relative z-10">
                 {checkInImage ? (
-                  <div className="relative w-full h-[220px] bg-black/10 rounded-[20px] border border-white/20 overflow-hidden shadow-inner">
+                  <div className="relative w-full h-[220px] bg-black/5 rounded-[20px] border overflow-hidden shadow-inner transition-colors duration-300" style={{ borderColor: rootSolidMeBorder }}>
                     <img src={checkInImage} alt="" className="w-full h-full object-cover" />
                     <button 
                       onClick={() => setCheckInImage('')}
-                      className="absolute top-3 right-3 bg-black/50 text-white rounded-full p-1.5 backdrop-blur-md active:scale-95 border border-white/20"
+                      className="absolute top-3 right-3 bg-black/60 hover:bg-black/85 text-white rounded-full p-1.5 backdrop-blur-sm active:scale-95"
                     >
                       <X size={16} strokeWidth={2.5}/>
                     </button>
@@ -1606,12 +1738,13 @@ export const ChatView = ({
                 ) : (
                    <button 
                      onClick={() => checkInImgInputRef.current?.click()}
-                     className="w-full h-[140px] rounded-[20px] border border-white/30 bg-white/10 shadow-[inset_0_2px_10px_rgba(0,0,0,0.05)] text-white/90 flex flex-col items-center justify-center space-y-2 active:bg-white/20 transition-colors"
+                     className="w-full h-[140px] rounded-[20px] border border-dashed bg-white/80 text-gray-600 flex flex-col items-center justify-center space-y-2 hover:bg-white active:scale-[0.99] transition-all"
+                     style={{ borderColor: rootSolidMeBorder }}
                    >
-                     <div className="w-10 h-10 rounded-full bg-white/20 shadow-[inset_0_1px_2px_rgba(255,255,255,0.4)] flex items-center justify-center text-white mb-1 border border-white/20">
-                        <Camera size={20} strokeWidth={2.5} />
+                     <div className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center mb-1 border transition-colors duration-300" style={{ borderColor: rootSolidMeBorder, color: rootAccentColor }}>
+                        <Camera size={19} strokeWidth={2.5} />
                      </div>
-                     <span className="text-[14px] font-medium drop-shadow-sm">拍摄或从相册选择</span>
+                     <span className="text-[13.5px] font-medium text-gray-500">拍摄或从相册选择</span>
                    </button>
                 )}
 
@@ -1619,16 +1752,20 @@ export const ChatView = ({
                   value={checkInText}
                   onChange={(e) => setCheckInText(e.target.value)}
                   placeholder="文字描述：正在做什么..."
-                  className="w-full h-[110px] bg-white/10 border border-white/30 rounded-[20px] p-4 text-[15px] outline-none resize-none text-white placeholder-white/60 shadow-[inset_0_2px_10px_rgba(0,0,0,0.05)] focus:bg-white/20 transition-colors"
+                  className="w-full h-[110px] bg-white/80 border rounded-[20px] p-4 text-[14px] outline-none resize-none text-gray-800 placeholder-gray-400/80 shadow-[inset_0_1px_3px_rgba(0,0,0,0.02)] focus:bg-white focus:shadow-md transition-all"
+                  style={{ borderColor: rootSolidMeBorder }}
                 />
 
                 <button 
                   onClick={submitCheckIn}
                   disabled={!checkInText && !checkInImage}
-                  className="w-full py-4 rounded-[20px] font-medium text-[16px] text-white transition-all duration-300 mt-2 flex items-center justify-center space-x-2 border shadow-[0_4px_12px_rgba(0,0,0,0.1),inset_0_2px_4px_rgba(255,255,255,0.4)] disabled:opacity-50 disabled:shadow-none bg-white/20 border-white/40 active:scale-95"
-                  style={{ backgroundColor: (checkInText.trim() || checkInImage) ? bubbleColor : 'rgba(255,255,255,0.2)' }}
+                  className="w-full py-4 rounded-[20px] font-bold text-[15px] text-white shadow-md active:scale-95 transition-all duration-300 mt-2 flex items-center justify-center space-x-2 disabled:opacity-40 disabled:scale-100 disabled:shadow-none"
+                  style={{ 
+                    backgroundColor: (checkInText.trim() || checkInImage) ? rootAccentColor : '#d1d5db',
+                    color: '#ffffff'
+                  }}
                 >
-                  <Send size={18} />
+                  <Send size={16} strokeWidth={2.5} />
                   <span>发送汇报</span>
                 </button>
               </div>
