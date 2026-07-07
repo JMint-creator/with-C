@@ -50,6 +50,7 @@ import { MailboxView } from './MailboxView';
 import { compressImage, useIDBState } from './utils';
 import { VideoCallOverlay } from './VideoCallOverlay';
 import { TodoScheduler } from './TodoScheduler';
+import { get, set } from 'idb-keyval';
 
 const apps = [
   { name: '聊天', icon: MessageCircle },
@@ -437,7 +438,11 @@ export default function App() {
   const [subtitle, setSubtitle] = useLocalState('app_subtitle', 'LOCAL DAILY ACTIVE');
 
   // Theme
-  const [theme, setTheme] = useLocalState<'warm' | 'mint' | 'sakura' | 'blue' | 'purple'>('app_theme', 'warm');
+  const [theme, setTheme] = useLocalState<'warm' | 'mint' | 'sakura' | 'blue' | 'purple' | 'red' | 'custom'>('app_theme', 'warm');
+  const [customBg, setCustomBg] = useLocalState<string>('app_custom_theme_bg', '#E0EDE7');
+  const [customCardBg, setCustomCardBg] = useLocalState<string>('app_custom_theme_cardBg', 'rgba(240, 248, 245, 0.55)');
+  const [customTextPrimary, setCustomTextPrimary] = useLocalState<string>('app_custom_theme_textPrimary', '#1F3A2E');
+  const [customTextSecondary, setCustomTextSecondary] = useLocalState<string>('app_custom_theme_textSecondary', '#6F8C7F');
 
   // Chat Settings
   const [chatBg, setChatBg] = useIDBState('app_chatBg', '');
@@ -578,6 +583,39 @@ export default function App() {
     setCurrentMusicIndex((currentMusicIndex + 1) % playQueue.length);
     setIsMusicPlaying(true);
   };
+
+  // Dream character active song-switching
+  const [mjMusicSessionActive, setMjMusicSessionActive] = useLocalState<boolean>('app_mj_music_session_active', false);
+
+  useEffect(() => {
+    const handleStartSession = () => setMjMusicSessionActive(true);
+    const handleStopSession = () => setMjMusicSessionActive(false);
+    window.addEventListener('app_mj_music_session_start', handleStartSession);
+    window.addEventListener('app_mj_music_session_stop', handleStopSession);
+    return () => {
+      window.removeEventListener('app_mj_music_session_start', handleStartSession);
+      window.removeEventListener('app_mj_music_session_stop', handleStopSession);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isMusicPlaying || !mjMusicSessionActive || playQueue.length <= 1) return;
+
+    const interval = setInterval(() => {
+      let nextIndex = currentMusicIndex;
+      if (playQueue.length > 1) {
+        while (nextIndex === currentMusicIndex) {
+          nextIndex = Math.floor(Math.random() * playQueue.length);
+        }
+      }
+      
+      setCurrentMusicIndex(nextIndex);
+      const songName = playQueue[nextIndex]?.name || '好听的歌';
+      showToast(`🎵 ${mjNickname} 帮你切了歌，现在听《${songName}》吧～`);
+    }, 180000);
+
+    return () => clearInterval(interval);
+  }, [isMusicPlaying, mjMusicSessionActive, playQueue, currentMusicIndex, mjNickname]);
 
   // Global Decide State
   const [globalDecideCountdown, setGlobalDecideCountdown] = useState(0);
@@ -755,7 +793,13 @@ export default function App() {
     e.target.value = ''; // Reset
   }
 
-  const currentThemeConfig = colorThemes[theme];
+  const currentThemeConfig = theme === 'custom' ? {
+    bg: customBg,
+    cardBg: customCardBg,
+    textPrimary: customTextPrimary,
+    textSecondary: customTextSecondary,
+    numColor: customTextPrimary
+  } : ((colorThemes as any)[theme] || colorThemes.warm);
 
   const clearData = () => {
     setConfirmModal({
@@ -1638,8 +1682,82 @@ export default function App() {
                       <SettingItem icon={Palette} label="春日落樱" value={theme === 'sakura' ? '当前' : ''} onClick={() => setTheme('sakura')} />
                       <SettingItem icon={Palette} label="宁静海蓝" value={theme === 'blue' ? '当前' : ''} onClick={() => setTheme('blue')} />
                       <SettingItem icon={Palette} label="梦幻香芋" value={theme === 'purple' ? '当前' : ''} onClick={() => setTheme('purple')} />
-                      <SettingItem icon={Palette} label="枫叶绯红" value={(theme as string) === 'red' ? '当前' : ''} onClick={() => setTheme('red' as any)} hideBorder={true}/>
+                      <SettingItem icon={Palette} label="枫叶绯红" value={theme === 'red' ? '当前' : ''} onClick={() => setTheme('red' as any)} />
+                      <SettingItem icon={Palette} label="✨ 自定义配色" value={theme === 'custom' ? '当前' : ''} onClick={() => setTheme('custom')} hideBorder={true} />
                    </div>
+
+                   {theme === 'custom' && (
+                      <motion.div 
+                        initial={{ opacity: 0, height: 0 }} 
+                        animate={{ opacity: 1, height: 'auto' }} 
+                        className="mt-4 bg-white rounded-[20px] p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-[#F2F2F7] space-y-4 overflow-hidden text-left"
+                      >
+                         <div className="text-[13px] font-semibold text-[#111] border-b border-[#F2F2F7] pb-2 mb-2 flex items-center gap-1.5">
+                           <span className="inline-block w-2 h-2 rounded-full bg-pink-400 animate-pulse" />
+                           自定义颜色面板 (即时生效)
+                         </div>
+                         <div className="flex items-center justify-between py-1 border-b border-[#F2F2F7]/50">
+                            <span className="text-[13px] font-medium text-[#333]">主背景颜色</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[11px] text-gray-400 font-mono select-all">{customBg}</span>
+                              <input 
+                                 type="color" 
+                                 value={customBg} 
+                                 onChange={(e) => setCustomBg(e.target.value)} 
+                                 className="w-10 h-7 rounded border border-[#E5E5EA] cursor-pointer p-0 bg-transparent overflow-hidden"
+                              />
+                            </div>
+                         </div>
+                         <div className="flex items-center justify-between py-1 border-b border-[#F2F2F7]/50">
+                            <span className="text-[13px] font-medium text-[#333]">卡片背景色 (支持透明度)</span>
+                            <div className="flex items-center gap-2">
+                              <input 
+                                 type="text" 
+                                 value={customCardBg} 
+                                 onChange={(e) => setCustomCardBg(e.target.value)} 
+                                 className="text-[11px] text-gray-500 font-mono border border-[#E5E5EA] rounded px-2 py-1 w-32 text-right focus:border-[#007AFF] focus:outline-none"
+                                 placeholder="rgba(240,248,245,0.55)"
+                              />
+                              <input 
+                                 type="color" 
+                                 value={customCardBg.startsWith('rgba') ? '#ffffff' : customCardBg} 
+                                 onChange={(e) => {
+                                    const hex = e.target.value;
+                                    const r = parseInt(hex.slice(1, 3), 16);
+                                    const g = parseInt(hex.slice(3, 5), 16);
+                                    const b = parseInt(hex.slice(5, 7), 16);
+                                    setCustomCardBg(`rgba(${r}, ${g}, ${b}, 0.55)`);
+                                 }} 
+                                 className="w-8 h-7 rounded border border-[#E5E5EA] cursor-pointer p-0 bg-transparent overflow-hidden"
+                              />
+                            </div>
+                         </div>
+                         <div className="flex items-center justify-between py-1 border-b border-[#F2F2F7]/50">
+                            <span className="text-[13px] font-medium text-[#333]">主文本/强调配色</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[11px] text-gray-400 font-mono select-all">{customTextPrimary}</span>
+                              <input 
+                                 type="color" 
+                                 value={customTextPrimary} 
+                                 onChange={(e) => setCustomTextPrimary(e.target.value)} 
+                                 className="w-10 h-7 rounded border border-[#E5E5EA] cursor-pointer p-0 bg-transparent overflow-hidden"
+                              />
+                            </div>
+                         </div>
+                         <div className="flex items-center justify-between py-1">
+                            <span className="text-[13px] font-medium text-[#333]">次要文本颜色</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[11px] text-gray-400 font-mono select-all">{customTextSecondary}</span>
+                              <input 
+                                 type="color" 
+                                 value={customTextSecondary} 
+                                 onChange={(e) => setCustomTextSecondary(e.target.value)} 
+                                 className="w-10 h-7 rounded border border-[#E5E5EA] cursor-pointer p-0 bg-transparent overflow-hidden"
+                              />
+                            </div>
+                         </div>
+                      </motion.div>
+                   )}
                 </div>
              </motion.div>
            )}

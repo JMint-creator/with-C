@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronLeft, Video, Settings, Smile, Hand, Plus, Image as ImageIcon, Send, X, PhoneCall, PhoneMissed, Phone, MicOff, Mic, CameraOff, MonitorPlay, Check, CheckCheck, MessageCircle, MoreHorizontal, Heart, Sparkles, Camera } from 'lucide-react';
+import { ChevronLeft, Video, Settings, Smile, Hand, Plus, Image as ImageIcon, Send, X, PhoneCall, PhoneMissed, Phone, MicOff, Mic, CameraOff, MonitorPlay, Check, CheckCheck, MessageCircle, MoreHorizontal, Heart, Sparkles, Camera, Music } from 'lucide-react';
 import { useLocalState, useIDBState, compressImage } from './utils';
 import { useCallStore, callStore } from './callStore';
 import { MoviePlayer } from './components/MoviePlayer';
@@ -8,9 +8,10 @@ import { MoviePlayer } from './components/MoviePlayer';
 type Message = {
   id: string;
   sender: 'me' | 'them';
-  type: 'text' | 'nudge' | 'emoji' | 'call' | 'sticker' | 'check_in' | 'image' | 'voice';
+  type: 'text' | 'nudge' | 'emoji' | 'call' | 'sticker' | 'check_in' | 'image' | 'voice' | 'invite' | 'check_in_feedback';
   content: string;
   time: string;
+  imageUrl?: string;
   callState?: 'missed' | 'declined' | 'duration';
   callDuration?: number;
   replyTo?: string;
@@ -18,6 +19,10 @@ type Message = {
   audioUrl?: string;
   voiceDuration?: number;
   isIgnored?: boolean;
+  inviteType?: 'music' | 'movie';
+  inviteStatus?: 'pending' | 'accepted' | 'declined';
+  songName?: string;
+  movieName?: string;
 };
 
 export const ChatView = ({ 
@@ -257,6 +262,83 @@ export const ChatView = ({
   const [chatBubbleColor] = useLocalState('app_chatBubbleColor', '');
   const bubbleColor = chatBubbleColor || primaryColor;
 
+  const [inviteModal, setInviteModal] = useState<{ show: boolean; type: 'music' | 'movie'; direction: 'me' | 'them' }>({ show: false, type: 'music', direction: 'me' });
+  const [inviteInputVal, setInviteInputVal] = useState('');
+
+  const handleDeclineInvite = (id: string) => {
+    setMessages(msgs => msgs.map(m => m.id === id ? { ...m, inviteStatus: 'declined' } : m));
+  };
+
+  const handleAcceptInvite = (id: string, type: 'music' | 'movie' | undefined) => {
+    setMessages(msgs => msgs.map(m => m.id === id ? { ...m, inviteStatus: 'accepted' } : m));
+    setTimeout(() => {
+      handleStartAction(type);
+    }, 800);
+  };
+
+  const handleStartAction = (type: 'music' | 'movie' | undefined) => {
+    if (type === 'music') {
+      window.dispatchEvent(new CustomEvent('app_mj_music_session_start'));
+      window.dispatchEvent(new CustomEvent('app_change_view', { detail: 'music_manager' }));
+    } else if (type === 'movie') {
+      movieInputRef.current?.click();
+    }
+  };
+
+  const sendInvite = (type: 'music' | 'movie', songName?: string, movieName?: string) => {
+    const ignored = readNoReply && Math.random() < 0.05;
+    const newMsg: Message = {
+      id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
+      sender: 'me',
+      type: 'invite',
+      content: type === 'music' ? '发起了一起听歌' : '发起了一起观影',
+      time: getFormatTime(),
+      inviteType: type,
+      inviteStatus: 'pending',
+      songName,
+      movieName,
+      isIgnored: ignored
+    };
+    
+    setMessages(prev => [...prev, newMsg]);
+    
+    if (!ignored) {
+      setTimeout(() => {
+        setMessages(msgs => msgs.map(m => m.id === newMsg.id ? { ...m, inviteStatus: 'accepted' } : m));
+        if (type === 'music') {
+          window.dispatchEvent(new CustomEvent('app_mj_music_session_start'));
+        }
+      }, 2000);
+    }
+  };
+
+  const mjSendInvite = (type: 'music' | 'movie', songName?: string, movieName?: string) => {
+    const newMsg: Message = {
+      id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
+      sender: 'them',
+      type: 'invite',
+      content: type === 'music' ? '发起了一起听歌' : '发起了一起观影',
+      time: getFormatTime(),
+      inviteType: type,
+      inviteStatus: 'pending',
+      songName: songName || (type === 'music' ? '想和未婚妻一起听歌' : undefined),
+      movieName: movieName || (type === 'movie' ? '想和未婚妻一起看电影' : undefined)
+    };
+    
+    setMessages(prev => [...prev, newMsg]);
+  };
+
+  const triggerCheckInSimulation = () => {
+    setMessages(prev => [...prev, {
+      id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
+      sender: 'them',
+      type: 'check_in',
+      content: `${charId} 想知道你在干什么`,
+      checkInStatus: 'pending',
+      time: getFormatTime()
+    }]);
+  };
+
   const triggerIncomingVideoCall = () => {
     if (callStore.state !== 'none') return;
     setVideoCallState('incoming');
@@ -288,12 +370,15 @@ export const ChatView = ({
     const scheduleNextCall = () => {
       const waitMins = 15 + Math.random() * 45;
       timer = setTimeout(() => {
-         if (Math.random() < 0.25) { // 25% chance of an event every ~30 mins
-           if (Math.random() < 0.5 && videoCallState === 'none') {
-             // 50% chance for video call
-             triggerIncomingVideoCall();
-           } else {
-             // 50% chance for check-in
+         if (Math.random() < 0.25) { // 25% chance of an event every ~15-60 mins
+           const eventRand = Math.random();
+           if (eventRand < 0.4) {
+             // 40% chance for video call
+             if (videoCallState === 'none') {
+               triggerIncomingVideoCall();
+             }
+           } else if (eventRand < 0.8) {
+             // 40% chance for check-in
              setMessages(msgs => [...msgs, {
                id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
                sender: 'them',
@@ -305,6 +390,38 @@ export const ChatView = ({
              const pushNotify = window.localStorage.getItem('app_chatPushNotify');
              if ((pushNotify ? JSON.parse(pushNotify) : true) && 'Notification' in window && window.Notification.permission === 'granted') {
                new window.Notification(charId, { body: `${charId} 想知道你在干什么` });
+             }
+           } else if (eventRand < 0.9) {
+             // 10% chance for music invitation
+             setMessages(msgs => [...msgs, {
+               id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
+               sender: 'them',
+               type: 'invite',
+               content: '发起了一起听歌',
+               time: getFormatTime(),
+               inviteType: 'music',
+               inviteStatus: 'pending',
+               songName: '想和未婚妻一起听歌'
+             }]);
+             const pushNotify = window.localStorage.getItem('app_chatPushNotify');
+             if ((pushNotify ? JSON.parse(pushNotify) : true) && 'Notification' in window && window.Notification.permission === 'granted') {
+               new window.Notification(charId, { body: `${charId} 邀请你一起听歌` });
+             }
+           } else {
+             // 10% chance for movie invitation
+             setMessages(msgs => [...msgs, {
+               id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
+               sender: 'them',
+               type: 'invite',
+               content: '发起了一起观影',
+               time: getFormatTime(),
+               inviteType: 'movie',
+               inviteStatus: 'pending',
+               movieName: '想和未婚妻一起看电影'
+             }]);
+             const pushNotify = window.localStorage.getItem('app_chatPushNotify');
+             if ((pushNotify ? JSON.parse(pushNotify) : true) && 'Notification' in window && window.Notification.permission === 'granted') {
+               new window.Notification(charId, { body: `${charId} 邀请你一起观影` });
              }
            }
          }
@@ -436,25 +553,14 @@ export const ChatView = ({
      
      setMessages(msgs => msgs.map(m => m.id === activeCheckInId ? { ...m, checkInStatus: 'completed' } : m));
      
-     if (checkInImage) {
-        setMessages(msgs => [...msgs, {
-          id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
-          sender: 'me',
-          type: 'image',
-          content: checkInImage,
-          time: getFormatTime()
-        }]);
-     }
-     
-     if (checkInText) {
-        setMessages(msgs => [...msgs, {
-          id: (Date.now() + 1).toString(),
-          sender: 'me',
-          type: 'text',
-          content: checkInText,
-          time: getFormatTime()
-        }]);
-     }
+     setMessages(msgs => [...msgs, {
+       id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
+       sender: 'me',
+       type: 'check_in_feedback',
+       content: checkInText,
+       imageUrl: checkInImage || undefined,
+       time: getFormatTime()
+     }]);
 
      setCheckInModalVisible(false);
   };
@@ -861,38 +967,9 @@ export const ChatView = ({
             );
           }
 
-          if (msg.type === 'check_in') {
-             return (
-               <div key={`${msg.id}-${i}`} className={`w-full flex justify-center ${marginBottom} px-4`}>
-                 <div className="bg-white/15 backdrop-blur-3xl rounded-[24px] p-5 shadow-[0_8px_32px_rgba(0,0,0,0.08),inset_0_2px_4px_rgba(255,255,255,0.4)] w-full max-w-[320px] flex flex-col items-center border border-white/40 relative overflow-hidden">
-                   <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mb-3 shadow-[inset_0_2px_4px_rgba(255,255,255,0.3)] border border-white/30 text-white">
-                      <Camera size={22} />
-                   </div>
-                   <div className="text-[16px] text-white font-semibold mb-1 tracking-wide drop-shadow-sm">{msg.content}</div>
-                   <div className="text-[12px] text-white/70 mb-4">{msg.time} · 互动查岗</div>
-                   
-                   {msg.checkInStatus === 'pending' ? (
-                     <div className="flex space-x-3 w-full">
-                        <button className="flex-1 py-2.5 rounded-[12px] bg-black/20 backdrop-blur-md shadow-[0_2px_10px_rgba(0,0,0,0.1)] flex items-center justify-center text-white/90 font-medium active:scale-95 transition-transform border border-white/20" onClick={() => declineCheckIn(msg.id)}>
-                           忽略
-                        </button>
-                        <button className="flex-1 py-2.5 rounded-[12px] bg-white/30 backdrop-blur-md shadow-[inset_0_2px_4px_rgba(255,255,255,0.4),0_2px_10px_rgba(0,0,0,0.1)] flex items-center justify-center text-white font-medium active:scale-95 transition-transform border border-white/40" onClick={() => openCheckInModal(msg.id)}>
-                           查岗汇报
-                        </button>
-                     </div>
-                   ) : msg.checkInStatus === 'rejected' ? (
-                     <div className="w-full py-2.5 rounded-[12px] bg-black/10 backdrop-blur-md text-white/70 text-center text-[13px] font-medium border border-white/10">
-                        已忽略
-                     </div>
-                   ) : (
-                     <div className="w-full py-2.5 rounded-[12px] bg-white/20 backdrop-blur-md shadow-[inset_0_1px_3px_rgba(255,255,255,0.3)] text-white text-center text-[13px] font-medium border border-white/30">
-                        {charId}收到了
-                     </div>
-                   )}
-                 </div>
-               </div>
-             );
-          }
+
+
+
 
           return (
             <div key={`${msg.id}-${i}`} className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'} ${marginBottom}`}>
@@ -1030,6 +1107,213 @@ export const ChatView = ({
                   </div>
                 ) : msg.type === 'emoji' ? (
                   <div className="text-[48px] leading-none drop-shadow-sm">{msg.content}</div>
+                ) : msg.type === 'invite' ? (
+                  <div 
+                    className={`p-3.5 rounded-[18px] w-[230px] sm:w-[250px] shadow-[0_8px_24px_rgba(0,0,0,0.03)] border relative overflow-hidden flex flex-col ${
+                      isMe ? 'rounded-tr-[4px]' : 'rounded-tl-[4px]'
+                    } ${
+                      isMe 
+                        ? 'text-gray-800 backdrop-blur-md' 
+                        : 'text-gray-800 bg-white border-black/[0.06]'
+                    }`}
+                    style={{
+                      background: isMe 
+                        ? `linear-gradient(135deg, ${bubbleColor}16, ${bubbleColor}08)` 
+                        : undefined,
+                      borderColor: isMe ? `${bubbleColor}26` : undefined
+                    }}
+                  >
+                    {/* Header */}
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className={`w-7 h-7 rounded-full flex items-center justify-center border`}
+                           style={isMe ? { backgroundColor: `${bubbleColor}1c`, borderColor: `${bubbleColor}26`, color: bubbleColor } : { backgroundColor: `${bubbleColor}12`, borderColor: 'rgba(0,0,0,0.08)', color: bubbleColor }}>
+                        {msg.inviteType === 'music' ? <Music size={14} /> : <MonitorPlay size={14} />}
+                      </div>
+                      <span className="text-[12px] font-bold tracking-wide" style={{ color: isMe ? bubbleColor : '#374151' }}>
+                        {isMe 
+                          ? `我发起了一起${msg.inviteType === 'music' ? '听歌' : '观影'}` 
+                          : `${charId} 发起了一起${msg.inviteType === 'music' ? '听歌' : '观影'}`
+                        }
+                      </span>
+                    </div>
+
+                    {/* Divider */}
+                    <div className="border-t my-1.5" style={{ borderColor: isMe ? `${bubbleColor}1c` : 'rgba(0,0,0,0.06)' }} />
+
+                    {/* Content Section */}
+                    <div className="flex flex-col mb-2.5">
+                      <span className="text-[14px] font-semibold tracking-wide truncate" style={{ color: isMe ? '#111827' : '#111827' }}>
+                        {isMe ? (
+                          msg.inviteType === 'music' 
+                            ? (msg.songName ? `《${msg.songName}》` : '浪漫聆听 · 一起听歌') 
+                            : (msg.movieName ? `《${msg.movieName}》` : '温馨影院 · 一起观影')
+                        ) : (
+                          msg.inviteType === 'music' ? '想和未婚妻一起听歌' : '想和未婚妻一起看电影'
+                        )}
+                      </span>
+                    </div>
+
+                    {/* Actions / Status */}
+                    <div className="w-full">
+                      {msg.inviteStatus === 'pending' ? (
+                        isMe ? (
+                          <div className="w-full py-1.5 rounded-[10px] text-center text-[11px] font-medium border"
+                               style={{ backgroundColor: `${bubbleColor}06`, borderColor: `${bubbleColor}18`, color: `${bubbleColor}a0` }}>
+                            等待对方回应...
+                          </div>
+                        ) : (
+                          <div className="flex space-x-2 w-full">
+                            <button 
+                              className="flex-1 py-1.5 rounded-[10px] bg-black/[0.04] hover:bg-black/[0.08] active:scale-95 text-gray-700 text-[11px] font-medium transition-all border border-black/[0.05]"
+                              onClick={(e) => { e.stopPropagation(); handleDeclineInvite(msg.id); }}
+                            >
+                              拒绝
+                            </button>
+                            <button 
+                              className="flex-1 py-1.5 rounded-[10px] text-white text-[11px] font-bold active:scale-95 transition-all"
+                              style={{ backgroundColor: bubbleColor }}
+                              onClick={(e) => { e.stopPropagation(); handleAcceptInvite(msg.id, msg.inviteType); }}
+                            >
+                              接受
+                            </button>
+                          </div>
+                        )
+                      ) : msg.inviteStatus === 'accepted' ? (
+                        msg.inviteType === 'movie' ? (
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); handleStartAction(msg.inviteType); }}
+                            className={`w-full py-1.5 rounded-[10px] text-center text-[11px] font-bold active:scale-95 transition-all flex items-center justify-center gap-1 text-white shadow-[0_4px_12px_rgba(0,0,0,0.08)]`}
+                            style={{ backgroundColor: bubbleColor }}
+                          >
+                            点击开始观影
+                          </button>
+                        ) : (
+                          <div className="w-full py-1.5 rounded-[10px] text-center text-[11px] font-medium flex items-center justify-center gap-1 bg-black/[0.03] text-gray-500 border border-black/[0.04]">
+                            <Check size={12} /> 已开始听歌
+                          </div>
+                        )
+                      ) : (
+                        <div className="w-full py-1.5 rounded-[10px] text-center text-[11px] font-medium bg-black/[0.03] text-gray-400 border border-black/[0.04]">
+                          已拒绝或已结束
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : msg.type === 'check_in' ? (
+                  <div 
+                    className={`p-3.5 rounded-[18px] w-[230px] sm:w-[250px] shadow-[0_8px_24px_rgba(0,0,0,0.03)] border relative overflow-hidden flex flex-col ${
+                      isMe ? 'rounded-tr-[4px]' : 'rounded-tl-[4px]'
+                    } ${
+                      isMe 
+                        ? 'text-gray-800 backdrop-blur-md' 
+                        : 'text-gray-800 bg-white border-black/[0.06]'
+                    }`}
+                    style={{
+                      background: isMe 
+                        ? `linear-gradient(135deg, ${bubbleColor}16, ${bubbleColor}08)` 
+                        : undefined,
+                      borderColor: isMe ? `${bubbleColor}26` : undefined
+                    }}
+                  >
+                    {/* Header */}
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className={`w-7 h-7 rounded-full flex items-center justify-center border`}
+                           style={isMe ? { backgroundColor: `${bubbleColor}1c`, borderColor: `${bubbleColor}26`, color: bubbleColor } : { backgroundColor: `${bubbleColor}12`, borderColor: 'rgba(0,0,0,0.08)', color: bubbleColor }}>
+                        <Camera size={14} />
+                      </div>
+                      <span className="text-[12px] font-bold tracking-wide" style={{ color: isMe ? bubbleColor : '#374151' }}>
+                        {isMe ? '互动查岗' : `${charId} 互动查岗`}
+                      </span>
+                    </div>
+
+                    {/* Divider */}
+                    <div className="border-t my-1.5" style={{ borderColor: isMe ? `${bubbleColor}1c` : 'rgba(0,0,0,0.06)' }} />
+
+                    {/* Content Section */}
+                    <div className="flex flex-col mb-2.5">
+                      <span className="text-[14px] font-semibold tracking-wide" style={{ color: isMe ? '#111827' : '#111827' }}>
+                        {msg.content || '想知道你在干什么'}
+                      </span>
+                    </div>
+
+                    {/* Actions / Status */}
+                    <div className="w-full">
+                      {msg.checkInStatus === 'pending' ? (
+                        isMe ? (
+                          <div className="w-full py-1.5 rounded-[10px] text-center text-[11px] font-medium border"
+                               style={{ backgroundColor: `${bubbleColor}06`, borderColor: `${bubbleColor}18`, color: `${bubbleColor}a0` }}>
+                            等待回复...
+                          </div>
+                        ) : (
+                          <div className="flex space-x-2 w-full">
+                            <button 
+                              className="flex-1 py-1.5 rounded-[10px] bg-black/[0.04] hover:bg-black/[0.08] active:scale-95 text-gray-700 text-[11px] font-medium transition-all border border-black/[0.05]"
+                              onClick={(e) => { e.stopPropagation(); declineCheckIn(msg.id); }}
+                            >
+                              忽略
+                            </button>
+                            <button 
+                              className="flex-1 py-1.5 rounded-[10px] text-white text-[11px] font-bold active:scale-95 transition-all"
+                              style={{ backgroundColor: bubbleColor }}
+                              onClick={(e) => { e.stopPropagation(); openCheckInModal(msg.id); }}
+                            >
+                              查岗汇报
+                            </button>
+                          </div>
+                        )
+                      ) : msg.checkInStatus === 'rejected' ? (
+                        <div className="w-full py-1.5 rounded-[10px] text-center text-[11px] font-medium bg-black/[0.03] text-gray-400 border border-black/[0.04]">
+                          已忽略
+                        </div>
+                      ) : (
+                        <div className="w-full py-1.5 rounded-[10px] text-center text-[11px] font-medium flex items-center justify-center gap-1 bg-black/[0.03] text-gray-500 border border-black/[0.04]">
+                          <Check size={12} /> {charId}已收到
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : msg.type === 'check_in_feedback' ? (
+                  <div 
+                    className={`rounded-[18px] w-[230px] sm:w-[250px] shadow-[0_8px_24px_rgba(0,0,0,0.03)] border overflow-hidden flex flex-col ${
+                      isMe ? 'rounded-tr-[4px]' : 'rounded-tl-[4px]'
+                    } ${
+                      isMe 
+                        ? 'text-gray-800 backdrop-blur-md' 
+                        : 'text-gray-800 bg-white border-black/[0.06]'
+                    }`}
+                    style={{
+                      background: isMe 
+                        ? `linear-gradient(135deg, ${bubbleColor}16, ${bubbleColor}08)` 
+                        : undefined,
+                      borderColor: isMe ? `${bubbleColor}26` : undefined
+                    }}
+                  >
+                    {/* Feedback Image */}
+                    {msg.imageUrl && (
+                      <div className="w-full aspect-[4/3] bg-gray-100/30 overflow-hidden relative border-b border-black/[0.03]">
+                        <img 
+                          src={msg.imageUrl} 
+                          alt="Check In Feedback" 
+                          className="w-full h-full object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+                    )}
+
+                    {/* Feedback Info Box */}
+                    <div className="p-3.5 flex flex-col">
+                      <div className="flex items-center gap-1 text-[10px] tracking-wider font-bold mb-1.5 uppercase select-none" style={{ color: isMe ? bubbleColor : '#a1a1aa' }}>
+                        <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: isMe ? bubbleColor : '#52525b' }} />
+                        <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: isMe ? `${bubbleColor}66` : '#d4d4d8' }} />
+                        <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: isMe ? `${bubbleColor}33` : '#e4e4e7' }} />
+                        <span className="ml-1">{isMe ? 'MY CHECK-IN' : 'CHECK-IN RESPONSE'}</span>
+                      </div>
+
+                      <span className="text-[14px] font-bold leading-snug whitespace-pre-wrap text-gray-900">
+                        {msg.content || '我来汇报啦~'}
+                      </span>
+                    </div>
+                  </div>
                 ) : (
                   <div 
                     className={chatBubbleStyle === 'system' ? 
@@ -1097,29 +1381,40 @@ export const ChatView = ({
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            className="absolute left-3 right-3 bg-white/70 backdrop-blur-xl rounded-[16px] py-4 flex justify-around px-2 items-center z-20 shadow-[0_10px_40px_rgba(0,0,0,0.08)] border border-white/50"
+            className="absolute left-3 right-3 bg-white/80 backdrop-blur-xl rounded-[24px] py-4 grid grid-cols-4 gap-y-4 gap-x-2 px-3 items-center justify-items-center z-20 shadow-[0_10px_40px_rgba(0,0,0,0.08)] border border-white/50"
             style={{ bottom: 'calc(env(safe-area-inset-bottom) + 60px)' }}
           >
              <button className="flex flex-col items-center gap-2 group w-[64px]" onClick={() => { initiateCall(); setShowPlusMenu(false); }}>
                 <div className="w-[50px] h-[50px] rounded-[16px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><Video size={24} strokeWidth={1.5} /></div>
                 <span className="text-[11px] text-black/50">视频通话</span>
              </button>
-             <button className="flex flex-col items-center gap-2 group w-[64px]" onClick={() => { movieInputRef.current?.click(); setShowPlusMenu(false); }}>
+             
+             <button className="flex flex-col items-center gap-2 group w-[64px]" onClick={() => { setInviteModal({ show: true, type: 'music', direction: 'me' }); setShowPlusMenu(false); }}>
+                <div className="w-[50px] h-[50px] rounded-[16px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><Music size={24} strokeWidth={1.5} /></div>
+                <span className="text-[11px] text-black/50">一起听歌</span>
+             </button>
+             
+             <button className="flex flex-col items-center gap-2 group w-[64px]" onClick={() => { setInviteModal({ show: true, type: 'movie', direction: 'me' }); setShowPlusMenu(false); }}>
                 <div className="w-[50px] h-[50px] rounded-[16px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><MonitorPlay size={24} strokeWidth={1.5} /></div>
                 <span className="text-[11px] text-black/50">一起观影</span>
              </button>
+             
              <div className="flex flex-col items-center gap-2 group cursor-pointer w-[64px]" onClick={() => { imageInputRef.current?.click(); setShowPlusMenu(false); }}>
                 <div className="w-[50px] h-[50px] rounded-[16px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><ImageIcon size={24} strokeWidth={1.5} /></div>
                 <span className="text-[11px] text-black/50">图片</span>
              </div>
+             
              <div className="flex flex-col items-center gap-2 group cursor-pointer w-[64px]" onClick={() => { setShowPlusMenu(false); setShowStickerPane(true); }}>
                 <div className="w-[50px] h-[50px] rounded-[16px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><Smile size={24} strokeWidth={1.5} /></div>
                 <span className="text-[11px] text-black/50">表情库</span>
              </div>
+             
              <button className="flex flex-col items-center gap-2 group w-[64px]" onClick={() => { handleNudge(); setShowPlusMenu(false); }}>
                 <div className="w-[50px] h-[50px] rounded-[16px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><Heart size={24} strokeWidth={1.5} /></div>
                 <span className="text-[11px] text-black/50">拍一拍</span>
              </button>
+
+
           </motion.div>
         )}
       </AnimatePresence>
@@ -1339,6 +1634,60 @@ export const ChatView = ({
               </div>
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Custom Invitation Modal */}
+      <AnimatePresence>
+        {inviteModal.show && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-white/95 backdrop-blur-md rounded-[24px] p-5 w-full max-w-sm border border-white/50 shadow-2xl flex flex-col"
+            >
+              <h3 className="text-[16px] font-bold text-gray-800 mb-2 flex items-center gap-1.5">
+                {inviteModal.type === 'music' ? <Music size={18} className="text-pink-500" /> : <MonitorPlay size={18} className="text-blue-500" />}
+                {`发起 ${inviteModal.type === 'music' ? '一起听歌' : '一起观影'}`}
+              </h3>
+              <p className="text-[12px] text-gray-500 mb-4">
+                {`向 ${charId} 发送一份温馨的约会邀请，写下你想 ${inviteModal.type === 'music' ? '听的歌名' : '看的片名'} 吧！`}
+              </p>
+              
+              <input 
+                type="text"
+                placeholder={inviteModal.type === 'music' ? "例如: 遇见 / 晴天 (选填)" : "例如: 泰坦尼克号 / 爱乐之城 (选填)"}
+                value={inviteInputVal}
+                onChange={(e) => setInviteInputVal(e.target.value)}
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-[14px] text-[14px] text-gray-800 outline-none focus:border-purple-300 transition-colors mb-4"
+                autoFocus
+              />
+              
+              <div className="flex space-x-3">
+                <button 
+                  onClick={() => {
+                    setInviteModal({ show: false, type: 'music', direction: 'me' });
+                    setInviteInputVal('');
+                  }} 
+                  className="flex-1 py-2.5 rounded-[12px] bg-gray-100 active:bg-gray-200 text-gray-600 font-medium text-[13px] transition-colors"
+                >
+                  取消
+                </button>
+                <button 
+                  onClick={() => {
+                    const text = inviteInputVal.trim();
+                    sendInvite(inviteModal.type, text || undefined, text || undefined);
+                    setInviteModal({ show: false, type: 'music', direction: 'me' });
+                    setInviteInputVal('');
+                  }} 
+                  className="flex-1 py-2.5 rounded-[12px] bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-semibold text-[13px] shadow-md hover:from-purple-600 hover:to-indigo-700 active:scale-98 transition-all"
+                >
+                  确定
+                </button>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
