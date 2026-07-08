@@ -96,7 +96,7 @@ function getMeCardColors(bg: string, defaultBubble: string) {
 type Message = {
   id: string;
   sender: 'me' | 'them';
-  type: 'text' | 'nudge' | 'emoji' | 'call' | 'sticker' | 'check_in' | 'image' | 'voice' | 'invite' | 'check_in_feedback';
+  type: 'text' | 'nudge' | 'emoji' | 'call' | 'sticker' | 'check_in' | 'image' | 'voice' | 'invite' | 'check_in_feedback' | 'decide';
   content: string;
   time: string;
   imageUrl?: string;
@@ -111,6 +111,11 @@ type Message = {
   inviteStatus?: 'pending' | 'accepted' | 'declined' | 'busy';
   songName?: string;
   movieName?: string;
+  decideType?: 'tarot' | 'custom';
+  decideQuestion?: string;
+  decideTarotCount?: number;
+  decideOptions?: string[];
+  decideResult?: string;
 };
 
 export const ChatView = ({ 
@@ -299,7 +304,7 @@ export const ChatView = ({
      if (e.target.files && e.target.files[0]) {
         try {
            const file = e.target.files[0];
-           const dataUrl = await compressImage(file, 1000, 1000, 0.8);
+           const dataUrl = await compressImage(file, 800, 800, 0.6);
            const ignored = readNoReply && Math.random() < 0.05;
            const newMsg: Message = {
              id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
@@ -353,6 +358,89 @@ export const ChatView = ({
 
   const [inviteModal, setInviteModal] = useState<{ show: boolean; type: 'music' | 'movie'; direction: 'me' | 'them' }>({ show: false, type: 'music', direction: 'me' });
   const [inviteInputVal, setInviteInputVal] = useState('');
+
+  const [decideModal, setDecideModal] = useState<{
+    show: boolean;
+    tab: 'tarot' | 'custom';
+    question: string;
+    tarotCount: number;
+    options: string[];
+  }>({
+    show: false,
+    tab: 'tarot',
+    question: '',
+    tarotCount: 1,
+    options: ['', '']
+  });
+
+  const sendDecideRequest = () => {
+    const { tab, question, tarotCount, options } = decideModal;
+    
+    if (!question.trim()) {
+      alert('请先输入我想问的问题');
+      return;
+    }
+    
+    const validOpts = options.filter(o => o.trim() !== '');
+    if (tab === 'custom' && validOpts.length < 2) {
+      alert('自定义决策至少需要输入两个选项');
+      return;
+    }
+
+    const meMsg: Message = {
+      id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
+      sender: 'me',
+      type: 'decide',
+      content: `[帮我决定] 问：${question.trim()}`,
+      time: getFormatTime(),
+      decideType: tab,
+      decideQuestion: question.trim(),
+      decideTarotCount: tab === 'tarot' ? tarotCount : undefined,
+      decideOptions: tab === 'custom' ? validOpts : undefined,
+    };
+
+    setMessages(prev => [...prev, meMsg]);
+    setDecideModal(prev => ({ ...prev, show: false, question: '', options: ['', ''], tarotCount: 1 }));
+
+    setTimeout(() => {
+      setIsTyping(true);
+      
+      setTimeout(() => {
+        setIsTyping(false);
+        
+        let result = '';
+        if (tab === 'tarot') {
+          const numbers: number[] = [];
+          const used = new Set<number>();
+          while (numbers.length < tarotCount) {
+            const num = Math.floor(Math.random() * 78) + 1;
+            if (!used.has(num)) {
+              used.add(num);
+              numbers.push(num);
+            }
+          }
+          result = numbers.join(', ');
+        } else {
+          result = validOpts[Math.floor(Math.random() * validOpts.length)];
+        }
+
+        const replyMsg: Message = {
+          id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
+          sender: 'them',
+          type: 'decide',
+          content: `决策结果是：${result}`,
+          time: getFormatTime(),
+          decideType: tab,
+          decideQuestion: question.trim(),
+          decideResult: result,
+          decideTarotCount: tab === 'tarot' ? tarotCount : undefined,
+          decideOptions: tab === 'custom' ? validOpts : undefined,
+        };
+
+        setMessages(prev => [...prev, replyMsg]);
+      }, 1500);
+    }, 600);
+  };
 
   const handleDeclineInvite = (id: string) => {
     setMessages(msgs => msgs.map(m => m.id === id ? { ...m, inviteStatus: 'declined' } : m));
@@ -941,7 +1029,7 @@ export const ChatView = ({
   const handleCheckInImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
      if (e.target.files && e.target.files[0]) {
         try {
-           const dataUrl = await compressImage(e.target.files[0]);
+           const dataUrl = await compressImage(e.target.files[0], 800, 800, 0.6);
            setCheckInImage(dataUrl);
         } catch (err) {
            console.error(err);
@@ -1444,6 +1532,65 @@ export const ChatView = ({
                       </span>
                     </div>
                   </div>
+                ) : msg.type === 'decide' ? (
+                  <div 
+                    className={`p-5 pb-4 rounded-[22px] w-[275px] sm:w-[315px] shadow-[0_12px_32px_rgba(0,0,0,0.04)] border relative overflow-hidden flex flex-col group transition-all duration-300 hover:shadow-[0_16px_36px_rgba(0,0,0,0.06)] ${
+                      isMe ? 'rounded-tr-[4px]' : 'rounded-tl-[4px]'
+                    } ${
+                      isMe 
+                        ? 'text-gray-800' 
+                        : 'text-gray-800 bg-white border-black/[0.06]'
+                    }`}
+                    style={{
+                      backgroundColor: isMe ? solidMeBg : '#ffffff',
+                      borderColor: isMe ? solidMeBorder : 'rgba(0,0,0,0.06)',
+                      backgroundImage: isMe 
+                        ? `radial-gradient(circle, ${accentColor}1e 1.2px, transparent 1.2px)` 
+                        : `radial-gradient(circle, ${accentColor}0a 1.2px, transparent 1.2px)`,
+                      backgroundSize: '12px 12px'
+                    }}
+                  >
+                    {/* Watermark Big Background SVG Icon */}
+                    <Sparkles size={110} strokeWidth={1} className="absolute -right-5 -bottom-5 opacity-[0.08] pointer-events-none select-none rotate-12 transition-transform duration-[1500ms] ease-out group-hover:rotate-[35deg]" style={{ color: accentColor }} />
+
+                    {/* Tagline Header */}
+                    <div className="text-[9px] font-extrabold tracking-[0.2em] uppercase select-none mb-2.5 flex items-center gap-1.5" style={{ color: accentColor }}>
+                      <Sparkles size={11} strokeWidth={2.5} />
+                      <span>{msg.decideType === 'tarot' ? 'TAROT DECISION' : 'CUSTOM DECISION'}</span>
+                    </div>
+
+                    {isMe ? (
+                      /* 我发出的：大标题是求助问题，副标题根据类型展示，底部有小横条等待 */
+                      <>
+                        <div className="flex flex-col min-w-0 flex-1 pr-6 mb-5 relative z-10">
+                          <h4 className="text-[16px] font-extrabold text-gray-800 leading-snug tracking-tight">
+                            {msg.decideQuestion}
+                          </h4>
+                          <p className="text-[12px] text-gray-500/90 leading-relaxed mt-2 select-none">
+                            {msg.decideType === 'tarot' 
+                              ? '我有问题想问，未婚夫的回答用塔罗牌告诉我吧' 
+                              : '选择困难了，未婚夫帮我决定吧'}
+                          </p>
+                        </div>
+                        <div className="w-full mt-auto relative z-10">
+                          <div className="w-full py-2 rounded-[12px] text-center text-[11.5px] font-bold border bg-white/70 shadow-sm"
+                               style={{ borderColor: solidMeBorder, color: accentColor }}>
+                            {msg.decideType === 'tarot' ? '等待未婚夫抽牌' : '等待未婚夫答复'}
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      /* 梦角的回复：大标题是未婚夫的最终选择，下面一行是抽取的答案，为灰色，不带小横条 */
+                      <div className="flex flex-col min-w-0 flex-1 pr-6 relative z-10">
+                        <h4 className="text-[16px] font-extrabold text-gray-800 leading-snug tracking-tight">
+                          未婚夫的最终选择
+                        </h4>
+                        <p className="text-[15px] font-semibold text-gray-400 leading-relaxed mt-2 select-none">
+                          {msg.decideResult}
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   <div 
                     className={chatBubbleStyle === 'system' ? 
@@ -1534,15 +1681,22 @@ export const ChatView = ({
                 <span className="text-[11px] text-black/50">拍一拍</span>
              </button>
 
-             <button className="flex flex-col items-center gap-2 group w-[64px] col-start-2" onClick={() => { setInviteModal({ show: true, type: 'movie', direction: 'me' }); setShowPlusMenu(false); }}>
-                <div className="w-[50px] h-[50px] rounded-[16px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><MonitorPlay size={24} strokeWidth={1.5} /></div>
-                <span className="text-[11px] text-black/50">一起观影</span>
-             </button>
+             <div className="col-span-4 w-full flex justify-center gap-8 mt-1">
+               <button className="flex flex-col items-center gap-2 group w-[64px]" onClick={() => { setInviteModal({ show: true, type: 'movie', direction: 'me' }); setShowPlusMenu(false); }}>
+                  <div className="w-[50px] h-[50px] rounded-[16px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><MonitorPlay size={24} strokeWidth={1.5} /></div>
+                  <span className="text-[11px] text-black/50">一起观影</span>
+               </button>
 
-             <button className="flex flex-col items-center gap-2 group w-[64px]" onClick={() => { setInviteModal({ show: true, type: 'music', direction: 'me' }); setShowPlusMenu(false); }}>
-                <div className="w-[50px] h-[50px] rounded-[16px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><Music size={24} strokeWidth={1.5} /></div>
-                <span className="text-[11px] text-black/50">一起听歌</span>
-             </button>
+               <button className="flex flex-col items-center gap-2 group w-[64px]" onClick={() => { setInviteModal({ show: true, type: 'music', direction: 'me' }); setShowPlusMenu(false); }}>
+                  <div className="w-[50px] h-[50px] rounded-[16px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><Music size={24} strokeWidth={1.5} /></div>
+                  <span className="text-[11px] text-black/50">一起听歌</span>
+               </button>
+
+               <button className="flex flex-col items-center gap-2 group w-[64px]" onClick={() => { setDecideModal(prev => ({ ...prev, show: true })); setShowPlusMenu(false); }}>
+                  <div className="w-[50px] h-[50px] rounded-[16px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><Sparkles size={24} strokeWidth={1.5} /></div>
+                  <span className="text-[11px] text-black/50">帮我决定</span>
+               </button>
+             </div>
 
 
           </motion.div>
@@ -1821,6 +1975,140 @@ export const ChatView = ({
                   className="flex-1 py-2.5 rounded-[12px] bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-semibold text-[13px] shadow-md hover:from-purple-600 hover:to-indigo-700 active:scale-98 transition-all"
                 >
                   确定
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Help Me Decide Modal */}
+      <AnimatePresence>
+        {decideModal.show && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-white/95 backdrop-blur-md rounded-[28px] p-5 w-full max-w-sm border border-white/50 shadow-2xl flex flex-col max-h-[85vh] overflow-y-auto"
+            >
+              <h3 className="text-[17px] font-bold text-gray-800 mb-1 flex items-center gap-1.5">
+                <Sparkles size={18} className="text-amber-500" />
+                帮我决定
+              </h3>
+              <p className="text-[11.5px] text-gray-400 mb-4">
+                有纠结的事？让你的未婚夫来帮你做出决定吧
+              </p>
+
+              {/* Tabs */}
+              <div className="flex bg-gray-100/80 rounded-[12px] p-1 mb-4 border border-black/[0.02]">
+                <button 
+                  className={`flex-1 py-1.5 rounded-[9px] text-[13px] font-bold transition-all ${decideModal.tab === 'tarot' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-400'}`} 
+                  onClick={() => setDecideModal(prev => ({ ...prev, tab: 'tarot' }))}
+                >
+                  🔮 塔罗牌 (数字)
+                </button>
+                <button 
+                  className={`flex-1 py-1.5 rounded-[9px] text-[13px] font-bold transition-all ${decideModal.tab === 'custom' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-400'}`} 
+                  onClick={() => setDecideModal(prev => ({ ...prev, tab: 'custom' }))}
+                >
+                  🎯 自定义选项
+                </button>
+              </div>
+
+              {/* Question Textarea */}
+              <div className="mb-4">
+                <label className="text-[11.5px] font-bold text-gray-500 block mb-1.5">我想问的问题</label>
+                <textarea 
+                  className="w-full bg-gray-50 border border-gray-100 rounded-[14px] p-3 text-[13.5px] text-gray-800 outline-none focus:border-amber-200 focus:bg-white resize-none h-[72px] placeholder-gray-400/70"
+                  placeholder="例如：今晚吃什么？/ 明天的面试该穿哪套衣服？"
+                  value={decideModal.question}
+                  onChange={e => setDecideModal(prev => ({ ...prev, question: e.target.value }))}
+                />
+              </div>
+
+              {/* Tarot Specific Fields */}
+              {decideModal.tab === 'tarot' && (
+                <div className="mb-5 bg-gray-50/50 p-3 rounded-[16px] border border-gray-100 flex items-center justify-between">
+                  <div>
+                    <span className="text-[12px] font-bold text-gray-600 block">抽取数量</span>
+                    <span className="text-[10px] text-gray-400">随机抽取 1-6 个神秘塔罗指引数</span>
+                  </div>
+                  <div className="flex items-center space-x-2.5">
+                    <button 
+                      onClick={() => setDecideModal(prev => ({ ...prev, tarotCount: Math.max(1, prev.tarotCount - 1) }))}
+                      className="w-8 h-8 rounded-full bg-white border border-gray-100 flex items-center justify-center active:scale-90 shadow-sm text-gray-600 transition-transform"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                    <span className="text-[14px] font-bold text-gray-800 w-4 text-center">{decideModal.tarotCount}</span>
+                    <button 
+                      onClick={() => setDecideModal(prev => ({ ...prev, tarotCount: Math.min(6, prev.tarotCount + 1) }))}
+                      className="w-8 h-8 rounded-full bg-white border border-gray-100 flex items-center justify-center active:scale-90 shadow-sm text-gray-600 transition-transform"
+                    >
+                      <ChevronLeft size={16} className="rotate-180" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Custom Options Fields */}
+              {decideModal.tab === 'custom' && (
+                <div className="mb-5 space-y-2.5 max-h-[160px] overflow-y-auto pr-1">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-[12px] font-bold text-gray-600">自定义候选项 (2-6个)</span>
+                    {decideModal.options.length < 6 && (
+                      <button 
+                        onClick={() => setDecideModal(prev => ({ ...prev, options: [...prev.options, ''] }))}
+                        className="text-[11px] text-amber-600 font-bold hover:underline"
+                      >
+                        + 添加选项
+                      </button>
+                    )}
+                  </div>
+                  {decideModal.options.map((opt, idx) => (
+                    <div key={idx} className="flex items-center space-x-2">
+                      <input 
+                        type="text"
+                        className="flex-1 px-3 py-2 bg-gray-50 border border-gray-100 rounded-[10px] text-[13px] text-gray-800 outline-none focus:border-amber-200 focus:bg-white"
+                        placeholder={`选项 ${idx + 1}`}
+                        value={opt}
+                        onChange={e => {
+                          const newOpts = [...decideModal.options];
+                          newOpts[idx] = e.target.value;
+                          setDecideModal(prev => ({ ...prev, options: newOpts }));
+                        }}
+                      />
+                      {decideModal.options.length > 2 && (
+                        <button 
+                          onClick={() => {
+                            const newOpts = decideModal.options.filter((_, oIdx) => oIdx !== idx);
+                            setDecideModal(prev => ({ ...prev, options: newOpts }));
+                          }}
+                          className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg"
+                        >
+                          <X size={15} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex space-x-3 mt-auto pt-2">
+                <button 
+                  onClick={() => {
+                    setDecideModal(prev => ({ ...prev, show: false }));
+                  }} 
+                  className="flex-1 py-3 rounded-[14px] bg-gray-100 active:bg-gray-200 text-gray-500 font-semibold text-[13px] transition-all"
+                >
+                  取消
+                </button>
+                <button 
+                  onClick={sendDecideRequest} 
+                  className="flex-1 py-3 rounded-[14px] bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-[13px] shadow-md shadow-orange-500/10 active:scale-98 hover:from-amber-600 hover:to-orange-600 transition-all"
+                >
+                  求助未婚夫
                 </button>
               </div>
             </motion.div>

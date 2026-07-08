@@ -13,6 +13,7 @@ import {
   Database, 
   Library, 
   Cat,
+  StickyNote,
   ChevronLeft,
   ChevronRight,
   User,
@@ -47,6 +48,7 @@ import { DataView } from './DataView';
 import { AccountingView } from './AccountingView';
 import { TodoView } from './TodoView';
 import { MailboxView } from './MailboxView';
+import { MoodNotesView } from './MoodNotesView';
 import { compressImage, useIDBState } from './utils';
 import { VideoCallOverlay } from './VideoCallOverlay';
 import { TodoScheduler } from './TodoScheduler';
@@ -60,7 +62,7 @@ const apps = [
   { name: '书影音记录', icon: BookHeart },
   { name: '记账', icon: Wallet },
   { name: 'Todo', icon: CheckSquare },
-  { name: '帮我决定', icon: Dices },
+  { name: '心情便签', icon: StickyNote },
 ];
 
 const tools = [
@@ -181,192 +183,6 @@ function useLocalState<T>(key: string, initialValue: T): [T, React.Dispatch<Reac
 
   return [state, setValue];
 }
-
-const DecideView = ({ onClose, themeConfig, onStartDecide, isDeciding }: { onClose: () => void, themeConfig: any, onStartDecide: (delay: number, result: string[], tab: string) => void, isDeciding: boolean }) => {
-  const [tab, setTab] = useState<'tarot' | 'yesno' | 'custom'>('tarot');
-  const [question, setQuestion] = useState('');
-  const [options, setOptions] = useState(['', '']);
-  const [delay, setDelay] = useState(0);
-  const [tarotCount, setTarotCount] = useState(1);
-
-  const thumbColor = themeConfig.textPrimary || '#333';
-
-  const handleStart = () => {
-    if (!question.trim()) {
-      alert('请先输入我想问的问题');
-      return;
-    }
-    if (tab === 'custom' && options.filter(o => o.trim() !== '').length < 2) {
-      alert('请至少输入两个选项');
-      return;
-    }
-
-    let generated: string[] = [];
-    if (tab === 'tarot') {
-      const nums = [];
-      const used = new Set();
-      while (nums.length < tarotCount) {
-        const num = Math.floor(Math.random() * 78) + 1;
-        if (!used.has(num)) {
-          used.add(num);
-          nums.push(num.toString());
-        }
-      }
-      generated = nums;
-    } else if (tab === 'yesno') {
-      generated = [Math.random() > 0.5 ? '是' : '否'];
-    } else if (tab === 'custom') {
-      const validOptions = options.filter(o => o.trim() !== '');
-      if (validOptions.length === 0) {
-         generated = ['无有效选项'];
-      } else {
-         generated = [validOptions[Math.floor(Math.random() * validOptions.length)]];
-      }
-    }
-    
-    onStartDecide(delay, generated, tab);
-  };
-
-  return (
-    <div className="absolute inset-0 flex flex-col font-sans overflow-x-hidden overflow-y-auto" style={{ backgroundColor: themeConfig.bg || '#F2F2F7' }}>
-      {/* Header */}
-      <div className="w-full flex items-center justify-between px-4 pb-3 sticky top-0 z-10 pt-[max(1rem,env(safe-area-inset-top))]" style={{ backgroundColor: themeConfig.bg || '#F2F2F7', backdropFilter: 'blur(12px)' }}>
-          <button onClick={onClose} className="text-[#8e8e93] text-[15px] flex items-center active:opacity-50 transition-opacity w-[60px]">
-            <ChevronLeft size={22} className="-ml-1.5" />返回
-          </button>
-          <span className="text-[17px] font-semibold tracking-wide" style={{ color: themeConfig.textPrimary }}>帮我决定</span>
-          <div className="w-[60px]"></div>
-      </div>
-
-      <div className="w-full max-w-sm mx-auto px-5 pt-4 pb-20 flex-1 flex flex-col items-center">
-         {/* Tabs */}
-         <div className="flex bg-[#e3e3e8] rounded-[10px] p-1 mb-8 w-full border border-black/[0.02]">
-            <button className={`flex-1 py-1.5 rounded-[8px] text-[14px] font-medium transition-all ${tab === 'tarot' ? 'bg-white shadow-[0_1px_3px_rgba(0,0,0,0.1)] text-black' : 'text-[#8e8e93]'}`} onClick={() => setTab('tarot')}>塔罗牌</button>
-            <button className={`flex-1 py-1.5 rounded-[8px] text-[14px] font-medium transition-all ${tab === 'yesno' ? 'bg-white shadow-[0_1px_3px_rgba(0,0,0,0.1)] text-black' : 'text-[#8e8e93]'}`} onClick={() => setTab('yesno')}>是/否</button>
-            <button className={`flex-1 py-1.5 rounded-[8px] text-[14px] font-medium transition-all ${tab === 'custom' ? 'bg-white shadow-[0_1px_3px_rgba(0,0,0,0.1)] text-black' : 'text-[#8e8e93]'}`} onClick={() => setTab('custom')}>自定义</button>
-         </div>
-
-         <div className="w-full bg-white rounded-[20px] p-5 shadow-sm border border-black/[0.04]">
-             <div className="text-[14px] font-medium mb-2" style={{ color: themeConfig.textSecondary }}>我想问</div>
-             <textarea 
-                className="w-full bg-[#f9f9f9] rounded-[12px] p-3 text-[15px] outline-none resize-none mb-5 h-[80px]"
-                placeholder="让我帮你做决定吧"
-                value={question}
-                onChange={e => setQuestion(e.target.value)}
-             />
-
-             {tab === 'tarot' && (
-                 <div className="mb-5 space-y-3">
-                     <div className="flex items-center justify-between">
-                         <div className="text-[14px] font-medium" style={{ color: themeConfig.textSecondary }}>抽取数量 (1-6张)</div>
-                         <div className="flex items-center space-x-3">
-                             <button 
-                               onClick={() => setTarotCount(Math.max(1, tarotCount - 1))}
-                               className="w-8 h-8 rounded-full bg-[#f2f2f7] flex items-center justify-center active:bg-[#e5e5ea] transition-colors"
-                               style={{ color: thumbColor }}
-                             >
-                               <ChevronLeft size={16} />
-                             </button>
-                             <span className="text-[15px] font-medium w-4 text-center" style={{ color: thumbColor }}>{tarotCount}</span>
-                             <button 
-                               onClick={() => setTarotCount(Math.min(6, tarotCount + 1))}
-                               className="w-8 h-8 rounded-full bg-[#f2f2f7] flex items-center justify-center active:bg-[#e5e5ea] transition-colors"
-                               style={{ color: thumbColor }}
-                             >
-                                 <ChevronLeft size={16} className="rotate-180" />
-                             </button>
-                         </div>
-                     </div>
-                 </div>
-             )}
-
-             {tab === 'custom' && (
-                 <div className="mb-5 space-y-3">
-                     <div className="text-[14px] font-medium" style={{ color: themeConfig.textSecondary }}>选项 (2-6个)</div>
-                     {options.map((opt, idx) => (
-                         <div key={idx} className="flex space-x-2">
-                             <input 
-                               className="flex-1 bg-[#f9f9f9] rounded-[10px] px-3 py-2 text-[14px] outline-none"
-                               placeholder={`选项 ${idx + 1}`}
-                               value={opt}
-                               onChange={e => {
-                                   const newOpts = [...options];
-                                   newOpts[idx] = e.target.value;
-                                   setOptions(newOpts);
-                               }}
-                             />
-                             {options.length > 2 && (
-                                 <button onClick={() => {
-                                     const newOpts = [...options];
-                                     newOpts.splice(idx, 1);
-                                     setOptions(newOpts);
-                                 }} className="p-2 active:opacity-50" style={{ color: themeConfig.textSecondary }}><X size={18}/></button>
-                             )}
-                         </div>
-                     ))}
-                     {options.length < 6 && (
-                         <button onClick={() => setOptions([...options, ''])} className="text-[#007AFF] text-[13px] font-medium flex items-center justify-center w-full py-2 bg-[#f2f2f7]/50 rounded-[10px]">
-                            <Plus size={16} className="mr-1"/>添加选项
-                         </button>
-                     )}
-                 </div>
-             )}
-
-             <div className="text-[14px] font-medium mb-3" style={{ color: themeConfig.textSecondary }}>给未婚夫的思考时间</div>
-             <div className="flex items-center justify-between mb-6 bg-[#fcfcfd] border border-gray-100 p-2.5 rounded-[12px] shadow-[0_2px_8px_-4px_rgba(0,0,0,0.05)]">
-                 <span className="text-[14px] font-medium pl-1 shrink-0" style={{ color: themeConfig.textPrimary }}>间隔</span>
-                 <input 
-                    type="range" 
-                    min="0" 
-                    max="60" 
-                    step="1" 
-                    value={delay} 
-                    onChange={e => setDelay(parseInt(e.target.value))} 
-                    className="flex-1 mx-4 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                    style={{
-                       background: `linear-gradient(to right, ${thumbColor} 0%, ${thumbColor} ${(delay / 60) * 100}%, #e5e7eb ${(delay / 60) * 100}%, #e5e7eb 100%)`
-                    }}
-                 />
-                 <style dangerouslySetInnerHTML={{__html: `
-                    input[type=range]::-webkit-slider-thumb {
-                      -webkit-appearance: none;
-                      appearance: none;
-                      width: 18px;
-                      height: 18px;
-                      border-radius: 50%;
-                      background: ${thumbColor};
-                      cursor: pointer;
-                      border: 2px solid white;
-                      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-                    }
-                    input[type=range]::-moz-range-thumb {
-                      width: 18px;
-                      height: 18px;
-                      border-radius: 50%;
-                      background: ${thumbColor};
-                      cursor: pointer;
-                      border: 2px solid white;
-                      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-                    }
-                 `}} />
-                 <span className="text-[14px] font-medium min-w-[55px] text-right pr-1 shrink-0" style={{ color: thumbColor }}>
-                    {delay === 0 ? '立刻' : `${delay}分钟`}
-                 </span>
-             </div>
-
-             <button 
-                 onClick={handleStart}
-                 disabled={isDeciding}
-                 className={`w-full py-3.5 rounded-[14px] text-white font-medium text-[15px] shadow-[0_4px_12px_rgba(0,0,0,0.1)] transition-transform active:scale-95`}
-                 style={{ backgroundColor: isDeciding ? themeConfig.textSecondary : themeConfig.textPrimary, opacity: isDeciding ? 0.7 : 1 }}
-             >
-                 {isDeciding ? '正在决定中...' : '帮我决定'}
-             </button>
-         </div>
-      </div>
-    </div>
-  );
-};
 
 const globalAudio = new Audio();
 
@@ -669,7 +485,8 @@ export default function App() {
       const file = files[i];
       if (file.type.startsWith('image/')) {
         try {
-          const dataUrl = await compressImage(file);
+          // Compress sticker pack cards further
+          const dataUrl = await compressImage(file, 800, 800, 0.6);
           newGroups[gIdx].cards.push(dataUrl);
           processedCount++;
         } catch (err) {
@@ -725,7 +542,8 @@ export default function App() {
       const file = e.target.files[0];
       if (file.type.startsWith('image/')) {
           try {
-              const dataUrl = await compressImage(file);
+              // Keep wallpapers and avatars sharp but compress moderately (2000px max, 90% quality) to prevent storage bloat
+              const dataUrl = await compressImage(file, 2000, 2000, 0.9);
               setter(dataUrl);
           } catch (err) {
               console.error(err);
@@ -1060,23 +878,15 @@ export default function App() {
 
   const renderContent = () => {
     if (view === 'decide') {
-    return <DecideView 
-      onClose={() => setView('home')} 
-      themeConfig={currentThemeConfig} 
-      isDeciding={globalDecideIsDrawing}
-      onStartDecide={(delay, result, tab) => {
-        setView('home');
-        setGlobalDecideResult({ tab, result });
-        if (delay === 0) {
-           setGlobalDecideIsDrawing(false);
-           setGlobalDecideCountdown(0);
-        } else {
-           setGlobalDecideCountdown(delay * 60);
-           setGlobalDecideIsDrawing(true);
-        }
-      }}
-    />;
-  }
+      return (
+        <MoodNotesView 
+          onClose={() => setView('home')} 
+          themeConfig={currentThemeConfig} 
+          myNickname={myNickname} 
+          mjNickname={mjNickname} 
+        />
+      );
+    }
 
   if (view === 'data') {
     return <><DataView onClose={() => setView('home')} showToast={showToast} />{renderOverlays()}</>;
@@ -2200,7 +2010,7 @@ export default function App() {
               key={app.name} 
               className="flex flex-col items-center gap-1.5 cursor-pointer group opacity-80 hover:opacity-100 transition-opacity"
               onClick={() => {
-                if (app.name === '帮我决定') setView('decide');
+                if (app.name === '心情便签') setView('decide');
                 if (app.name === '聊天') setView('chat');
                 if (app.name === '朋友圈') setView('moments');
                 if (app.name === '书影音记录') setView('wishlist');

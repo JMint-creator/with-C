@@ -9,17 +9,145 @@ interface DataViewProps {
 }
 
 const FEATURE_DATA = [
-  { id: 'chat', name: '聊天记录', keys: ['app_chatMessages'], idb: true },
-  { id: 'moments', name: '朋友圈数据', keys: ['app_moments'], idb: true },
-  { id: 'wishlist', name: '心愿单数据', keys: ['app_wishlist'], idb: true },
-  { id: 'checkins', name: '打卡记录', keys: ['app_checkins'], idb: true },
-  { id: 'mailbox', name: '时空信箱', keys: ['app_mailbox_letters'], idb: false },
-  { id: 'todos', name: '待办事项', keys: ['app_todos'], idb: false },
-  { id: 'accounting', name: '记账本', keys: ['app_accounting'], idb: false },
-  { id: 'library', name: '字卡库', keys: ['app_cardGroups'], idb: false },
-  { id: 'emojis', name: '表情与动作', keys: ['app_emojis', 'app_nudges', 'app_stickers'], idb: true },
-  { id: 'settings', name: '系统设置', keys: ['app_theme', 'app_name1', 'app_name2', 'app_motto', 'app_subtitle', 'app_myNickname', 'app_mjNickname', 'app_home_icon_opacity', 'app_wishlist_card_opacity', 'app_moments_style', 'app_chatKeepAlive', 'app_chatBubbleColor', 'app_chatBubbleStyle', 'app_anniversaryDate', 'app_musicList', 'app_activePlaylist', 'app_currentMusicIndex'], idb: false },
+  { 
+    id: 'chat', 
+    name: '聊天', 
+    keys: ['app_chatMessages'],
+    canImport: true 
+  },
+  { 
+    id: 'library', 
+    name: '字卡库及音乐', 
+    keys: [
+      'app_cardGroups', 
+      'app_emojis', 
+      'app_stickers', 
+      'app_nudges', 
+      'app_voiceCards', 
+      'app_musicList', 
+      'app_activePlaylist', 
+      'app_currentMusicIndex',
+      'app_keepalive_audio'
+    ],
+    canImport: true 
+  },
+  { 
+    id: 'settings', 
+    name: '系统设置', 
+    keys: [
+      'app_theme', 
+      'app_name1', 
+      'app_name2', 
+      'app_motto', 
+      'app_subtitle', 
+      'app_myNickname', 
+      'app_mjNickname', 
+      'app_myHandle', 
+      'app_mjHandle', 
+      'app_home_icon_opacity', 
+      'app_wishlist_card_opacity', 
+      'app_moments_style', 
+      'app_chatKeepAlive', 
+      'app_chatBubbleColor', 
+      'app_chatBubbleStyle', 
+      'app_anniversaryDate', 
+      'app_chatCss', 
+      'app_chatFont', 
+      'app_keepalive_icon', 
+      'app_wallpaper', 
+      'app_profileBg', 
+      'app_avatar1', 
+      'app_avatar2', 
+      'app_chatBg', 
+      'app_chatAvatar1', 
+      'app_chatAvatar2',
+      'app_charId',
+      'app_chatNudgeText',
+      'app_chatPushNotify'
+    ],
+    canImport: true 
+  },
+  { 
+    id: 'accounting', 
+    name: '记账本', 
+    keys: ['app_accounting_records'],
+    canImport: false 
+  },
+  { 
+    id: 'wishlist', 
+    name: '心愿单', 
+    keys: ['app_wishlist', 'app_wishlist_bg'],
+    canImport: false 
+  },
+  { 
+    id: 'todos', 
+    name: '待办事项', 
+    keys: ['app_todos', 'app_todo_config'],
+    canImport: false 
+  },
+  { 
+    id: 'checkins', 
+    name: '查岗打卡', 
+    keys: ['app_checkins', 'app_checkins_bg'],
+    canImport: false 
+  },
+  { 
+    id: 'moods', 
+    name: '心情便签', 
+    keys: ['app_mood_notes'],
+    canImport: false 
+  },
+  { 
+    id: 'mailbox', 
+    name: '信箱', 
+    keys: ['app_mailbox_letters'],
+    canImport: false 
+  },
+  { 
+    id: 'moments', 
+    name: '朋友圈动态', 
+    keys: ['app_moments', 'app_moments_bg', 'last_mengjiao_post'],
+    canImport: false 
+  },
 ];
+
+const getGroupForKey = (key: string): string => {
+  if (['app_chatMessages'].includes(key)) {
+    return 'chat';
+  }
+  if (['app_mailbox_letters'].includes(key)) {
+    return 'mailbox';
+  }
+  if (['app_moments', 'app_moments_bg', 'last_mengjiao_post'].includes(key)) {
+    return 'moments';
+  }
+  if ([
+    'app_accounting_records', 
+    'app_wishlist', 
+    'app_wishlist_bg', 
+    'app_todos', 
+    'app_todo_config', 
+    'app_checkins', 
+    'app_checkins_bg', 
+    'app_mood_notes'
+  ].includes(key)) {
+    return 'tools';
+  }
+  if ([
+    'app_cardGroups', 
+    'app_emojis', 
+    'app_stickers', 
+    'app_nudges', 
+    'app_voiceCards', 
+    'app_musicList', 
+    'app_activePlaylist', 
+    'app_currentMusicIndex',
+    'app_keepalive_audio'
+  ].includes(key)) {
+    return 'library';
+  }
+  return 'settings';
+};
 
 export const DataView: React.FC<DataViewProps> = ({ onClose, showToast }) => {
   const [confirmModal, setConfirmModal] = useState<{title: string, msg: string, onConfirm: () => void, isDanger?: boolean} | null>(null);
@@ -42,10 +170,11 @@ export const DataView: React.FC<DataViewProps> = ({ onClose, showToast }) => {
     setCalculating(true);
     try {
       let chatSize = 0;
+      let mailboxSize = 0;
       let momentsSize = 0;
-      let visualSize = 0;
       let toolsSize = 0;
-      let systemSize = 0;
+      let librarySize = 0;
+      let settingsSize = 0;
 
       const getValSize = (val: any): number => {
         if (val === undefined || val === null) return 0;
@@ -59,6 +188,16 @@ export const DataView: React.FC<DataViewProps> = ({ onClose, showToast }) => {
         }
       };
 
+      const addSizeToGroup = (key: string, size: number) => {
+        const group = getGroupForKey(key);
+        if (group === 'chat') chatSize += size;
+        else if (group === 'mailbox') mailboxSize += size;
+        else if (group === 'moments') momentsSize += size;
+        else if (group === 'tools') toolsSize += size;
+        else if (group === 'library') librarySize += size;
+        else if (group === 'settings') settingsSize += size;
+      };
+
       // 1. Scan LocalStorage
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
@@ -66,17 +205,7 @@ export const DataView: React.FC<DataViewProps> = ({ onClose, showToast }) => {
           const val = localStorage.getItem(key);
           if (val) {
             const size = getValSize(val);
-            if (['app_chatMessages', 'app_stickers', 'app_emojis', 'app_nudges'].includes(key)) {
-              chatSize += size;
-            } else if (['app_moments', 'app_moments_bg'].includes(key)) {
-              momentsSize += size;
-            } else if (['app_wallpaper', 'app_chat_bg', 'app_profile_bg', 'app_wishlist_bg', 'app_checkins_bg'].includes(key)) {
-              visualSize += size;
-            } else if (['app_todos', 'app_accounting', 'app_mailbox_letters', 'app_cardGroups', 'app_wishlist', 'app_checkins'].includes(key)) {
-              toolsSize += size;
-            } else {
-              systemSize += size;
-            }
+            addSizeToGroup(key, size);
           }
         }
       }
@@ -88,30 +217,21 @@ export const DataView: React.FC<DataViewProps> = ({ onClose, showToast }) => {
           const val = await get(key);
           if (val !== undefined) {
             const size = getValSize(val);
-            if (['app_chatMessages', 'app_stickers', 'app_emojis', 'app_nudges'].includes(key)) {
-              chatSize += size;
-            } else if (['app_moments', 'app_moments_bg'].includes(key)) {
-              momentsSize += size;
-            } else if (['app_wallpaper', 'app_chat_bg', 'app_profile_bg', 'app_wishlist_bg', 'app_checkins_bg'].includes(key)) {
-              visualSize += size;
-            } else if (['app_todos', 'app_accounting', 'app_mailbox_letters', 'app_cardGroups', 'app_wishlist', 'app_checkins'].includes(key)) {
-              toolsSize += size;
-            } else {
-              systemSize += size;
-            }
+            addSizeToGroup(key, size);
           }
         }
       }
 
-      const total = chatSize + momentsSize + visualSize + toolsSize + systemSize;
+      const total = chatSize + mailboxSize + momentsSize + toolsSize + librarySize + settingsSize;
       setTotalSize(total);
 
       setCategories([
-        { id: 'chat', name: '聊天与表情包', color: '#007AFF', size: chatSize },
+        { id: 'chat', name: '聊天', color: '#007AFF', size: chatSize },
+        { id: 'mailbox', name: '信箱', color: '#5856D6', size: mailboxSize },
         { id: 'moments', name: '朋友圈动态', color: '#34C759', size: momentsSize },
-        { id: 'visual', name: '自定背景与壁纸', color: '#AF52DE', size: visualSize },
         { id: 'tools', name: '伴侣小工具', color: '#FF9500', size: toolsSize },
-        { id: 'system', name: '设置与基本信息', color: '#8E8E93', size: systemSize }
+        { id: 'library', name: '字卡库及音乐', color: '#FF2D55', size: librarySize },
+        { id: 'settings', name: '系统设置', color: '#8E8E93', size: settingsSize }
       ]);
     } catch (e) {
       console.error(e);
@@ -201,12 +321,15 @@ export const DataView: React.FC<DataViewProps> = ({ onClose, showToast }) => {
        const data: any = { localStorage: {}, indexedDB: {} };
        
        for (const k of feature.keys) {
-         if (k === 'app_stickers' || (feature.idb && k !== 'app_cardGroups' && k !== 'app_emojis' && k !== 'app_nudges')) {
-             const val = await get(k);
-             if (val !== undefined) data.indexedDB[k] = val;
-         } else {
-             const val = localStorage.getItem(k);
-             if (val) data.localStorage[k] = val;
+         // Check IDB
+         const idbVal = await get(k);
+         if (idbVal !== undefined) {
+           data.indexedDB[k] = idbVal;
+         }
+         // Check LocalStorage
+         const lsVal = localStorage.getItem(k);
+         if (lsVal !== null) {
+           data.localStorage[k] = lsVal;
          }
        }
        
@@ -242,7 +365,7 @@ export const DataView: React.FC<DataViewProps> = ({ onClose, showToast }) => {
           onConfirm: async () => {
             if (data.localStorage) {
               Object.entries(data.localStorage).forEach(([k, v]) => {
-                if (feature.keys.includes(k) || feature.id === 'settings') { // settings could have partials
+                if (feature.keys.includes(k)) {
                   localStorage.setItem(k, v as string);
                 }
               });
@@ -276,11 +399,8 @@ export const DataView: React.FC<DataViewProps> = ({ onClose, showToast }) => {
           isDanger: true,
           onConfirm: async () => {
               for (const k of feature.keys) {
-                 if (k === 'app_stickers' || (feature.idb && k !== 'app_cardGroups' && k !== 'app_emojis' && k !== 'app_nudges')) {
-                     await del(k);
-                 } else {
-                     localStorage.removeItem(k);
-                 }
+                  await del(k);
+                  localStorage.removeItem(k);
               }
               showToast(`【${feature.name}】已清空`);
               await calculateStorage();
@@ -446,13 +566,15 @@ export const DataView: React.FC<DataViewProps> = ({ onClose, showToast }) => {
                            <button onClick={() => handleExportFeature(feature)} disabled={exportStatus[feature.id] === 'success'} className={`flex-1 py-2 flex justify-center items-center gap-1.5 rounded-[10px] text-[13px] font-medium transition-colors ${exportStatus[feature.id] === 'success' ? 'bg-[#34C759]/10 text-[#34C759]' : 'bg-[#F2F2F7] text-[#007AFF] active:bg-[#e5e5ea]'}`}>
                               {exportStatus[feature.id] === 'success' ? <><CheckCircle size={14} /> 已备份</> : <><Download size={14} /> 备份</>}
                            </button>
-                           <div className="flex-1 relative">
-                              <button disabled={importStatus[feature.id] === 'loading'} className={`w-full py-2 flex justify-center items-center gap-1.5 rounded-[10px] text-[13px] font-medium transition-colors ${importStatus[feature.id] === 'loading' ? 'bg-[#F2F2F7] text-[#8E8E93]' : importStatus[feature.id] === 'success' ? 'bg-[#34C759]/10 text-[#34C759]' : 'bg-[#F2F2F7] text-[#34C759] active:bg-[#e5e5ea]'}`}>
-                                 {importStatus[feature.id] === 'loading' ? <><Loader2 size={14} className="animate-spin" /> 导入中</> : importStatus[feature.id] === 'success' ? <><CheckCircle size={14} /> 导入成功</> : <><Upload size={14} /> 导入</>}
-                              </button>
-                              <input type="file" accept=".json" className="absolute inset-0 opacity-0 cursor-pointer" title="导入模块数据" onChange={(e) => handleImportFeature(e, feature)} disabled={importStatus[feature.id] === 'loading'} />
-                            </div>
-                            <button onClick={() => handleClearFeature(feature)} className="flex-1 py-2 flex justify-center items-center gap-1.5 bg-[#FF3B30]/10 rounded-[10px] text-[#FF3B30] text-[13px] font-medium active:bg-[#FF3B30]/20 transition-colors">
+                           {feature.canImport && (
+                             <div className="flex-1 relative">
+                                <button disabled={importStatus[feature.id] === 'loading'} className={`w-full py-2 flex justify-center items-center gap-1.5 rounded-[10px] text-[13px] font-medium transition-colors ${importStatus[feature.id] === 'loading' ? 'bg-[#F2F2F7] text-[#8E8E93]' : importStatus[feature.id] === 'success' ? 'bg-[#34C759]/10 text-[#34C759]' : 'bg-[#F2F2F7] text-[#34C759] active:bg-[#e5e5ea]'}`}>
+                                   {importStatus[feature.id] === 'loading' ? <><Loader2 size={14} className="animate-spin" /> 导入中</> : importStatus[feature.id] === 'success' ? <><CheckCircle size={14} /> 导入成功</> : <><Upload size={14} /> 导入</>}
+                                </button>
+                                <input type="file" accept=".json" className="absolute inset-0 opacity-0 cursor-pointer" title="导入模块数据" onChange={(e) => handleImportFeature(e, feature)} disabled={importStatus[feature.id] === 'loading'} />
+                              </div>
+                           )}
+                           <button onClick={() => handleClearFeature(feature)} className="flex-1 py-2 flex justify-center items-center gap-1.5 bg-[#FF3B30]/10 rounded-[10px] text-[#FF3B30] text-[13px] font-medium active:bg-[#FF3B30]/20 transition-colors">
                               <Trash2 size={14} /> 清除
                            </button>
                         </div>
