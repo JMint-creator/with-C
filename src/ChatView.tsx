@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronLeft, Video, Settings, Smile, Hand, Plus, Image as ImageIcon, Send, X, PhoneCall, PhoneMissed, Phone, MicOff, Mic, CameraOff, MonitorPlay, Check, CheckCheck, MessageCircle, MoreHorizontal, Heart, Sparkles, Camera, Music, Disc, Film } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Video, Settings, Smile, Hand, Plus, Image as ImageIcon, Send, X, PhoneCall, PhoneMissed, Phone, MicOff, Mic, CameraOff, MonitorPlay, Check, CheckCheck, MessageCircle, MoreHorizontal, Heart, Sparkles, Camera, Music, Disc, Film, Gift, Mail, MailOpen } from 'lucide-react';
 import { useLocalState, useIDBState, compressImage } from './utils';
 import { useCallStore, callStore } from './callStore';
 import { MoviePlayer } from './components/MoviePlayer';
@@ -96,7 +96,7 @@ function getMeCardColors(bg: string, defaultBubble: string) {
 type Message = {
   id: string;
   sender: 'me' | 'them';
-  type: 'text' | 'nudge' | 'emoji' | 'call' | 'sticker' | 'check_in' | 'image' | 'voice' | 'invite' | 'check_in_feedback' | 'decide';
+  type: 'text' | 'nudge' | 'emoji' | 'call' | 'sticker' | 'check_in' | 'image' | 'voice' | 'invite' | 'check_in_feedback' | 'decide' | 'red_envelope';
   content: string;
   time: string;
   imageUrl?: string;
@@ -116,6 +116,8 @@ type Message = {
   decideTarotCount?: number;
   decideOptions?: string[];
   decideResult?: string;
+  redEnvelopeAmount?: number;
+  redEnvelopeStatus?: 'unopened' | 'opened';
 };
 
 export const ChatView = ({ 
@@ -359,6 +361,192 @@ export const ChatView = ({
   const [inviteModal, setInviteModal] = useState<{ show: boolean; type: 'music' | 'movie'; direction: 'me' | 'them' }>({ show: false, type: 'music', direction: 'me' });
   const [inviteInputVal, setInviteInputVal] = useState('');
 
+  // Red Envelope states & database syncing
+  const [virtualRecords, setVirtualRecords] = useIDBState<any[]>('app_virtual_accounting_records', []);
+  const [showSendEnvelope, setShowSendEnvelope] = useState(false);
+  const [sendEnvelopeAmount, setSendEnvelopeAmount] = useState('');
+  const [sendEnvelopeNote, setSendEnvelopeNote] = useState('');
+  const [openEnvelopeOverlay, setOpenEnvelopeOverlay] = useState<{
+    show: boolean;
+    messageId: string | null;
+    sender: 'me' | 'them' | null;
+    amount: number;
+    note: string;
+    status: 'unopened' | 'opened';
+    isOpening: boolean;
+  }>({
+    show: false,
+    messageId: null,
+    sender: null,
+    amount: 0,
+    note: '',
+    status: 'unopened',
+    isOpening: false
+  });
+
+  // Fiancé Red Envelope Generator (Romantic & Random with customized copywriting)
+  const generateFianceRedEnvelope = () => {
+    // Check for Birthday (10.19) and Anniversary (4.11)
+    const today = new Date();
+    const month = today.getMonth() + 1; // 1-indexed (1-12)
+    const date = today.getDate();
+
+    if (month === 10 && date === 19) {
+      // Birthday custom high-end envelope
+      const birthdayAmounts = [10190.00, 101910.19, 52013.14, 100000.00];
+      const amount = birthdayAmounts[Math.floor(Math.random() * birthdayAmounts.length)];
+      return {
+        amount,
+        note: '未婚妻生日快乐'
+      };
+    }
+
+    if (month === 4 && date === 11) {
+      // Anniversary custom high-end envelope
+      const anniversaryAmounts = [41104.11, 52013.14, 131400.00];
+      const amount = anniversaryAmounts[Math.floor(Math.random() * anniversaryAmounts.length)];
+      return {
+        amount,
+        note: '广阔的世界中，我们是最特别的那对小鸟'
+      };
+    }
+
+    let amount = 0;
+    
+    // 50% probability of random amount, 50% probability of preset romantic/lucky amounts
+    if (Math.random() < 0.5) {
+      // Random amount
+      if (Math.random() < 0.6) {
+        // 60% probability of close-to-life random small change (10.00 to 999.99)
+        amount = parseFloat((Math.random() * (999.99 - 10.00) + 10.00).toFixed(2));
+      } else {
+        // 40% probability of random medium to high-end gift money (1000.00 to 9999.99)
+        amount = parseFloat((Math.random() * (9999.99 - 1000.00) + 1000.00).toFixed(2));
+      }
+    } else {
+      // Preset amounts
+      const smallPresets = [5.20, 6.66, 8.88, 9.99, 13.14, 18.88, 28.88, 52.00, 66.66, 88.88, 99.99, 131.40, 288.88, 520.00, 666.66, 888.88, 999.99];
+      // 财阀 (Chaebol/wealthy fiance) high-end luxury romantic preset amounts
+      const largePresets = [1000.00, 1314.00, 2000.00, 5000.00, 5200.00, 8888.00, 9999.00, 13140.00, 52013.14, 88888.88, 100000.00, 520131.40];
+      
+      if (Math.random() < 0.6) {
+        // 60% chance of small preset
+        amount = smallPresets[Math.floor(Math.random() * smallPresets.length)];
+      } else {
+        // 40% chance of large preset
+        amount = largePresets[Math.floor(Math.random() * largePresets.length)];
+      }
+    }
+
+    // Copywriting determination:
+    // "梦角发红包大概率没有文案！小部分情况下有文案"
+    // Let's set 80% probability of no custom copy (uses default '恭喜发财，大吉大利')
+    // 20% probability of having the special customized copy based on amount size
+    let note = '恭喜发财，大吉大利';
+    
+    if (Math.random() < 0.2) {
+      if (amount < 1000) {
+        // Small amount (<1000) custom copy pool
+        const smallNotes = [
+          '给亲爱的买奶茶',
+          '给未婚妻买咖啡',
+          '给老婆买花',
+          '给未婚妻点好吃的'
+        ];
+        note = smallNotes[Math.floor(Math.random() * smallNotes.length)];
+      } else {
+        // Large amount (>=1000) custom copy pool
+        const largeNotes = [
+          '只是想哄未婚妻开心',
+          '未婚夫的钱都给你花',
+          '可以兑换未婚妻的一个亲亲嘛',
+          '未婚夫给你报销'
+        ];
+        note = largeNotes[Math.floor(Math.random() * largeNotes.length)];
+      }
+    }
+
+    return {
+      amount,
+      note
+    };
+  };
+
+  // User Sends Red Envelope Function
+  const handleSendEnvelope = (amountVal: number, noteVal: string) => {
+    if (!amountVal || amountVal <= 0) return;
+    
+    const title = noteVal.trim() || '恭喜发财，大吉大利';
+    const formattedTime = getFormatTime();
+    const msgId = Date.now().toString() + Math.random().toString(36).substring(2, 5);
+
+    const newMsg: Message = {
+      id: msgId,
+      sender: 'me',
+      type: 'red_envelope',
+      content: title,
+      time: formattedTime,
+      redEnvelopeAmount: amountVal,
+      redEnvelopeStatus: 'unopened'
+    };
+
+    setMessages(prev => [...prev, newMsg]);
+
+    // Create expense record for user immediately
+    const newRecord = {
+      id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
+      type: 'expense' as const,
+      amount: amountVal,
+      category: 'gift',
+      note: title,
+      timestamp: Date.now()
+    };
+    setVirtualRecords(prev => [newRecord, ...prev]);
+
+    setShowSendEnvelope(false);
+    setSendEnvelopeAmount('');
+    setSendEnvelopeNote('');
+
+    // Simulation of fiancé opening the envelope
+    setIsTyping(true);
+    setTimeout(() => {
+      // Mark as opened
+      setMessages(currentMsgs => {
+        return currentMsgs.map(m => {
+          if (m.id === msgId) {
+            return { ...m, redEnvelopeStatus: 'opened' as const };
+          }
+          return m;
+        });
+      });
+      setIsTyping(false);
+    }, 1500);
+  };
+
+  // User Opens a Red Envelope from Fiancé
+  const handleOpenEnvelopeFromFiance = (msgId: string, amt: number, nt: string) => {
+    // 1. Mark message as opened
+    setMessages(currentMsgs => {
+      return currentMsgs.map(m => {
+        if (m.id === msgId) {
+          return { ...m, redEnvelopeStatus: 'opened' as const };
+        }
+        return m;
+      });
+    });
+
+    // 2. Add income transaction record for user
+    const newRecord = {
+      id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
+      type: 'income' as const,
+      amount: amt,
+      category: 'gift',
+      note: nt,
+      timestamp: Date.now()
+    };
+    setVirtualRecords(prev => [newRecord, ...prev]);
+  };
+
   const [decideModal, setDecideModal] = useState<{
     show: boolean;
     tab: 'tarot' | 'custom';
@@ -548,62 +736,78 @@ export const ChatView = ({
     const scheduleNextCall = () => {
       const waitMins = 15 + Math.random() * 45;
       timer = setTimeout(() => {
-         if (Math.random() < 0.25) { // 25% chance of an event every ~15-60 mins
-           const eventRand = Math.random();
-           if (eventRand < 0.4) {
-             // 40% chance for video call
-             if (videoCallState === 'none') {
-               triggerIncomingVideoCall();
-             }
-           } else if (eventRand < 0.8) {
-             // 40% chance for check-in
-             setMessages(msgs => [...msgs, {
-               id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
-               sender: 'them',
-               type: 'check_in',
-               content: `${charId} 想知道你在干什么`,
-               checkInStatus: 'pending',
-               time: getFormatTime()
-             }]);
-             const pushNotify = window.localStorage.getItem('app_chatPushNotify');
-             if ((pushNotify ? JSON.parse(pushNotify) : true) && 'Notification' in window && window.Notification.permission === 'granted') {
-               new window.Notification(charId, { body: `${charId} 想知道你在干什么` });
-             }
-           } else if (eventRand < 0.9) {
-             // 10% chance for music invitation
-             setMessages(msgs => [...msgs, {
-               id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
-               sender: 'them',
-               type: 'invite',
-               content: '发起了一起听歌',
-               time: getFormatTime(),
-               inviteType: 'music',
-               inviteStatus: 'pending',
-               songName: '想和未婚妻一起听歌'
-             }]);
-             const pushNotify = window.localStorage.getItem('app_chatPushNotify');
-             if ((pushNotify ? JSON.parse(pushNotify) : true) && 'Notification' in window && window.Notification.permission === 'granted') {
-               new window.Notification(charId, { body: `${charId} 邀请你一起听歌` });
-             }
-           } else {
-             // 10% chance for movie invitation
-             setMessages(msgs => [...msgs, {
-               id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
-               sender: 'them',
-               type: 'invite',
-               content: '发起了一起观影',
-               time: getFormatTime(),
-               inviteType: 'movie',
-               inviteStatus: 'pending',
-               movieName: '想和未婚妻一起看电影'
-             }]);
-             const pushNotify = window.localStorage.getItem('app_chatPushNotify');
-             if ((pushNotify ? JSON.parse(pushNotify) : true) && 'Notification' in window && window.Notification.permission === 'granted') {
-               new window.Notification(charId, { body: `${charId} 邀请你一起观影` });
-             }
-           }
-         }
-         scheduleNextCall();
+        if (Math.random() < 0.25) { // 25% chance of an event every ~15-60 mins
+          const eventRand = Math.random();
+          if (eventRand < 0.3) {
+            // 30% chance for video call
+            if (videoCallState === 'none') {
+              triggerIncomingVideoCall();
+            }
+          } else if (eventRand < 0.6) {
+            // 30% chance for check-in
+            setMessages(msgs => [...msgs, {
+              id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
+              sender: 'them',
+              type: 'check_in',
+              content: `${charId} 想知道你在干什么`,
+              checkInStatus: 'pending',
+              time: getFormatTime()
+            }]);
+            const pushNotify = window.localStorage.getItem('app_chatPushNotify');
+            if ((pushNotify ? JSON.parse(pushNotify) : true) && 'Notification' in window && window.Notification.permission === 'granted') {
+              new window.Notification(charId, { body: `${charId} 想知道你在干什么` });
+            }
+          } else if (eventRand < 0.7) {
+            // 10% chance for music invitation
+            setMessages(msgs => [...msgs, {
+              id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
+              sender: 'them',
+              type: 'invite',
+              content: '发起了一起听歌',
+              time: getFormatTime(),
+              inviteType: 'music',
+              inviteStatus: 'pending',
+              songName: '想和未婚妻一起听歌'
+            }]);
+            const pushNotify = window.localStorage.getItem('app_chatPushNotify');
+            if ((pushNotify ? JSON.parse(pushNotify) : true) && 'Notification' in window && window.Notification.permission === 'granted') {
+              new window.Notification(charId, { body: `${charId} 邀请你一起听歌` });
+            }
+          } else if (eventRand < 0.8) {
+            // 10% chance for movie invitation
+            setMessages(msgs => [...msgs, {
+              id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
+              sender: 'them',
+              type: 'invite',
+              content: '发起了一起观影',
+              time: getFormatTime(),
+              inviteType: 'movie',
+              inviteStatus: 'pending',
+              movieName: '想和未婚妻一起看电影'
+            }]);
+            const pushNotify = window.localStorage.getItem('app_chatPushNotify');
+            if ((pushNotify ? JSON.parse(pushNotify) : true) && 'Notification' in window && window.Notification.permission === 'granted') {
+              new window.Notification(charId, { body: `${charId} 邀请你一起看电影` });
+            }
+          } else {
+            // 20% chance for spontaneous red envelope from fiancé! (Fiancé sending frequency)
+            const envData = generateFianceRedEnvelope();
+            setMessages(msgs => [...msgs, {
+              id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
+              sender: 'them',
+              type: 'red_envelope',
+              content: envData.note,
+              time: getFormatTime(),
+              redEnvelopeAmount: envData.amount,
+              redEnvelopeStatus: 'unopened'
+            }]);
+            const pushNotify = window.localStorage.getItem('app_chatPushNotify');
+            if ((pushNotify ? JSON.parse(pushNotify) : true) && 'Notification' in window && window.Notification.permission === 'granted') {
+              new window.Notification(charId, { body: `${charId} 给你发了一个爱意红包🧧` });
+            }
+          }
+        }
+        scheduleNextCall();
       }, Math.floor(waitMins * 60 * 1000));
     };
     scheduleNextCall();
@@ -764,121 +968,135 @@ export const ChatView = ({
           time: getFormatTime()
         });
       } else {
-        if (Math.random() < 0.03) {
-          const storedNudges = window.localStorage.getItem('app_nudges');
-          const nudgesArr = storedNudges ? JSON.parse(storedNudges) : ['拍了拍你'];
-          const randomNudge = nudgesArr.length > 0 ? nudgesArr[Math.floor(Math.random() * nudgesArr.length)] : '拍了拍你';
+        // 4% conversational chance of getting a pocket money red envelope as a response! (Conversational frequency)
+        if (Math.random() < 0.04) {
+          const envData = generateFianceRedEnvelope();
           newMsgs.push({
             id: (++baseId).toString(),
             sender: 'them',
-            type: 'nudge',
-            content: randomNudge,
-            time: getFormatTime()
+            type: 'red_envelope',
+            content: envData.note,
+            time: getFormatTime(),
+            redEnvelopeAmount: envData.amount,
+            redEnvelopeStatus: 'unopened'
           });
-        }
-
-        if (Math.random() < 0.05) {
-          newMsgs.push({
-            id: (++baseId).toString(),
-            sender: 'them',
-            type: 'check_in',
-            content: `${charId} 想知道你在干什么`,
-            checkInStatus: 'pending',
-            time: getFormatTime()
-          });
-        }
-
-        // Add small chance of real-time proactive video call on conversation response!
-        if (Math.random() < 0.04 && mockVideo && videoCallState === 'none') {
-          setTimeout(() => {
-            triggerIncomingVideoCall();
-          }, 1500);
-        }
-
-        const r = Math.random();
-        let replyCount = 1;
-        if (r > 0.95) replyCount = 3;
-        else if (r > 0.75) replyCount = 2;
-        
-        for(let i=0; i<replyCount; i++) {
-          const shouldSendVoice = Math.random() < 0.12 && (voiceCards || []).length > 0;
-
-          if (shouldSendVoice) {
-            const randomVoice = (voiceCards || [])[Math.floor(Math.random() * (voiceCards || []).length)];
+        } else {
+          if (Math.random() < 0.03) {
+            const storedNudges = window.localStorage.getItem('app_nudges');
+            const nudgesArr = storedNudges ? JSON.parse(storedNudges) : ['拍了拍你'];
+            const randomNudge = nudgesArr.length > 0 ? nudgesArr[Math.floor(Math.random() * nudgesArr.length)] : '拍了拍你';
             newMsgs.push({
               id: (++baseId).toString(),
               sender: 'them',
-              type: 'voice',
-              content: '',
-              audioUrl: randomVoice.url,
-              voiceDuration: randomVoice.duration,
+              type: 'nudge',
+              content: randomNudge,
               time: getFormatTime()
             });
-          } else {
-            let content = '嗯嗯';
-            if (replyCards.length > 0) {
-               const condRand = Math.random();
-               if (condRand < 0.15 && replyCards.length >= 2) {
-                 const countToConcat = Math.min(Math.random() < 0.5 ? 2 : 3, replyCards.length);
-                 const shuffled = [...replyCards].sort(() => Math.random() - 0.5);
-                 content = shuffled.slice(0, countToConcat).map(c => c.content).join(' ');
-               } else {
-                 content = replyCards[Math.floor(Math.random() * replyCards.length)].content;
-               }
-            }
+          }
 
-            let replyToMsg: string | undefined = undefined;
-            if (Math.random() < 0.3) {
-               const myMsgs = messages.filter(m => m.sender === 'me');
-               const recentMyMsgs = myMsgs.slice(-10);
-               if (recentMyMsgs.length > 0) {
-                  const chosen = recentMyMsgs[Math.floor(Math.random() * recentMyMsgs.length)];
-                  if (chosen.type === 'text') {
-                    replyToMsg = chosen.content.length > 40 ? chosen.content.substring(0, 40) + '...' : chosen.content;
-                  } else if (chosen.type === 'voice') {
-                    replyToMsg = '[语音]';
-                  } else if (chosen.type === 'image') {
-                    replyToMsg = '[图片]';
-                  } else if (chosen.type === 'sticker') {
-                    replyToMsg = '[表情]';
-                  } else if (chosen.type === 'check_in') {
-                    replyToMsg = '[汇报]';
-                  } else {
-                    replyToMsg = '[消息]';
-                  }
-               }
-            }
-            
-            let emojiContent = '';
-            let sendEmojiSeparate = false;
-            if (Math.random() < 0.2 && emojis.length > 0) {
-              const emoji = emojis[Math.floor(Math.random() * emojis.length)];
-              if (mixEmoji) {
-                 if (Math.random() < 0.5) content = emoji + content;
-                 else content = content + emoji;
-              } else {
-                 emojiContent = emoji;
-                 sendEmojiSeparate = true;
-              }
-            }
-
+          if (Math.random() < 0.05) {
             newMsgs.push({
               id: (++baseId).toString(),
               sender: 'them',
-              type: 'text',
-              content,
-              replyTo: replyToMsg,
+              type: 'check_in',
+              content: `${charId} 想知道你在干什么`,
+              checkInStatus: 'pending',
               time: getFormatTime()
             });
+          }
 
-            if (sendEmojiSeparate) {
+          // Add small chance of real-time proactive video call on conversation response!
+          if (Math.random() < 0.04 && mockVideo && videoCallState === 'none') {
+            setTimeout(() => {
+              triggerIncomingVideoCall();
+            }, 1500);
+          }
+
+          const r = Math.random();
+          let replyCount = 1;
+          if (r > 0.95) replyCount = 3;
+          else if (r > 0.75) replyCount = 2;
+          
+          for(let i=0; i<replyCount; i++) {
+            const shouldSendVoice = Math.random() < 0.12 && (voiceCards || []).length > 0;
+
+            if (shouldSendVoice) {
+              const randomVoice = (voiceCards || [])[Math.floor(Math.random() * (voiceCards || []).length)];
               newMsgs.push({
                 id: (++baseId).toString(),
                 sender: 'them',
-                type: 'emoji',
-                content: emojiContent,
+                type: 'voice',
+                content: '',
+                audioUrl: randomVoice.url,
+                voiceDuration: randomVoice.duration,
                 time: getFormatTime()
               });
+            } else {
+              let content = '嗯嗯';
+              if (replyCards.length > 0) {
+                 const condRand = Math.random();
+                 if (condRand < 0.15 && replyCards.length >= 2) {
+                   const countToConcat = Math.min(Math.random() < 0.5 ? 2 : 3, replyCards.length);
+                   const shuffled = [...replyCards].sort(() => Math.random() - 0.5);
+                   content = shuffled.slice(0, countToConcat).map(c => c.content).join(' ');
+                 } else {
+                   content = replyCards[Math.floor(Math.random() * replyCards.length)].content;
+                 }
+              }
+
+              let replyToMsg: string | undefined = undefined;
+              if (Math.random() < 0.3) {
+                 const myMsgs = messages.filter(m => m.sender === 'me');
+                 const recentMyMsgs = myMsgs.slice(-10);
+                 if (recentMyMsgs.length > 0) {
+                    const chosen = recentMyMsgs[Math.floor(Math.random() * recentMyMsgs.length)];
+                    if (chosen.type === 'text') {
+                      replyToMsg = chosen.content.length > 40 ? chosen.content.substring(0, 40) + '...' : chosen.content;
+                    } else if (chosen.type === 'voice') {
+                      replyToMsg = '[语音]';
+                    } else if (chosen.type === 'image') {
+                      replyToMsg = '[图片]';
+                    } else if (chosen.type === 'sticker') {
+                      replyToMsg = '[表情]';
+                    } else if (chosen.type === 'check_in') {
+                      replyToMsg = '[汇报]';
+                    } else {
+                      replyToMsg = '[消息]';
+                    }
+                 }
+              }
+              
+              let emojiContent = '';
+              let sendEmojiSeparate = false;
+              if (Math.random() < 0.2 && emojis.length > 0) {
+                const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+                if (mixEmoji) {
+                   if (Math.random() < 0.5) content = emoji + content;
+                   else content = content + emoji;
+                } else {
+                   emojiContent = emoji;
+                   sendEmojiSeparate = true;
+                }
+              }
+
+              newMsgs.push({
+                id: (++baseId).toString(),
+                sender: 'them',
+                type: 'text',
+                content,
+                replyTo: replyToMsg,
+                time: getFormatTime()
+              });
+
+              if (sendEmojiSeparate) {
+                newMsgs.push({
+                  id: (++baseId).toString(),
+                  sender: 'them',
+                  type: 'emoji',
+                  content: emojiContent,
+                  time: getFormatTime()
+                });
+              }
             }
           }
 
@@ -1070,9 +1288,11 @@ export const ChatView = ({
                  />
              </div>
           </div>
-          <button onClick={() => onOpenSettings(themeConfig)} className="w-[42px] h-[42px] rounded-full flex items-center justify-center bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_2px_12px_rgba(0,0,0,0.06),inset_0_2px_4px_rgba(255,255,255,0.3)] active:scale-95 transition-transform" style={{ color: themeConfig.textPrimary || '#333' }}>
-            <MoreHorizontal size={22} strokeWidth={2.5} />
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => onOpenSettings(themeConfig)} className="w-[42px] h-[42px] rounded-full flex items-center justify-center bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_2px_12px_rgba(0,0,0,0.06),inset_0_2px_4px_rgba(255,255,255,0.3)] active:scale-95 transition-transform" style={{ color: themeConfig.textPrimary || '#333' }}>
+              <MoreHorizontal size={22} strokeWidth={2.5} />
+            </button>
+          </div>
         </div>
       ) : (
         <div 
@@ -1591,6 +1811,49 @@ export const ChatView = ({
                       </div>
                     )}
                   </div>
+                ) : msg.type === 'red_envelope' ? (
+                  <div 
+                    onClick={() => {
+                      setOpenEnvelopeOverlay({
+                        show: true,
+                        messageId: msg.id,
+                        sender: msg.sender,
+                        amount: msg.redEnvelopeAmount || 0,
+                        note: msg.content,
+                        status: msg.redEnvelopeStatus || 'unopened',
+                        isOpening: false
+                      });
+                    }}
+                    className={`cursor-pointer w-[230px] rounded-[16px] overflow-hidden shadow-sm active:scale-95 transition-all relative select-none ${
+                      isMe ? 'rounded-tr-[4px]' : 'rounded-tl-[4px]'
+                    }`}
+                    style={{
+                      background: msg.redEnvelopeStatus === 'opened' 
+                        ? 'linear-gradient(135deg, #E28C86 0%, #D05F56 100%)' 
+                        : 'linear-gradient(135deg, #DE5347 0%, #C03F35 100%)'
+                    }}
+                  >
+                    <div className="p-4 flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-[#FFE8BC]/10 flex items-center justify-center shrink-0 border border-[#FFE8BC]/25">
+                        {msg.redEnvelopeStatus === 'opened' ? (
+                          <MailOpen size={20} className="text-[#FFE8BC]/60" strokeWidth={1.5} />
+                        ) : (
+                          <Mail size={20} className="text-[#FFE8BC]" strokeWidth={1.5} />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[14.5px] font-bold text-[#FFE8BC] truncate leading-tight tracking-wide">
+                          {msg.content}
+                        </div>
+                        <div className="text-[11px] text-[#FFE8BC]/75 mt-1 flex items-center gap-1">
+                          {msg.redEnvelopeStatus === 'opened' ? '已拆开' : '待拆开'}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="bg-black/[0.04] px-4 py-1.5 flex items-center text-[9px] text-[#FFE8BC]/50 border-t border-white/5 font-sans tracking-wide">
+                      <span>{isMe ? `给${charId}的红包` : `${charId}给我的红包`}</span>
+                    </div>
+                  </div>
                 ) : (
                   <div 
                     className={chatBubbleStyle === 'system' ? 
@@ -1681,22 +1944,25 @@ export const ChatView = ({
                 <span className="text-[11px] text-black/50">拍一拍</span>
              </button>
 
-             <div className="col-span-4 w-full flex justify-center gap-8 mt-1">
-               <button className="flex flex-col items-center gap-2 group w-[64px]" onClick={() => { setInviteModal({ show: true, type: 'movie', direction: 'me' }); setShowPlusMenu(false); }}>
-                  <div className="w-[50px] h-[50px] rounded-[16px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><MonitorPlay size={24} strokeWidth={1.5} /></div>
-                  <span className="text-[11px] text-black/50">一起观影</span>
-               </button>
+             <button className="flex flex-col items-center gap-2 group w-[64px]" onClick={() => { setInviteModal({ show: true, type: 'movie', direction: 'me' }); setShowPlusMenu(false); }}>
+                <div className="w-[50px] h-[50px] rounded-[16px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><MonitorPlay size={24} strokeWidth={1.5} /></div>
+                <span className="text-[11px] text-black/50">一起观影</span>
+             </button>
 
-               <button className="flex flex-col items-center gap-2 group w-[64px]" onClick={() => { setInviteModal({ show: true, type: 'music', direction: 'me' }); setShowPlusMenu(false); }}>
-                  <div className="w-[50px] h-[50px] rounded-[16px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><Music size={24} strokeWidth={1.5} /></div>
-                  <span className="text-[11px] text-black/50">一起听歌</span>
-               </button>
+             <button className="flex flex-col items-center gap-2 group w-[64px]" onClick={() => { setInviteModal({ show: true, type: 'music', direction: 'me' }); setShowPlusMenu(false); }}>
+                <div className="w-[50px] h-[50px] rounded-[16px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><Music size={24} strokeWidth={1.5} /></div>
+                <span className="text-[11px] text-black/50">一起听歌</span>
+             </button>
 
-               <button className="flex flex-col items-center gap-2 group w-[64px]" onClick={() => { setDecideModal(prev => ({ ...prev, show: true })); setShowPlusMenu(false); }}>
-                  <div className="w-[50px] h-[50px] rounded-[16px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><Sparkles size={24} strokeWidth={1.5} /></div>
-                  <span className="text-[11px] text-black/50">帮我决定</span>
-               </button>
-             </div>
+             <button className="flex flex-col items-center gap-2 group w-[64px]" onClick={() => { setDecideModal(prev => ({ ...prev, show: true })); setShowPlusMenu(false); }}>
+                <div className="w-[50px] h-[50px] rounded-[16px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><Sparkles size={24} strokeWidth={1.5} /></div>
+                <span className="text-[11px] text-black/50">帮我决定</span>
+             </button>
+
+             <button className="flex flex-col items-center gap-2 group w-[64px]" onClick={() => { setShowSendEnvelope(true); setShowPlusMenu(false); }}>
+                <div className="w-[50px] h-[50px] rounded-[16px] flex items-center justify-center group-active:scale-95 transition-transform" style={{ backgroundColor: themeConfig.cardBg, color: primaryColor }}><Mail size={24} strokeWidth={1.5} /></div>
+                <span className="text-[11px] text-black/50">发红包</span>
+             </button>
 
 
           </motion.div>
@@ -2112,6 +2378,241 @@ export const ChatView = ({
                 </button>
               </div>
             </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Send Red Envelope Modal */}
+      <AnimatePresence>
+        {showSendEnvelope && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/55 backdrop-blur-sm"
+              onClick={() => setShowSendEnvelope(false)}
+            />
+            <motion.div 
+              initial={{ scale: 0.92, y: 15, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.92, y: 15, opacity: 0 }}
+              className="bg-[#F8F9FA] rounded-[24px] w-full max-w-[340px] p-6 shadow-2xl relative z-10 flex flex-col font-sans overflow-hidden border border-white"
+            >
+              {/* Fancy Red packet top ribbon design */}
+              <div className="absolute top-0 left-0 right-0 h-2 bg-[#C03F35]" />
+              
+              <div className="flex justify-between items-center mb-5">
+                <h3 className="text-[16px] font-extrabold text-gray-800 flex items-center gap-1.5">
+                  <span className="text-[20px]">🧧</span> 包爱意红包
+                </h3>
+                <button onClick={() => setShowSendEnvelope(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-[12px] font-bold text-gray-500 mb-1.5">红包金额 (元)</label>
+                  <div className="relative flex items-center border border-gray-200/80 rounded-xl bg-white focus-within:border-[#C03F35] transition-all px-3">
+                    <span className="text-[15px] font-bold text-gray-400 mr-1.5">￥</span>
+                    <input 
+                      type="number"
+                      className="w-full py-3 text-[16px] font-bold text-gray-800 outline-none placeholder:text-gray-300"
+                      placeholder="0.00"
+                      value={sendEnvelopeAmount}
+                      onChange={e => setSendEnvelopeAmount(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[12px] font-bold text-gray-500 mb-1.5">留言备注 (不写也超甜)</label>
+                  <input 
+                    type="text"
+                    className="w-full px-3 py-3 border border-gray-200/80 rounded-xl bg-white text-[13.5px] text-gray-800 outline-none focus:border-[#C03F35] transition-all placeholder:text-gray-300"
+                    placeholder="例如：给未婚夫的小零花钱"
+                    value={sendEnvelopeNote}
+                    onChange={e => setSendEnvelopeNote(e.target.value)}
+                    maxLength={25}
+                  />
+                </div>
+              </div>
+
+              <div className="mt-6 flex flex-col gap-2">
+                <button 
+                  disabled={!sendEnvelopeAmount || Number(sendEnvelopeAmount) <= 0}
+                  onClick={() => handleSendEnvelope(Number(sendEnvelopeAmount), sendEnvelopeNote)}
+                  className="w-full py-3.5 rounded-xl bg-[#C03F35] disabled:bg-gray-300 disabled:shadow-none hover:bg-[#A32F26] text-white font-bold text-[14px] shadow-lg shadow-red-500/10 active:scale-98 transition-all flex items-center justify-center gap-1.5"
+                >
+                  塞钱进红包 🧧
+                </button>
+                <span className="text-[10px] text-center text-gray-400 mt-1 block">
+                  发红包会消耗专属钱包的对应金额，未婚夫会自动收取并回复
+                </span>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Open Red Envelope Immersive Overlay */}
+      <AnimatePresence>
+        {openEnvelopeOverlay.show && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-md"
+              onClick={() => setOpenEnvelopeOverlay(prev => ({ ...prev, show: false }))}
+            />
+            
+            {/* 3D-Like Red Envelope Body */}
+            <motion.div 
+              initial={{ scale: 0.9, y: 30, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.9, y: 30, opacity: 0 }}
+              transition={{ type: 'spring', damping: 22, stiffness: 180 }}
+              className={`w-full max-w-[325px] aspect-[3/4.55] shadow-2xl relative z-10 flex flex-col overflow-hidden rounded-[28px] border transition-colors duration-300 font-sans ${
+                openEnvelopeOverlay.status === 'opened' 
+                  ? 'bg-white border-gray-100 text-gray-800' 
+                  : 'bg-[#C03F35] border-red-400/20 text-white'
+              }`}
+            >
+              {openEnvelopeOverlay.status === 'unopened' ? (
+                <>
+                  {/* Elegant Golden Header Arc Design (Unopened state, taller) */}
+                  <div className="absolute top-0 left-0 right-0 h-[58%] bg-gradient-to-b from-[#E35749] via-[#D14639] to-[#C03F35] rounded-b-[40%] shadow-md flex flex-col items-center pt-8 px-6 text-center border-b-[3px] border-[#FFE29C]/50 relative overflow-hidden">
+                    {/* Elegant gold foil pattern inside header */}
+                    <div className="absolute inset-0 pointer-events-none opacity-20">
+                      <Heart size={16} className="text-[#FFE8BC] absolute top-3 left-4 rotate-12" />
+                      <Sparkles size={20} className="text-[#FFE8BC] absolute top-12 right-8" />
+                      <Heart size={14} className="text-[#FFE8BC] absolute bottom-3 left-10 -rotate-12" />
+                      <Sparkles size={14} className="text-[#FFE8BC] absolute top-4 right-16 rotate-45" />
+                    </div>
+                    <div className="absolute inset-0 flex items-center justify-center opacity-[0.06] pointer-events-none">
+                      <div className="w-56 h-56 rounded-full border border-dashed border-[#FFE8BC]" />
+                      <div className="w-48 h-48 rounded-full border border-double border-[#FFE8BC] absolute" />
+                    </div>
+
+                    {/* Avatar */}
+                    <div className="w-14 h-14 rounded-full bg-white/10 overflow-hidden border-2 border-[#FFE8BC]/30 shadow-md mb-3 flex items-center justify-center relative z-10">
+                      {openEnvelopeOverlay.sender === 'me' ? (
+                        avatar1 ? <img src={avatar1} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-white/20" />
+                      ) : (
+                        avatar2 ? <img src={avatar2} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-white/20" />
+                      )}
+                    </div>
+
+                    {/* Sender Nickname */}
+                    <div className="text-[#FFE8BC] text-[15.5px] font-bold relative z-10">
+                      {openEnvelopeOverlay.sender === 'me' ? myNickname : charId}
+                    </div>
+                    {/* Subtitle */}
+                    <div className="text-white/70 text-[11px] mt-1 select-none relative z-10">
+                      {openEnvelopeOverlay.sender === 'me' ? '包给未婚夫的爱意' : '给你发了一个专属红包'}
+                    </div>
+
+                    {/* Greeting note */}
+                    <div className="text-[17px] font-bold text-[#FFE8BC] mt-5 whitespace-normal line-clamp-2 max-w-full px-2 italic tracking-wide relative z-10 drop-shadow-sm">
+                      “ {openEnvelopeOverlay.note || '恭喜发财，大吉大利'} ”
+                    </div>
+                  </div>
+
+                  {/* Central Interactive Rotating Golden Button */}
+                  <div className="absolute inset-x-0 bottom-12 flex flex-col items-center justify-center z-20">
+                    <div className="flex flex-col items-center">
+                       <motion.button
+                         animate={openEnvelopeOverlay.isOpening ? { rotate: 360 } : {}}
+                         transition={openEnvelopeOverlay.isOpening ? { repeat: Infinity, duration: 0.7, ease: "linear" } : {}}
+                         onClick={() => {
+                           if (openEnvelopeOverlay.isOpening) return;
+                           setOpenEnvelopeOverlay(prev => ({ ...prev, isOpening: true }));
+                           setTimeout(() => {
+                             handleOpenEnvelopeFromFiance(
+                               openEnvelopeOverlay.messageId!,
+                               openEnvelopeOverlay.amount,
+                               openEnvelopeOverlay.note
+                             );
+                             setOpenEnvelopeOverlay(prev => ({
+                               ...prev,
+                               isOpening: false,
+                               status: 'opened'
+                             }));
+                           }, 1000);
+                         }}
+                         className="w-20 h-20 rounded-full bg-[#FFE29C] hover:bg-[#FFD575] active:scale-95 transition-transform flex items-center justify-center text-[#C03F35] font-extrabold text-[28px] shadow-[0_6px_20px_rgba(0,0,0,0.25)] border-4 border-[#C03F35]"
+                       >
+                         開
+                       </motion.button>
+                       <span className="text-[#FFE8BC]/60 text-[11px] mt-3 tracking-widest select-none font-medium">点击拆开红包</span>
+                    </div>
+                  </div>
+
+                  {/* Elegant golden curve footer line */}
+                  <div className="absolute bottom-0 inset-x-0 h-4 bg-[#A32F26]" />
+                </>
+              ) : (
+                <>
+                  {/* Elegant Golden Header Arc Design (Opened state, shorter) */}
+                  <div className="absolute top-0 left-0 right-0 h-[34%] bg-gradient-to-b from-[#E35749] via-[#D14639] to-[#C03F35] rounded-b-[40%] shadow-md flex flex-col items-center border-b-[3px] border-[#FFE29C]/50 relative overflow-hidden">
+                    {/* Elegant gold foil pattern inside header */}
+                    <div className="absolute inset-0 pointer-events-none opacity-20">
+                      <Heart size={16} className="text-[#FFE8BC] absolute top-3 left-4 rotate-12" />
+                      <Sparkles size={20} className="text-[#FFE8BC] absolute top-12 right-8" />
+                      <Heart size={14} className="text-[#FFE8BC] absolute bottom-3 left-10 -rotate-12" />
+                      <Sparkles size={14} className="text-[#FFE8BC] absolute top-4 right-16 rotate-45" />
+                    </div>
+                    <div className="absolute inset-0 flex items-center justify-center opacity-[0.06] pointer-events-none">
+                      <div className="w-56 h-56 rounded-full border border-dashed border-[#FFE8BC]" />
+                      <div className="w-48 h-48 rounded-full border border-double border-[#FFE8BC] absolute" />
+                    </div>
+                  </div>
+
+                  {/* Opened content below the arc (with white background) */}
+                  <div className="absolute top-[34%] inset-x-0 bottom-0 bg-white flex flex-col items-center pt-8 px-6 text-center text-gray-800">
+                    {/* Small avatar & Sender Name in one line */}
+                    <div className="flex items-center justify-center gap-1.5 mt-2">
+                      <div className="w-6 h-6 rounded-full overflow-hidden border border-gray-100 shadow-sm shrink-0">
+                        {openEnvelopeOverlay.sender === 'me' ? (
+                          avatar1 ? <img src={avatar1} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-gray-200" />
+                        ) : (
+                          avatar2 ? <img src={avatar2} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-gray-200" />
+                        )}
+                      </div>
+                      <span className="text-[13.5px] font-bold text-gray-800 tracking-wide">
+                        {openEnvelopeOverlay.sender === 'me' ? myNickname : charId}发出的红包
+                      </span>
+                    </div>
+
+                    {/* Greeting Note */}
+                    <div className="text-[12px] text-gray-400 mt-2.5 tracking-wide font-medium">
+                      {openEnvelopeOverlay.note || '恭喜发财，大吉大利'}
+                    </div>
+
+                    {/* Cash Amount */}
+                    <div className="mt-8 text-center flex items-baseline justify-center text-[#CD9B4A] font-extrabold tracking-tight">
+                      <span className="text-[44px] leading-none font-black">{openEnvelopeOverlay.amount.toFixed(2)}</span>
+                      <span className="text-[14px] ml-1.5 font-semibold text-gray-500">元</span>
+                    </div>
+
+                    {/* Status/Receipt Link */}
+                    <div className="mt-6 flex justify-center">
+                      <span className="text-[11.5px] text-[#CD9B4A] font-bold tracking-wider hover:underline flex items-center gap-0.5 cursor-pointer">
+                        已存入零钱，可直接消费 <ChevronRight size={11} className="stroke-[3]" />
+                      </span>
+                    </div>
+                  </div>
+                </>
+              )}
+            </motion.div>
+
+            {/* Elegant Golden Circular Close Button below the card */}
+            <motion.button 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              transition={{ delay: 0.15 }}
+              onClick={() => setOpenEnvelopeOverlay(prev => ({ ...prev, show: false }))}
+              className="absolute bottom-6 w-11 h-11 rounded-full border border-[#FFE8BC]/50 hover:border-[#FFE8BC]/80 bg-black/25 backdrop-blur-sm flex items-center justify-center text-[#FFE8BC] active:scale-90 transition-transform shadow-lg z-20"
+            >
+              <X size={22} strokeWidth={1.5} />
+            </motion.button>
           </div>
         )}
       </AnimatePresence>

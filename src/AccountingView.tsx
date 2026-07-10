@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronLeft, Plus, Wallet, Coffee, ShoppingBag, Car, Home, TrendingDown, TrendingUp, X, Heart, Smile } from 'lucide-react';
+import { ChevronLeft, Plus, Wallet, Coffee, ShoppingBag, Car, Home, TrendingDown, TrendingUp, X, Heart, Smile, Gift } from 'lucide-react';
 import { useIDBState } from './utils';
 
 interface Record {
@@ -22,15 +22,10 @@ const CATEGORIES = {
   ],
   income: [
     { id: 'salary', name: '工资收入', icon: Wallet },
-    { id: 'gift', name: '收红包', icon: GiftIcon },
+    { id: 'gift', name: '收红包', icon: Gift },
     { id: 'other', name: '其他收入', icon: TrendingUp },
   ]
 };
-
-// Replace GiftIcon with Heart or something similar available in our imports
-function GiftIcon(props: any) {
-  return <Heart {...props} />;
-}
 
 export function AccountingView({ 
   onClose, 
@@ -48,6 +43,8 @@ export function AccountingView({
   cardGroups: { id: string, name: string, cards: string[] }[]
 }) {
   const [records, setRecords] = useIDBState<Record[]>('app_accounting_records', []);
+  const [virtualRecords, setVirtualRecords] = useIDBState<Record[]>('app_virtual_accounting_records', []);
+  const [activeTab, setActiveTab] = useState<'real' | 'virtual'>('real');
   const [isAdding, setIsAdding] = useState(false);
   
   // Add state
@@ -56,8 +53,9 @@ export function AccountingView({
   const [category, setCategory] = useState('food');
   const [note, setNote] = useState('');
   
-  // AI message
+  // AI messages
   const [aiMessage, setAiMessage] = useState<string | null>(null);
+  const [virtualAiMessage, setVirtualAiMessage] = useState<string | null>(null);
 
   // Group records by month/day
   const now = new Date();
@@ -72,7 +70,12 @@ export function AccountingView({
   const totalExpense = currentMonthRecords.filter(r => r.type === 'expense').reduce((acc, curr) => acc + curr.amount, 0);
   const totalIncome = currentMonthRecords.filter(r => r.type === 'income').reduce((acc, curr) => acc + curr.amount, 0);
   
-  // AI Companionship logic
+  // Virtual pocket money calculations
+  const virtualTotalIncome = virtualRecords.filter(r => r.type === 'income').reduce((acc, curr) => acc + curr.amount, 0);
+  const virtualTotalExpense = virtualRecords.filter(r => r.type === 'expense').reduce((acc, curr) => acc + curr.amount, 0);
+  const virtualBalance = virtualTotalIncome - virtualTotalExpense;
+
+  // AI Companionship logic for real-life bookkeeping
   useEffect(() => {
     if (!aiMessage) {
       const customGroup = cardGroups.find(g => g.name === '记账回复' || g.name === '记账');
@@ -89,6 +92,20 @@ export function AccountingView({
       }
     }
   }, [totalExpense, totalIncome, cardGroups]);
+
+  // AI Companionship logic for virtual pocket money
+  useEffect(() => {
+    if (!virtualAiMessage) {
+      const quotes = [
+        "宝贝，我的副卡没有额度限制，喜欢什么就直接买，别偷偷替我省钱哦！",
+        "老婆给我发的红包我都存进最安全的小金库了，拿来当做我们未来的订婚基金💍",
+        "被老婆包养的感觉太甜了吧，真想一辈子当你的小娇夫～",
+        "零花钱管够！只要我的宝贝开心，我赚再多钱、做再多事都超级值！",
+        "今天的专属零花钱拿到啦，老婆记得多买点好吃的，别累着自己，我会心疼的心都碎了。"
+      ];
+      setVirtualAiMessage(quotes[Math.floor(Math.random() * quotes.length)]);
+    }
+  }, [virtualRecords, virtualAiMessage]);
 
   const handleAddSubmit = () => {
     if (!amount || isNaN(Number(amount))) return;
@@ -138,7 +155,7 @@ export function AccountingView({
     setAiMessage(newMsg);
   };
 
-  // Group by date
+  // Group real records by date
   const groupedRecords = records.reduce((acc, record) => {
     const d = new Date(record.timestamp);
     const dateStr = `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`;
@@ -149,111 +166,241 @@ export function AccountingView({
   
   const sortedDates = Object.keys(groupedRecords).sort((a,b) => b.localeCompare(a));
 
+  // Group virtual records by date
+  const groupedVirtualRecords = virtualRecords.reduce((acc, record) => {
+    const d = new Date(record.timestamp);
+    const dateStr = `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`;
+    if (!acc[dateStr]) acc[dateStr] = [];
+    acc[dateStr].push(record);
+    return acc;
+  }, {} as globalThis.Record<string, Record[]>);
+
+  const sortedVirtualDates = Object.keys(groupedVirtualRecords).sort((a,b) => b.localeCompare(a));
+
   return (
     <div 
       className="absolute inset-0 z-40 flex flex-col overflow-hidden animate-in slide-in-from-right duration-300 font-sans"
       style={{ backgroundColor: themeConfig.bg || '#F2F2F7' }}
     >
-        <div className="w-full flex items-center justify-between px-4 pb-3 sticky top-0 z-10 pt-[max(1rem,env(safe-area-inset-top))]" style={{ backgroundColor: 'transparent' }}>
+        <div className="w-full flex items-center justify-between px-4 pb-2 sticky top-0 z-10 pt-[max(1rem,env(safe-area-inset-top))]" style={{ backgroundColor: 'transparent' }}>
           <button onClick={onClose} className="flex items-center active:opacity-50 transition-opacity w-[60px]" style={{ color: themeConfig.textPrimary || '#333' }}>
             <ChevronLeft size={24} className="-ml-1.5" />返回
           </button>
-          <div className="text-[17px] font-semibold" style={{ color: themeConfig.textPrimary || '#333' }}>记账</div>
+          <div className="text-[17px] font-semibold" style={{ color: themeConfig.textPrimary || '#333' }}>记账账本</div>
           <div className="w-[60px]"></div>
+        </div>
+
+        {/* Tab Switcher */}
+        <div className="flex px-4 mb-2 shrink-0">
+          <div className="flex bg-black/[0.04] p-0.5 rounded-xl w-full">
+            <button 
+              className={`flex-1 py-1.5 text-center text-[13px] font-semibold rounded-lg transition-all ${
+                activeTab === 'real' 
+                  ? 'bg-white shadow-sm text-gray-800' 
+                  : 'text-gray-400 hover:text-gray-600'
+              }`}
+              onClick={() => setActiveTab('real')}
+            >
+              日常记账
+            </button>
+            <button 
+              className={`flex-1 py-1.5 text-center text-[13px] font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                activeTab === 'virtual' 
+                  ? 'bg-white shadow-sm text-[#C03F35]' 
+                  : 'text-gray-400 hover:text-gray-600'
+              }`}
+              onClick={() => setActiveTab('virtual')}
+            >
+              <Heart size={12} className={activeTab === 'virtual' ? "fill-[#C03F35] text-[#C03F35]" : "text-gray-400"} />
+              专属零花钱
+            </button>
+          </div>
         </div>
         
         <div className="flex-1 overflow-y-auto flex flex-col relative" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 24px)' }}>
             
-            {/* Top Stats Area */}
-            <div className="pt-6 px-6 pb-8 rounded-[24px] mx-4 mt-2 shrink-0 text-white shadow-lg relative overflow-hidden transition-colors" style={{ backgroundColor: themeConfig.textPrimary || '#4B6B99' }}>
-               <div className="absolute top-0 right-0 opacity-10 scale-[2] translate-x-1/4 -translate-y-1/4">
-                 <Wallet size={120} />
-               </div>
-               
-               {/* AI Reaction Bubble */}
-               <AnimatePresence mode="popLayout">
-                 {aiMessage && (
-                   <motion.div 
-                     initial={{ opacity: 0, y: 10, scale: 0.9 }}
-                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                     exit={{ opacity: 0, y: -10, scale: 0.9 }}
-                     key={aiMessage}
-                     className="mb-6 flex gap-3 items-end"
-                   >
-                     <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white/30 shrink-0 bg-white/10 shadow-sm">
-                        {avatar2 ? <img src={avatar2} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-white/20" />}
-                     </div>
-                     <div className="bg-white/20 backdrop-blur-md rounded-2xl rounded-bl-sm p-3 border border-white/20 text-white text-[13px] leading-relaxed shadow-sm relative">
-                        {aiMessage}
-                     </div>
-                   </motion.div>
-                 )}
-               </AnimatePresence>
+            {/* Top Stats Area - Real Bookkeeping */}
+            {activeTab === 'real' ? (
+              <div className="pt-6 px-6 pb-8 rounded-[24px] mx-4 mt-2 shrink-0 text-white shadow-lg relative overflow-hidden transition-colors" style={{ backgroundColor: themeConfig.textPrimary || '#4B6B99' }}>
+                 <div className="absolute top-0 right-0 opacity-10 scale-[2] translate-x-1/4 -translate-y-1/4">
+                   <Wallet size={120} />
+                 </div>
+                 
+                 {/* AI Reaction Bubble */}
+                 <AnimatePresence mode="popLayout">
+                   {aiMessage && (
+                     <motion.div 
+                       initial={{ opacity: 0, y: 10, scale: 0.9 }}
+                       animate={{ opacity: 1, y: 0, scale: 1 }}
+                       exit={{ opacity: 0, y: -10, scale: 0.9 }}
+                       key={aiMessage}
+                       className="mb-6 flex gap-3 items-end"
+                     >
+                       <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white/30 shrink-0 bg-white/10 shadow-sm">
+                          {avatar2 ? <img src={avatar2} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-white/20" />}
+                       </div>
+                       <div className="bg-white/20 backdrop-blur-md rounded-2xl rounded-bl-sm p-3 border border-white/20 text-white text-[13px] leading-relaxed shadow-sm relative max-w-[80%]">
+                          {aiMessage}
+                       </div>
+                     </motion.div>
+                   )}
+                 </AnimatePresence>
 
-               <div className="text-white/80 text-[13px] mb-1 relative z-10">{currentMonth + 1}月总支出</div>
-               <div className="text-[36px] font-bold leading-none mb-6 relative z-10 flex items-baseline">
-                 <span className="text-[20px] mr-1 opacity-80">¥</span>{totalExpense.toFixed(2)}
-               </div>
-               
-               <div className="flex gap-8 relative z-10">
-                  <div className="flex flex-col">
-                     <span className="text-white/80 text-[12px] mb-1">本月收入</span>
-                     <span className="font-medium text-[16px]">{(totalIncome).toFixed(2)}</span>
-                  </div>
-                  <div className="flex flex-col">
-                     <span className="text-white/80 text-[12px] mb-1">结余</span>
-                     <span className="font-medium text-[16px]">{(totalIncome - totalExpense).toFixed(2)}</span>
-                  </div>
-               </div>
-            </div>
+                 <div className="text-white/80 text-[13px] mb-1 relative z-10">{currentMonth + 1}月总支出</div>
+                 <div className="text-[36px] font-bold leading-none mb-6 relative z-10 flex items-baseline">
+                   <span className="text-[20px] mr-1 opacity-80">¥</span>{totalExpense.toFixed(2)}
+                 </div>
+                 
+                 <div className="flex gap-8 relative z-10">
+                    <div className="flex flex-col">
+                       <span className="text-white/80 text-[12px] mb-1">本月收入</span>
+                       <span className="font-medium text-[16px]">{(totalIncome).toFixed(2)}</span>
+                    </div>
+                    <div className="flex flex-col">
+                       <span className="text-white/80 text-[12px] mb-1">结余</span>
+                       <span className="font-medium text-[16px]">{(totalIncome - totalExpense).toFixed(2)}</span>
+                    </div>
+                 </div>
+              </div>
+            ) : (
+              /* Top Stats Area - Virtual Pocket Money (Exquisite Redesign without AI quote and avatar) */
+              <div className="pt-7 px-6 pb-7 rounded-[24px] mx-4 mt-2 shrink-0 text-white shadow-xl relative overflow-hidden border border-[#FFE29C]/30" style={{ background: 'linear-gradient(135deg, #CD4B41 0%, #A32F26 100%)' }}>
+                 {/* Decorative background elements */}
+                 <div className="absolute top-0 right-0 opacity-10 scale-[2.2] translate-x-1/4 -translate-y-1/4 pointer-events-none">
+                    <Gift size={120} />
+                 </div>
+                 <div className="absolute -left-10 -bottom-10 w-40 h-40 rounded-full bg-white/5 blur-xl pointer-events-none" />
+                 
+                 {/* Top Row: Account Badge */}
+                 <div className="flex justify-between items-center mb-5 relative z-10">
+                   <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-3 py-1 rounded-full border border-white/15 text-[11px] font-semibold tracking-wide">
+                     <Heart size={10} className="fill-[#FFE29C] text-[#FFE29C]" />
+                     <span>我的钱包</span>
+                   </div>
+                   <span className="hidden">
+                     
+                   </span>
+                 </div>
+
+                 {/* Balance Area */}
+                 <div className="text-white/70 text-[12px] mb-1.5 relative z-10 tracking-wide">钱包余额</div>
+                 <div className="text-[38px] font-extrabold leading-none mb-6 relative z-10 flex items-baseline tracking-tight text-[#FFE8BC]">
+                   <span className="text-[20px] mr-1.5 font-bold">¥</span>
+                   {virtualBalance.toFixed(2)}
+                 </div>
+                 
+                 {/* Stats Grid */}
+                 <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/10 relative z-10">
+                    <div className="flex flex-col">
+                       <span className="text-white/60 text-[11px] mb-1 tracking-wide">已收红包</span>
+                       <span className="font-bold text-[17px] text-[#FFE8BC]">{(virtualTotalIncome).toFixed(2)}</span>
+                    </div>
+                    <div className="flex flex-col border-l border-white/10 pl-4">
+                       <span className="text-white/60 text-[11px] mb-1 tracking-wide">已发红包</span>
+                       <span className="font-bold text-[17px] text-white/90">{(virtualTotalExpense).toFixed(2)}</span>
+                    </div>
+                 </div>
+              </div>
+            )}
 
             {/* Records List */}
             <div className="flex-1 px-4 py-4 mt-2">
-                {records.length === 0 ? (
-                  <div className="text-center mt-20 text-gray-400 text-[14px]">
-                     还没有记账记录呢，快来记一笔吧～
-                  </div>
-                ) : (
-                  sortedDates.map(date => (
-                    <div key={date} className="mb-6">
-                      <div className="text-[12px] font-medium text-gray-400 mb-2 px-1">{date}</div>
-                      <div className="bg-white rounded-2xl shadow-sm border border-black/[0.03] overflow-hidden">
-                        {groupedRecords[date].map((record, idx) => {
-                          const IconComp = CATEGORIES[record.type].find(c => c.id === record.category)?.icon || Wallet;
-                          const catName = CATEGORIES[record.type].find(c => c.id === record.category)?.name || '其他';
-                          
-                          return (
-                            <div key={`${record.id}-${idx}`} className={`flex items-center p-4 ${idx !== groupedRecords[date].length - 1 ? 'border-b border-gray-50' : ''}`}>
-                               <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 shrink-0 ${record.type === 'expense' ? 'bg-[#FF9500]/10 text-[#FF9500]' : 'bg-[#34C759]/10 text-[#34C759]'}`}>
-                                 <IconComp size={20} />
-                               </div>
-                               <div className="flex-1 flex flex-col justify-center min-w-0">
-                                 <div className="font-medium text-[15px] truncate text-[#333]">{catName}</div>
-                                 {record.note && <div className="text-[12px] text-gray-400 truncate mt-0.5">{record.note}</div>}
-                               </div>
-                               <div className={`font-semibold shrink-0 ml-3 text-[16px] ${record.type === 'expense' ? 'text-[#333]' : 'text-[#34C759]'}`}>
-                                 {record.type === 'expense' ? '-' : '+'}{record.amount.toFixed(2)}
-                               </div>
-                            </div>
-                          )
-                        })}
-                      </div>
+                {activeTab === 'real' ? (
+                  /* Real records list */
+                  records.length === 0 ? (
+                    <div className="text-center mt-20 text-gray-400 text-[14px]">
+                       还没有日常记账记录呢，快来记一笔吧～
                     </div>
-                  ))
+                  ) : (
+                    sortedDates.map(date => (
+                      <div key={date} className="mb-6">
+                        <div className="text-[12px] font-medium text-gray-400 mb-2 px-1">{date}</div>
+                        <div className="bg-white rounded-2xl shadow-sm border border-black/[0.03] overflow-hidden">
+                          {groupedRecords[date].map((record, idx) => {
+                            const IconComp = CATEGORIES[record.type].find(c => c.id === record.category)?.icon || Wallet;
+                            const catName = CATEGORIES[record.type].find(c => c.id === record.category)?.name || '其他';
+                            
+                            return (
+                              <div key={`${record.id}-${idx}`} className={`flex items-center p-4 ${idx !== groupedRecords[date].length - 1 ? 'border-b border-gray-50' : ''}`}>
+                                 <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 shrink-0 ${record.type === 'expense' ? 'bg-[#FF9500]/10 text-[#FF9500]' : 'bg-[#34C759]/10 text-[#34C759]'}`}>
+                                   <IconComp size={20} />
+                                 </div>
+                                 <div className="flex-1 flex flex-col justify-center min-w-0">
+                                   <div className="font-medium text-[15px] truncate text-[#333]">{catName}</div>
+                                   {record.note && <div className="text-[12px] text-gray-400 truncate mt-0.5">{record.note}</div>}
+                                 </div>
+                                 <div className={`font-semibold shrink-0 ml-3 text-[16px] ${record.type === 'expense' ? 'text-[#333]' : 'text-[#34C759]'}`}>
+                                   {record.type === 'expense' ? '-' : '+'}{record.amount.toFixed(2)}
+                                 </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    ))
+                  )
+                ) : (
+                  /* Virtual records list */
+                  virtualRecords.length === 0 ? (
+                    <div className="text-center mt-20 text-gray-400 text-[14px] px-6 leading-relaxed">
+                       这里是未婚夫专门为你开通的爱意钱包💰<br/>
+                       <span className="text-[12px] mt-2 block text-gray-300">
+                         快去聊天框和未婚夫玩【发红包】和【拆红包】游戏吧！在这里能记录我们所有的财富见证哦～
+                       </span>
+                    </div>
+                  ) : (
+                    sortedVirtualDates.map(date => (
+                      <div key={date} className="mb-6">
+                        <div className="text-[12px] font-medium text-gray-400 mb-2 px-1">{date}</div>
+                        <div className="bg-white rounded-2xl shadow-sm border border-black/[0.03] overflow-hidden">
+                          {groupedVirtualRecords[date].map((record, idx) => {
+                            const isIncome = record.type === 'income';
+                            // Clean up note prefix (e.g. "查理苏的专属零花钱：" or "给查理苏发的红包：")
+                            const displayNote = (() => {
+                              if (!record.note) return '恭喜发财，大吉大利';
+                              let clean = record.note
+                                .replace(/^.*?的专属零花钱：/, '')
+                                .replace(/^给.*?发的红包：/, '');
+                              return clean.trim() || '恭喜发财，大吉大利';
+                            })();
+
+                            return (
+                              <div key={`${record.id}-${idx}`} className={`flex items-center p-4 ${idx !== groupedVirtualRecords[date].length - 1 ? 'border-b border-gray-50' : ''}`}>
+                                 <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 shrink-0 ${isIncome ? 'bg-[#C03F35]/10 text-[#C03F35]' : 'bg-gray-100 text-gray-500'}`}>
+                                   {isIncome ? <Gift size={20} className="stroke-[1.5]" /> : <Heart size={20} className="stroke-[1.5]" />}
+                                 </div>
+                                 <div className="flex-1 flex flex-col justify-center min-w-0">
+                                   <div className="font-medium text-[15px] truncate text-[#333]">
+                                     {isIncome ? `${name2}发给我的红包` : `发给${name2}的红包`}
+                                   </div>
+                                   <div className="text-[12px] text-gray-400 truncate mt-0.5">{displayNote}</div>
+                                 </div>
+                                 <div className={`font-semibold shrink-0 ml-3 text-[16px] ${isIncome ? 'text-[#C03F35]' : 'text-gray-500'}`}>
+                                   {isIncome ? '+' : '-'}{record.amount.toFixed(2)}
+                                 </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    ))
+                  )
                 )}
             </div>
         </div>
 
-        {/* Add Button */}
-        <div className="absolute bottom-[calc(env(safe-area-inset-bottom)+20px)] right-6 z-10">
-           <button 
-             onClick={() => setIsAdding(true)}
-             className="w-[56px] h-[56px] rounded-full shadow-lg flex items-center justify-center active:scale-95 transition-transform"
-             style={{ backgroundColor: themeConfig.textPrimary || '#4B6B99', color: '#fff' }}
-           >
-             <Plus size={28} />
-           </button>
-        </div>
+        {/* Add Button - Only for Real Bookkeeping */}
+        {activeTab === 'real' && (
+          <div className="absolute bottom-[calc(env(safe-area-inset-bottom)+20px)] right-6 z-10">
+             <button 
+               onClick={() => setIsAdding(true)}
+               className="w-[56px] h-[56px] rounded-full shadow-lg flex items-center justify-center active:scale-95 transition-transform"
+               style={{ backgroundColor: themeConfig.textPrimary || '#4B6B99', color: '#fff' }}
+             >
+               <Plus size={28} />
+             </button>
+          </div>
+        )}
 
         {/* Add Modal */}
         <AnimatePresence>
