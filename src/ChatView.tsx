@@ -2075,7 +2075,7 @@ export const ChatView = ({
             ) : (
               <input 
                 type="text"
-                className="flex-1 bg-transparent border-none outline-none text-[15px] p-0 text-white placeholder-white/70"
+                className="flex-1 bg-transparent border-none outline-none text-[15px] p-0 text-black placeholder-black/50"
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleSend()}
