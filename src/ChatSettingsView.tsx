@@ -43,7 +43,7 @@ export const ChatSettingsView = ({ onClose, themeConfig }: { onClose: () => void
   const primaryColor = themeConfig.textPrimary || '#a894a7';
 
   return (
-    <div className="absolute inset-0 bg-[#FAFAFA] flex flex-col overflow-x-hidden overflow-y-auto text-[13px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
+    <div className="absolute inset-0 bg-[#FAFAFA] flex flex-col overflow-x-hidden overflow-y-auto text-[13px]">
       
       {/* Header */}
       <div 

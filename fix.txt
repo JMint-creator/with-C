@@ -1,0 +1,8 @@
+                 </div>
+                 <div>
+                    <div className="text-[12px] font-medium text-[#8E8E93] mb-3 px-1 tracking-wide uppercase">主页其它组件</div>
+                    <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-[#F2F2F7]">
+                       <SettingItem icon={ImageIcon} label="纪念日组件背景" value={anniversaryBg ? '已上传' : '未设置'} onClick={() => anniversaryBgInputRef.current?.click()} />
+                       <SettingItem icon={ImageIcon} label="音乐播放器背景" value={musicBg ? '已上传' : '未设置'} onClick={() => musicBgInputRef.current?.click()} hideBorder={true} />
+                    </div>
+                 </div>

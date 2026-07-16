@@ -36,9 +36,10 @@ import {
   Aperture,
   Search,
   Wallet,
-  AtSign
+  AtSign,
+  Activity
 } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { ChatView } from './ChatView';
 import { MomentsView } from './MomentsView';
 import { WishlistView } from './WishlistView';
@@ -207,6 +208,12 @@ const BackgroundLayer = ({ bg, image, show }: { bg: string, image: string, show:
 };
 
 export default function App() {
+  const [showSplash, setShowSplash] = useState(true);
+  useEffect(() => {
+    const timer = setTimeout(() => setShowSplash(false), 2500);
+    return () => clearTimeout(timer);
+  }, []);
+
   const [view, setView] = useState<'home' | 'appearance' | 'data' | 'library' | 'decide' | 'chat' | 'chat_settings' | 'music_manager' | 'moments' | 'wishlist' | 'check_in' | 'accounting' | 'todo' | 'mailbox'>('home');
   const [appearanceTab, setAppearanceTab] = useState<'global' | 'chat' | 'component' | 'wallpaper'>('global');
 
@@ -248,10 +255,30 @@ export default function App() {
   const [profileBg, setProfileBg] = useIDBState('app_profileBg', '');
   const [avatar1, setAvatar1] = useIDBState('app_avatar1', '');
   const [avatar2, setAvatar2] = useIDBState('app_avatar2', '');
+  const [currentPage, setCurrentPage] = useState(0);
+  const [customIcons, setCustomIcons] = useIDBState<Record<string, string>>('app_custom_icons', {});
+  const [uploadingIconFor, setUploadingIconFor] = useState<string | null>(null);
+  const customIconInputRef = useRef<HTMLInputElement>(null);
+
+  const [musicBg, setMusicBg] = useIDBState('app_music_bg', '');
+  const [musicAvatar1, setMusicAvatar1] = useIDBState('app_music_avatar1', '');
+  const [musicAvatar2, setMusicAvatar2] = useIDBState('app_music_avatar2', '');
+  const [dynamicImg1, setDynamicImg1] = useIDBState('app_dynamic_img_1', '');
+  const [dynamicImg2, setDynamicImg2] = useIDBState('app_dynamic_img_2', '');
+  const [dynamicImg3, setDynamicImg3] = useIDBState('app_dynamic_img_3', '');
+  const [dynamicText, setDynamicText] = useLocalState('app_dynamic_text', '我的动态');
+  const [anniversaryBg, setAnniversaryBg] = useIDBState('app_anniversary_bg', '');
   const [name1, setName1] = useLocalState('app_name1', 'Yuli');
   const [name2, setName2] = useLocalState('app_name2', 'Milk');
   const [motto, setMotto] = useLocalState('app_motto', '沉睡中缠绵 · 清醒又幻灭');
+  const [beautifyAvatar, setBeautifyAvatar] = useIDBState('app_beautify_avatar', '');
+  const [beautifyText, setBeautifyText] = useLocalState('app_beautify_text', '想和你一起去看海...');
   const [subtitle, setSubtitle] = useLocalState('app_subtitle', 'LOCAL DAILY ACTIVE');
+
+  // Music Widget text
+  const [musicLeftText, setMusicLeftText] = useLocalState('app_music_left_text', '你在左边');
+  const [musicRightText, setMusicRightText] = useLocalState('app_music_right_text', '我紧靠右');
+  const [musicQuoteText, setMusicQuoteText] = useLocalState('app_music_quote_text', '自定义文本');
 
   // Theme
   const [theme, setTheme] = useLocalState<'warm' | 'mint' | 'sakura' | 'blue' | 'purple' | 'red' | 'custom'>('app_theme', 'warm');
@@ -457,7 +484,15 @@ export default function App() {
   const chatBgInputRef = useRef<HTMLInputElement>(null);
   const wallpaperInputRef = useRef<HTMLInputElement>(null);
   const profileBgInputRef = useRef<HTMLInputElement>(null);
+  const musicBgInputRef = useRef<HTMLInputElement>(null);
+  const musicAvatar1InputRef = useRef<HTMLInputElement>(null);
+  const musicAvatar2InputRef = useRef<HTMLInputElement>(null);
+  const dynamicImg1InputRef = useRef<HTMLInputElement>(null);
+  const dynamicImg2InputRef = useRef<HTMLInputElement>(null);
+  const dynamicImg3InputRef = useRef<HTMLInputElement>(null);
+  const anniversaryBgInputRef = useRef<HTMLInputElement>(null);
   const avatar1InputRef = useRef<HTMLInputElement>(null);
+  const beautifyAvatarInputRef = useRef<HTMLInputElement>(null);
   const avatar2InputRef = useRef<HTMLInputElement>(null);
   const momentsBgInputRef = useRef<HTMLInputElement>(null);
   const wishlistBgInputRef = useRef<HTMLInputElement>(null);
@@ -894,7 +929,7 @@ export default function App() {
 
   if (view === 'library') {
     return (
-      <div className="absolute inset-0 bg-[#FAFAFA] flex flex-col overflow-x-hidden overflow-y-auto text-[13px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
+      <div className="absolute inset-0 bg-[#FAFAFA] flex flex-col overflow-x-hidden overflow-y-auto text-[13px]">
 
         
         
@@ -1355,7 +1390,7 @@ export default function App() {
 
   if (view === 'music_manager') {
     return (
-      <div className="absolute inset-0 flex flex-col overflow-x-hidden overflow-y-auto text-[14px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif', backgroundColor: '#F2F2F7' }}>
+      <div className="absolute inset-0 flex flex-col overflow-x-hidden overflow-y-auto text-[14px]" style={{ backgroundColor: '#F2F2F7' }}>
         <div 
           className="w-full flex items-center justify-between px-3 pb-3 bg-white/30 sticky top-0 z-10 border-b border-[#c6c6c8]/20 shadow-[0_1px_3px_rgba(0,0,0,0.02)]"
           style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))' }}
@@ -1426,7 +1461,7 @@ export default function App() {
 
   if (view === 'appearance') {
     return (
-      <div className="absolute inset-0 bg-[#FAFAFA] flex flex-col overflow-x-hidden overflow-y-auto text-[13px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
+      <div className="absolute inset-0 bg-[#FAFAFA] flex flex-col overflow-x-hidden overflow-y-auto text-[13px]">
         
         {/* Header */}
         <div 
@@ -1623,7 +1658,49 @@ export default function App() {
                        <SettingItem icon={Type} label="底部小字" value={subtitle} onChange={setSubtitle} hideBorder={true} />
                     </div>
                  </div>
-
+                 
+                 <div>
+                    <div className="text-[12px] font-medium text-[#8E8E93] mb-3 px-1 tracking-wide uppercase">第一页气泡组件</div>
+                    <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-[#F2F2F7]">
+                       <SettingItem icon={User} label="气泡头像" value={beautifyAvatar ? '已上传' : '未设置'} onClick={() => beautifyAvatarInputRef.current?.click()} />
+                       <SettingItem icon={Type} label="气泡文案" value={beautifyText} onChange={setBeautifyText} hideBorder={true} isTextarea={true} />
+                    </div>
+                 </div>
+                 
+                 <div>
+                    <div className="text-[12px] font-medium text-[#8E8E93] mb-3 px-1 tracking-wide uppercase">功能图标自定义</div>
+                    <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-[#F2F2F7]">
+                       {[...apps, ...tools].map((item, index) => (
+                         <SettingItem 
+                           key={item.name}
+                           icon={item.icon} 
+                           label={`${item.name}图标`} 
+                           value={customIcons[item.name] ? '已自定' : '未设置 (默认)'} 
+                           onClick={() => {
+                              setUploadingIconFor(item.name);
+                              setTimeout(() => customIconInputRef.current?.click(), 50);
+                           }}
+                           hideBorder={index === apps.length + tools.length - 1} 
+                         />
+                       ))}
+                    </div>
+                 </div>
+                 <div>
+                    <div className="text-[12px] font-medium text-[#8E8E93] mb-3 px-1 tracking-wide uppercase">主页其它组件</div>
+                    <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-[#F2F2F7]">
+                       <SettingItem icon={ImageIcon} label="纪念日组件背景" value={anniversaryBg ? '已上传' : '未设置'} onClick={() => anniversaryBgInputRef.current?.click()} />
+                       <SettingItem icon={ImageIcon} label="动态组件图 1" value={dynamicImg1 ? '已上传' : '未设置'} onClick={() => dynamicImg1InputRef.current?.click()} />
+                       <SettingItem icon={ImageIcon} label="动态组件图 2" value={dynamicImg2 ? '已上传' : '未设置'} onClick={() => dynamicImg2InputRef.current?.click()} />
+                       <SettingItem icon={ImageIcon} label="动态组件图 3" value={dynamicImg3 ? '已上传' : '未设置'} onClick={() => dynamicImg3InputRef.current?.click()} />
+                       <SettingItem icon={Type} label="动态组件标题" value={dynamicText} onChange={setDynamicText} />
+                       <SettingItem icon={ImageIcon} label="音乐播放器背景" value={musicBg ? '已上传' : '未设置'} onClick={() => musicBgInputRef.current?.click()} />
+                       <SettingItem icon={User} label="音乐组件头像 1" value={musicAvatar1 ? '已上传' : '未设置'} onClick={() => musicAvatar1InputRef.current?.click()} />
+                       <SettingItem icon={User} label="音乐组件头像 2" value={musicAvatar2 ? '已上传' : '未设置'} onClick={() => musicAvatar2InputRef.current?.click()} />
+                       <SettingItem icon={Type} label="音乐组件左气泡" value={musicLeftText} onChange={setMusicLeftText} />
+                       <SettingItem icon={Type} label="音乐组件右气泡" value={musicRightText} onChange={setMusicRightText} />
+                       <SettingItem icon={MessageCircle} label="音乐组件寄语" value={musicQuoteText} onChange={setMusicQuoteText} hideBorder={true} isTextarea={true} />
+                    </div>
+                 </div>
                  <div>
                     <div className="text-[12px] font-medium text-[#8E8E93] mb-3 px-1 tracking-wide uppercase">保活与锁屏/灵动岛设置</div>
                     <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-[#F2F2F7]">
@@ -1653,39 +1730,6 @@ export default function App() {
                        </div>
                     </div>
                  </div>
-
-                 <div>
-                    <div className="text-[12px] font-medium text-[#8E8E93] mb-3 px-1 tracking-wide uppercase">透明度调节</div>
-                    <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-[#F2F2F7] p-5 space-y-6">
-                        <div>
-                            <div className="flex justify-between text-[14px] text-[#333] mb-3">
-                                <span className="font-semibold">主页图标背景</span>
-                                <span className="font-mono font-bold text-[14px]" style={{ color: currentThemeConfig.textPrimary }}>{appOpacity}%</span>
-                            </div>
-                            <input 
-                                type="range" min="0" max="100" value={appOpacity} onChange={e => setAppOpacity(parseInt(e.target.value))} 
-                                className="w-full h-1.5 bg-[#e5e5ea] rounded-lg appearance-none cursor-pointer" 
-                                style={{
-                                    background: `linear-gradient(to right, ${currentThemeConfig.textPrimary} 0%, ${currentThemeConfig.textPrimary} ${appOpacity}%, #e5e5ea ${appOpacity}%, #e5e5ea 100%)`
-                                }}
-                            />
-                        </div>
-                        <div>
-                            <div className="flex justify-between text-[14px] text-[#333] mb-3">
-                                <span className="font-semibold">书影音卡片背景</span>
-                                <span className="font-mono font-bold text-[14px]" style={{ color: currentThemeConfig.textPrimary }}>{wishlistCardOpacity}%</span>
-                            </div>
-                            <input 
-                                type="range" min="0" max="100" value={wishlistCardOpacity} onChange={e => setWishlistCardOpacity(parseInt(e.target.value))} 
-                                className="w-full h-1.5 bg-[#e5e5ea] rounded-lg appearance-none cursor-pointer"
-                                style={{
-                                    background: `linear-gradient(to right, ${currentThemeConfig.textPrimary} 0%, ${currentThemeConfig.textPrimary} ${wishlistCardOpacity}%, #e5e5ea ${wishlistCardOpacity}%, #e5e5ea 100%)`
-                                }}
-                            />
-                        </div>
-                    </div>
-                 </div>
-
                  <div>
                     <div className="text-[12px] font-medium text-[#8E8E93] mb-3 px-1 tracking-wide uppercase">进阶设置 (高阶玩家专用)</div>
                     <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-[#F2F2F7]">
@@ -1710,86 +1754,21 @@ export default function App() {
              </motion.div>
            )}
 
-           {false && (
-             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
-                <div>
-                   <div className="text-[12px] font-medium text-[#8E8E93] mb-3 px-1 tracking-wide uppercase">界面切换</div>
-                   <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-[#F2F2F7] px-5 py-4.5 flex items-center justify-between">
-                      <span className="text-[15px] font-medium text-[#333]">朋友圈样式</span>
-                      <div className="flex bg-[#E5E5EA]/60 p-0.5 rounded-[8px]">
-                         <button 
-                            className={`px-4 py-1 text-[12px] font-semibold rounded-[6px] transition-all ${momentsStyle === 'wechat' ? 'bg-white shadow-sm text-black' : 'text-[#8e8e93]'}`}
-                            onClick={() => setMomentsStyle('wechat')}
-                         >微信</button>
-                         <button 
-                            className={`px-4 py-1 text-[12px] font-semibold rounded-[6px] transition-all ${momentsStyle === 'weibo' ? 'bg-white shadow-sm text-black' : 'text-[#8e8e93]'}`}
-                            onClick={() => setMomentsStyle('weibo')}
-                         >微博</button>
-                      </div>
-                   </div>
-                </div>
-
-                <div>
-                   <div className="text-[12px] font-medium text-[#8E8E93] mb-3 px-1 tracking-wide uppercase">透明度调节</div>
-                   <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-[#F2F2F7] p-5 space-y-6">
-                       <div>
-                           <div className="flex justify-between text-[14px] text-[#333] mb-3">
-                               <span className="font-semibold">主页图标背景</span>
-                               <span className="font-mono font-bold text-[14px]" style={{ color: currentThemeConfig.textPrimary }}>{appOpacity}%</span>
-                           </div>
-                           <input 
-                               type="range" min="0" max="100" value={appOpacity} onChange={e => setAppOpacity(parseInt(e.target.value))} 
-                               className="w-full h-1.5 bg-[#e5e5ea] rounded-lg appearance-none cursor-pointer" 
-                               style={{
-                                   background: `linear-gradient(to right, ${currentThemeConfig.textPrimary} 0%, ${currentThemeConfig.textPrimary} ${appOpacity}%, #e5e5ea ${appOpacity}%, #e5e5ea 100%)`
-                               }}
-                           />
-                       </div>
-                       <div>
-                           <div className="flex justify-between text-[14px] text-[#333] mb-3">
-                               <span className="font-semibold">书影音卡片背景</span>
-                               <span className="font-mono font-bold text-[14px]" style={{ color: currentThemeConfig.textPrimary }}>{wishlistCardOpacity}%</span>
-                           </div>
-                           <input 
-                               type="range" min="0" max="100" value={wishlistCardOpacity} onChange={e => setWishlistCardOpacity(parseInt(e.target.value))} 
-                               className="w-full h-1.5 bg-[#e5e5ea] rounded-lg appearance-none cursor-pointer"
-                               style={{
-                                   background: `linear-gradient(to right, ${currentThemeConfig.textPrimary} 0%, ${currentThemeConfig.textPrimary} ${wishlistCardOpacity}%, #e5e5ea ${wishlistCardOpacity}%, #e5e5ea 100%)`
-                               }}
-                           />
-                       </div>
-                   </div>
-                </div>
-
-                <div>
-                   <div className="text-[12px] font-medium text-[#8E8E93] mb-3 px-1 tracking-wide uppercase">保活与锁屏/灵动岛设置</div>
-                   <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-[#F2F2F7]">
-                      <SettingItem 
-                          icon={ImageIcon} 
-                          label="锁屏/灵动岛封面小图标" 
-                          value={keepaliveIcon ? '已自定' : '未设置 (默认使用梦角头像)'} 
-                          onClick={handleKeepaliveIconClick} 
-                          hideBorder={true}
-                      />
-                   </div>
-                </div>
-
-                <div>
-                   <div className="text-[12px] font-medium text-[#8E8E93] mb-3 px-1 tracking-wide uppercase">进阶设置 (高阶玩家专用)</div>
-                   <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-[#F2F2F7]">
-                      <SettingItem icon={Droplet} label="聊天气泡 CSS" value={chatCss ? '已上传' : '未设置'} onClick={() => cssInputRef.current?.click()} />
-                      <SettingItem icon={Type} label="聊天字体 TTF" value={chatFont ? '已上传' : '未设置'} onClick={() => fontInputRef.current?.click()} hideBorder={true}/>
-                   </div>
-                </div>
-             </motion.div>
-           )}
         </div>
 
         {/* Hidden inputs */}
         <input type="file" ref={chatBgInputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setChatBg)} />
         <input type="file" ref={wallpaperInputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setWallpaper)} />
         <input type="file" ref={profileBgInputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setProfileBg)} />
+        <input type="file" ref={musicBgInputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setMusicBg)} />
+        <input type="file" ref={musicAvatar1InputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setMusicAvatar1)} />
+        <input type="file" ref={musicAvatar2InputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setMusicAvatar2)} />
+        <input type="file" ref={dynamicImg1InputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setDynamicImg1)} />
+        <input type="file" ref={dynamicImg2InputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setDynamicImg2)} />
+        <input type="file" ref={dynamicImg3InputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setDynamicImg3)} />
+        <input type="file" ref={anniversaryBgInputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setAnniversaryBg)} />
         <input type="file" ref={avatar1InputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setAvatar1)} />
+        <input type="file" ref={beautifyAvatarInputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setBeautifyAvatar)} />
         <input type="file" ref={avatar2InputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setAvatar2)} />
         <input type="file" ref={momentsBgInputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setMomentsBg)} />
         <input type="file" ref={wishlistBgInputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setWishlistBg)} />
@@ -1801,6 +1780,20 @@ export default function App() {
         
         <input type="file" ref={cssInputRef} className="hidden" accept=".css" onChange={(e) => handleTextChange(e, setChatCss, 'CSS已加载 (在主页面和聊天中生效)')} />
         <input type="file" ref={fontInputRef} className="hidden" accept=".ttf,.otf,.woff,.woff2" onChange={(e) => handleFileChange(e, setChatFont)} />
+        <input 
+          type="file" 
+          ref={customIconInputRef} 
+          className="hidden" 
+          accept="image/*" 
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            if (file && uploadingIconFor) {
+              const url = await compressImage(file);
+              setCustomIcons(prev => ({ ...prev, [uploadingIconFor]: url }));
+            }
+            if (e.target) e.target.value = '';
+          }} 
+        />
         {renderOverlays()}
       </div>
     );
@@ -1837,9 +1830,12 @@ export default function App() {
   }
 
     if (view === 'home') {
+      const page1Apps = apps.filter(a => ['聊天', '信箱', '朋友圈', '心情便签'].includes(a.name));
+      const page2Apps = apps.filter(a => ['书影音记录', '记账', 'Todo', '查岗'].includes(a.name));
+
       return (
         <div 
-          className="absolute inset-0 text-[#333] font-sans flex flex-col items-center overflow-x-hidden overflow-y-auto selection:bg-[#DCD6CE]/50 transition-colors duration-500"
+          className="absolute inset-0 text-[#333] font-sans flex flex-col items-center overflow-hidden selection:bg-[#DCD6CE]/50 transition-colors duration-500"
           style={{
             color: currentThemeConfig.textPrimary
           }}
@@ -1847,227 +1843,371 @@ export default function App() {
           <VideoCallOverlay />
           {chatCss && <style dangerouslySetInnerHTML={{ __html: chatCss }} />}
           {chatFont && <style dangerouslySetInnerHTML={{ __html: `@font-face { font-family: 'CustomChatFont'; src: url('${chatFont}'); } * { font-family: 'CustomChatFont', sans-serif !important; }`}} />}
-
-          <div 
-            className="w-full max-w-[420px] mx-auto flex flex-col justify-start flex-1 gap-3 px-4 shrink-0 relative"
-            style={{
-              paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)',
-              paddingTop: 'max(12px, env(safe-area-inset-top))'
-            }}
-          >
-        
-        {/* Profile Card */}
-        <motion.div 
-          className="border border-white/60 rounded-[32px] flex flex-col shadow-sm shrink-0 transition-colors duration-500 overflow-hidden w-full mt-2 relative"
-          style={{ backgroundColor: currentThemeConfig.cardBg || '#ffffff' }}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          {/* Top Image Part */}
-          <div 
-            className="absolute top-0 left-0 w-full h-[60%] bg-cover bg-center shrink-0"
-            style={{ 
-              backgroundImage: profileBg ? `url(${profileBg})` : 'none',
-              backgroundColor: currentThemeConfig.bg || '#EFEFEF'
-            }}
-          />
           
-          <div className="w-full h-[130px] shrink-0 pointer-events-none" />
+          <div className="flex-1 w-full relative min-h-0">
+            <div 
+              className="w-full h-full flex overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-[120px]"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+              onScroll={(e) => {
+                const scrollLeft = e.currentTarget.scrollLeft;
+                const width = e.currentTarget.offsetWidth;
+                if (width > 0) {
+                  const page = Math.round(scrollLeft / width);
+                  if (page !== currentPage) setCurrentPage(page);
+                }
+              }}
+            >
+              {/* --- PAGE 1 --- */}
+              <div className="min-w-full h-full snap-center snap-always flex flex-col justify-start gap-3 px-4 relative overflow-y-auto overflow-x-hidden pt-[max(12px,env(safe-area-inset-top))] max-w-[420px] mx-auto pb-[130px]">
+                
+                {/* Profile Card Block */}
+                <motion.div 
+                  className="w-full flex flex-col items-center relative shrink-0"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  
+                  {/* Profile Card */}
+                  <motion.div 
+                    className="rounded-[32px] flex flex-col shrink-0 transition-colors duration-500 overflow-hidden w-full h-[340px] mt-2 relative"
+                    style={{ backgroundColor: 'transparent' }}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    onClick={() => profileBgInputRef.current?.click()}
+                  >
+                    {/* Top Image Part */}
+                    <div 
+                      className="absolute top-0 left-0 w-full h-[65%] bg-cover bg-center shrink-0"
+                      style={{ 
+                        backgroundImage: profileBg ? `url(${profileBg})` : 'none',
+                        backgroundColor: currentThemeConfig.bg || '#EFEFEF'
+                      }}
+                    />
+                    
+                    <div className="flex-1 w-full pointer-events-none" />
 
-          {/* Bottom Frosted Container */}
-          <div 
-            className="w-full relative z-10 pt-[42px] pb-6 px-4 flex flex-col items-center backdrop-blur-xl rounded-t-[32px] border-t border-white/40 shadow-[0_-4px_24px_rgba(0,0,0,0.06)]"
-            style={{ 
-               backgroundColor: currentThemeConfig.cardBg ? `${currentThemeConfig.cardBg}E6` : 'rgba(255,255,255,0.85)'
-            }}
-          >
-            {/* Avatars */}
-            <div className="absolute -top-[36px] flex justify-center items-center w-full">
-              <div className="relative flex items-center justify-center">
-                <div 
-                  className="w-[66px] h-[66px] rounded-full border-[3px] border-white overflow-hidden flex items-center justify-center shadow-[0_4px_12px_rgba(0,0,0,0.08)] transition-transform hover:scale-105 cursor-pointer z-10 -mr-2 sm:-mr-4 bg-white"
-                  style={{ color: currentThemeConfig.textSecondary }}
-                  onClick={() => avatar1InputRef.current?.click()}
-                >
-                  {avatar1 ? <img src={avatar1} className="w-full h-full object-cover" /> : <Cat size={24} strokeWidth={1.5} />}
+                    {/* Bottom Frosted Container */}
+                    <div 
+                      className="w-full relative z-10 pt-[42px] pb-6 px-4 flex flex-col items-center rounded-t-[32px]"
+                      style={{
+                        background: `linear-gradient(to bottom, rgba(255,255,255,1) 0%, rgba(255,255,255,0.95) 30%, rgba(255,255,255,0.6) 70%, rgba(255,255,255,0) 100%)`
+                      }}
+                    >
+                      {/* Avatars */}
+                      <div className="absolute -top-[36px] flex justify-center items-center w-full">
+                        <div className="relative flex items-center justify-center">
+                          <div 
+                            className="w-[66px] h-[66px] rounded-full border-[3px] border-white overflow-hidden flex items-center justify-center shadow-[0_4px_12px_rgba(0,0,0,0.08)] transition-transform hover:scale-105 cursor-pointer z-10 -mr-2 sm:-mr-4 bg-white"
+                            style={{ color: currentThemeConfig.textSecondary }}
+                            onClick={(e) => { e.stopPropagation(); avatar1InputRef.current?.click(); }}
+                          >
+                            {avatar1 ? <img src={avatar1} className="w-full h-full object-cover" /> : <Cat size={24} strokeWidth={1.5} />}
+                          </div>
+                          <div 
+                            className="w-[66px] h-[66px] rounded-full border-[3px] border-white overflow-hidden flex items-center justify-center shadow-[0_4px_12px_rgba(0,0,0,0.08)] transition-transform hover:scale-105 cursor-pointer z-0 bg-white"
+                            style={{ color: currentThemeConfig.textSecondary }}
+                            onClick={(e) => { e.stopPropagation(); avatar2InputRef.current?.click(); }}
+                          >
+                             {avatar2 ? <img src={avatar2} className="w-full h-full object-cover" /> : <Cat size={24} strokeWidth={1.5} />}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Names */}
+                      <div className="flex items-center justify-center gap-[6px] mb-2 mt-1">
+                        <h1 className="text-[17px] sm:text-[18px] font-bold tracking-tight text-[#111] leading-none whitespace-nowrap overflow-hidden text-ellipsis max-w-[120px]">{name1}</h1>
+                        <span className="text-[13px] text-[#555] opacity-80 shrink-0">&</span>
+                        <h1 className="text-[17px] sm:text-[18px] font-bold tracking-tight text-[#111] leading-none whitespace-nowrap overflow-hidden text-ellipsis max-w-[120px]">{name2}</h1>
+                      </div>
+                      
+                      {/* Dark text block */}
+                      <p className="text-[13px] font-medium leading-relaxed text-center whitespace-pre-line px-2 max-w-[95%] mx-auto text-[#333] tracking-widest mb-3 mt-1 opacity-90">
+                         {motto}
+                      </p>
+                      
+                      {/* Light text block */}
+                      <p className="text-[10px] uppercase tracking-[0.2em] text-[#888] font-semibold opacity-70">
+                         {subtitle}
+                      </p>
+                    </div>
+                  </motion.div>
+                </motion.div>
+
+                {/* Middle Row */}
+                <div className="flex w-full gap-3 shrink-0 items-stretch mt-[18px] h-auto">
+                  {/* Left: Anniversary Widget */}
+                  <motion.div 
+                    className="w-[159px] h-[170px] shrink-0 backdrop-blur-xl rounded-[24px] shadow-[0_8px_32px_-12px_rgba(0,0,0,0.06)] flex flex-col relative overflow-hidden cursor-pointer"
+                    style={{ backgroundColor: currentThemeConfig.cardBg }}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                    onClick={() => anniversaryBgInputRef.current?.click()}
+                  >
+                    {anniversaryBg && <img src={anniversaryBg} className="absolute inset-0 w-full h-full object-cover z-0 opacity-70" />}
+                    <div className="relative z-10 p-5 h-full flex flex-col items-center justify-between">
+                      <div className="text-[12px] tracking-widest flex items-center justify-center font-medium w-full mt-1" style={{color: currentThemeConfig.textSecondary}}>
+                        <span>在一起已经</span>
+                      </div>
+                      
+                      <div className="text-[46px] leading-[1] italic font-normal tracking-tight my-auto" style={{color: currentThemeConfig.textPrimary, fontFamily: '"Playfair Display", "Georgia", "Times New Roman", serif'}}>
+                        {getDaysTogether()}
+                      </div>
+                      
+                      <div className="relative w-full flex justify-center mb-1">
+                        <input 
+                          type="date" 
+                          value={anniversaryDate}
+                          onChange={(e) => setAnniversaryDate(e.target.value)}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                        />
+                        <div 
+                          className="text-[11px] font-medium tracking-wider" 
+                          style={{color: currentThemeConfig.textSecondary}}
+                        >
+                          {getFormattedDate(anniversaryDate)}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                  
+                  {/* Right: Apps 2x2 Grid */}
+                  <motion.div 
+                    className="flex-1 grid grid-cols-2 gap-y-2 gap-x-2 content-start"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                  >
+                    {page1Apps.map((app) => (
+                      <div 
+                        key={app.name} 
+                        className="flex flex-col items-center justify-center gap-1.5 cursor-pointer group"
+                        onClick={() => {
+                          if (app.name === '心情便签') setView('decide');
+                          if (app.name === '聊天') setView('chat');
+                          if (app.name === '朋友圈') setView('moments');
+                          if (app.name === '信箱') setView('mailbox');
+                        }}
+                      >
+                        <div 
+                          className="w-[64px] h-[64px] sm:w-[68px] sm:h-[68px] rounded-[22px] shadow-[0_4px_20px_-6px_rgba(0,0,0,0.06)] flex items-center justify-center transition-all group-active:scale-95 bg-white/80 overflow-hidden relative"
+                          style={{ color: currentThemeConfig.textSecondary }}
+                        >
+                          {customIcons[app.name] ? (
+                            <img src={customIcons[app.name]} className="w-full h-full object-cover absolute inset-0" />
+                          ) : (
+                            <app.icon size={28} strokeWidth={1.5} />
+                          )}
+                        </div>
+                        <span className="text-[12px] font-medium tracking-wide text-gray-600">{app.name}</span>
+                      </div>
+                    ))}
+                  </motion.div>
                 </div>
-                <div 
-                  className="w-[66px] h-[66px] rounded-full border-[3px] border-white overflow-hidden flex items-center justify-center shadow-[0_4px_12px_rgba(0,0,0,0.08)] transition-transform hover:scale-105 cursor-pointer z-0 bg-white"
-                  style={{ color: currentThemeConfig.textSecondary }}
-                  onClick={() => avatar2InputRef.current?.click()}
+
+                {/* Beautification Widget */}
+                <motion.div 
+                  className="flex w-full px-1 items-center gap-2.5 mt-[7px] shrink-0 relative"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.25 }}
                 >
-                   {avatar2 ? <img src={avatar2} className="w-full h-full object-cover" /> : <Cat size={24} strokeWidth={1.5} />}
-                </div>
+                  <div className="w-[44px] h-[44px] rounded-full overflow-hidden shrink-0 border-[2px] border-white shadow-sm cursor-pointer" onClick={() => beautifyAvatarInputRef.current?.click()}>
+                    {beautifyAvatar ? <img src={beautifyAvatar} className="w-full h-full object-cover" /> : <Cat size={24} className="m-auto mt-[10px] opacity-50" />}
+                  </div>
+                  <div className="bg-white/60 backdrop-blur-md px-4 py-3 rounded-[20px] rounded-tl-[4px] text-[13.5px] text-black/80 font-medium shadow-[0_4px_16px_rgba(0,0,0,0.03)] outline-none max-w-[95%] text-left" style={{ wordBreak: 'break-word' }}>
+                    {beautifyText}
+                  </div>
+                </motion.div>
+
+              </div>
+
+              {/* --- PAGE 2 --- */}
+              <div className="min-w-full h-full snap-center snap-always flex flex-col justify-start gap-4 px-4 relative overflow-y-auto overflow-x-hidden pt-[max(12px,env(safe-area-inset-top))] max-w-[420px] mx-auto pb-[130px]">
+                
+                {/* Music Widget */}
+                <motion.div 
+                  className="w-full h-[340px] rounded-[32px] overflow-hidden relative shadow-[0_8px_32px_-12px_rgba(0,0,0,0.06)] mt-2 shrink-0 cursor-pointer flex flex-col"
+                  style={{ backgroundColor: currentThemeConfig.cardBg }}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  onClick={(e) => {
+                    if (e.target === e.currentTarget) musicBgInputRef.current?.click();
+                  }}
+                >
+                  {musicBg && <img src={musicBg} className="absolute inset-0 w-full h-full object-cover z-0 pointer-events-none" />}
+                  <div className="relative z-10 w-full h-full flex flex-col justify-between pt-3 pb-3 pointer-events-none">
+                    {/* Earphone Wires */}
+                    <svg className="absolute inset-0 w-full h-full pointer-events-none -z-10" viewBox="0 0 350 340" preserveAspectRatio="none">
+                        {/* Left wire */}
+                        <path d="M 110 77 C 40 100, 40 220, 160 210" fill="none" stroke="#111" strokeWidth="1.5" />
+                        {/* Left earbud */}
+                        <ellipse cx="110" cy="77" rx="5" ry="3" fill="#111" transform="rotate(-30 110 77)" />
+                        
+                        {/* Right wire */}
+                        <path d="M 240 77 C 310 100, 310 220, 190 210" fill="none" stroke="#111" strokeWidth="1.5" />
+                        {/* Right earbud */}
+                        <ellipse cx="240" cy="77" rx="5" ry="3" fill="#111" transform="rotate(30 240 77)" />
+                    </svg>
+
+                    {/* Avatars & Speeches */}
+                    <div className="w-full flex justify-center items-start px-6 gap-3 relative z-10">
+                        {/* Left Avatar */}
+                        <div className="flex flex-col items-center gap-2">
+                            <div className="bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full text-[12px] font-medium text-black shadow-sm relative after:content-[''] after:absolute after:bottom-[-5px] after:left-1/2 after:-translate-x-1/2 after:border-t-[6px] after:border-t-white/90 after:border-l-[6px] after:border-l-transparent after:border-r-[6px] after:border-r-transparent outline-none pointer-events-auto" contentEditable suppressContentEditableWarning onBlur={(e) => setMusicLeftText(e.currentTarget.textContent || '')}>
+                                {musicLeftText}
+                            </div>
+                            <div className="w-[56px] h-[56px] rounded-full border-[2.5px] border-white overflow-hidden shadow-sm pointer-events-auto cursor-pointer" onClick={(e) => { e.stopPropagation(); musicAvatar1InputRef.current?.click(); }}>
+                                {musicAvatar1 ? <img src={musicAvatar1} className="w-full h-full object-cover" /> : (avatar1 ? <img src={avatar1} className="w-full h-full object-cover" /> : <Cat size={24} />)}
+                            </div>
+                        </div>
+                        {/* Right Avatar */}
+                        <div className="flex flex-col items-center gap-2">
+                            <div className="bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full text-[12px] font-medium text-black shadow-sm relative after:content-[''] after:absolute after:bottom-[-5px] after:left-1/2 after:-translate-x-1/2 after:border-t-[6px] after:border-t-white/90 after:border-l-[6px] after:border-l-transparent after:border-r-[6px] after:border-r-transparent outline-none pointer-events-auto" contentEditable suppressContentEditableWarning onBlur={(e) => setMusicRightText(e.currentTarget.textContent || '')}>
+                                {musicRightText}
+                            </div>
+                            <div className="w-[56px] h-[56px] rounded-full border-[2.5px] border-white overflow-hidden shadow-sm pointer-events-auto cursor-pointer" onClick={(e) => { e.stopPropagation(); musicAvatar2InputRef.current?.click(); }}>
+                                {musicAvatar2 ? <img src={musicAvatar2} className="w-full h-full object-cover" /> : (avatar2 ? <img src={avatar2} className="w-full h-full object-cover" /> : <Cat size={24} />)}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {/* Quote */}
+                    <div className="text-[12px] text-gray-500 text-center px-6 mt-[19px] font-medium tracking-wide drop-shadow-sm mb-1.5 outline-none pointer-events-auto" contentEditable suppressContentEditableWarning onBlur={(e) => setMusicQuoteText(e.currentTarget.textContent || '')}>
+                       {musicQuoteText}
+                    </div>
+                    
+                    {/* Music Player */}
+                    <div className="relative z-10 w-[90%] mx-auto backdrop-blur-xl bg-black/5 rounded-[24px] p-4 flex flex-col border border-white/50 mt-auto pointer-events-auto">
+                        <div className="flex flex-col items-center justify-center w-full px-6 relative mb-3">
+                            <button className="absolute right-1 top-0.5" onClick={(e) => { e.stopPropagation(); setView('music_manager'); }}><ListMusic size={16} className="text-black/60" /></button>
+                            <span className="text-[14px] font-semibold text-black/80 w-full text-center truncate">{playQueue.length > 0 ? playQueue[currentMusicIndex >= playQueue.length ? 0 : currentMusicIndex].name : 'Pink Lavender'}</span>
+                            <span className="text-[10px] text-black/50 font-mono mt-0.5 w-full text-center truncate">
+                                {playQueue.length > 0 ? playQueue[currentMusicIndex >= playQueue.length ? 0 : currentMusicIndex].artist || '°˖✧ ılılılllı.🎵 ♥ ✧˖°' : '°˖✧ ılılılllı.🎵 ♥ ✧˖°'}
+                            </span>
+                        </div>
+                        <div className="w-full h-[3px] bg-black/10 rounded-full mb-4 relative overflow-hidden">
+                            <div className="absolute left-0 top-0 h-full rounded-full bg-black/60 transition-all duration-300" style={{width: `${audioProgress * 100}%`}}></div>
+                        </div>
+                        <div className="flex justify-center items-center px-2">
+                            <div className="flex items-center gap-5 text-black/80">
+                                <button onClick={(e) => { e.stopPropagation(); prevMusic(); }}><SkipBack size={16} fill="currentColor" /></button>
+                                <button onClick={(e) => { e.stopPropagation(); toggleMusicPlay(); }} className="w-10 h-10 rounded-full bg-black/5 flex items-center justify-center hover:bg-black/10 transition-colors">
+                                    {isMusicPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" className="ml-0.5" />}
+                                </button>
+                                <button onClick={(e) => { e.stopPropagation(); nextMusic(); }}><SkipForward size={16} fill="currentColor" /></button>
+                            </div>
+                        </div>
+                    </div>
+                  </div>
+                </motion.div>
+                
+                {/* 1x4 Apps Grid */}
+                <motion.div 
+                  className="flex justify-between items-start w-full px-2 shrink-0 mt-3"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  {page2Apps.map((app) => (
+                    <div 
+                      key={app.name} 
+                      className="flex flex-col items-center justify-center gap-1.5 cursor-pointer group"
+                      onClick={() => {
+                        if (app.name === '书影音记录') setView('wishlist');
+                        if (app.name === '查岗') setView('check_in');
+                        if (app.name === '记账') setView('accounting');
+                        if (app.name === 'Todo') setView('todo');
+                      }}
+                    >
+                      <div 
+                        className="w-[64px] h-[64px] sm:w-[68px] sm:h-[68px] rounded-[22px] shadow-[0_4px_16px_-6px_rgba(0,0,0,0.05)] flex items-center justify-center transition-all group-active:scale-95 bg-white/80 overflow-hidden relative"
+                        style={{ color: currentThemeConfig.textSecondary }}
+                      >
+                        {customIcons[app.name] ? (
+                          <img src={customIcons[app.name]} className="w-full h-full object-cover absolute inset-0" />
+                        ) : (
+                          <app.icon size={28} strokeWidth={1.5} />
+                        )}
+                      </div>
+                      <span className="text-[12px] font-medium tracking-wide text-gray-600">{app.name}</span>
+                    </div>
+                  ))}
+                </motion.div>
+                
+                {/* Dynamic Beautification Widget */}
+                <motion.div
+                   className="w-full h-[135px] rounded-[32px] p-4 flex flex-col mt-3 shrink-0 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.06)] pointer-events-auto"
+                   style={{ backgroundColor: currentThemeConfig.cardBg }}
+                   initial={{ opacity: 0, y: 20 }}
+                   animate={{ opacity: 1, y: 0 }}
+                   transition={{ delay: 0.3 }}
+                >
+                   <div className="text-[12px] font-semibold tracking-wide mb-2 pl-2 outline-none pointer-events-auto leading-none" style={{ color: currentThemeConfig.textPrimary }} contentEditable suppressContentEditableWarning onBlur={(e) => setDynamicText(e.currentTarget.textContent || '')}>
+                      {dynamicText}
+                   </div>
+                   <div className="flex w-full gap-2.5 h-[78px] overflow-hidden items-stretch mt-0.5 px-1">
+                      <div className="flex-1 rounded-[16px] bg-black/5 overflow-hidden cursor-pointer flex items-center justify-center" onClick={() => dynamicImg1InputRef.current?.click()}>
+                         {dynamicImg1 ? <img src={dynamicImg1} className="w-full h-full object-cover" /> : <ImageIcon size={20} className="text-black/20" />}
+                      </div>
+                      <div className="flex-1 rounded-[16px] bg-black/5 overflow-hidden cursor-pointer flex items-center justify-center" onClick={() => dynamicImg2InputRef.current?.click()}>
+                         {dynamicImg2 ? <img src={dynamicImg2} className="w-full h-full object-cover" /> : <ImageIcon size={20} className="text-black/20" />}
+                      </div>
+                      <div className="flex-1 rounded-[16px] bg-black/5 overflow-hidden cursor-pointer flex items-center justify-center" onClick={() => dynamicImg3InputRef.current?.click()}>
+                         {dynamicImg3 ? <img src={dynamicImg3} className="w-full h-full object-cover" /> : <ImageIcon size={20} className="text-black/20" />}
+                      </div>
+                   </div>
+                </motion.div>
+
               </div>
             </div>
             
-            {/* Names */}
-            <div className="flex items-center justify-center gap-[6px] mb-2 mt-1">
-              <h1 className="text-[17px] sm:text-[18px] font-bold tracking-tight text-[#111] leading-none whitespace-nowrap overflow-hidden text-ellipsis max-w-[120px]">{name1}</h1>
-              <span className="text-[13px] text-[#555] opacity-80 shrink-0">&</span>
-              <h1 className="text-[17px] sm:text-[18px] font-bold tracking-tight text-[#111] leading-none whitespace-nowrap overflow-hidden text-ellipsis max-w-[120px]">{name2}</h1>
+            {/* Fixed Bottom Controls */}
+            <div className="fixed bottom-0 left-0 w-full flex flex-col items-center pointer-events-none z-[100] bg-gradient-to-t from-white/30 to-transparent pb-0 pt-6" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) - 8px)' }}>
+              <div className="pointer-events-auto flex flex-col items-center w-full px-4 gap-3 max-w-[420px]">
+                {/* Pagination Dots */}
+                <div className="flex gap-2 bg-white/40 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/30 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+                   <div className={`w-1.5 h-1.5 rounded-full transition-colors duration-300 ${currentPage === 0 ? 'bg-black/60' : 'bg-black/20'}`} />
+                   <div className={`w-1.5 h-1.5 rounded-full transition-colors duration-300 ${currentPage === 1 ? 'bg-black/60' : 'bg-black/20'}`} />
+                </div>
+                
+                {/* Bottom Tools Pill */}
+                <motion.div 
+                  className="backdrop-blur-xl rounded-[24px] px-2 py-3 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.06)] flex justify-center gap-7 shrink-0 items-center transition-colors duration-500 w-full"
+                  style={{ backgroundColor: currentThemeConfig.cardBg.replace(/[\d.]+\)$/, '0.35)') }}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.25 }}
+                >
+                  {tools.map(tool => (
+                    <div 
+                      key={tool.name} 
+                      className="flex flex-col items-center justify-center gap-1 cursor-pointer group"
+                      onClick={() => {
+                        if (tool.name === '外观设置') setView('appearance');
+                        if (tool.name === '字卡库') setView('library');
+                        if (tool.name === '数据管理') setView('data');
+                        if (tool.name === '聊天设置') setView('chat_settings');
+                      }}
+                    >
+                      <div 
+                        className="w-[54px] h-[54px] rounded-[18px] shadow-[0_4px_12px_-6px_rgba(0,0,0,0.04)] flex items-center justify-center transition-all group-active:scale-95 bg-white/80 overflow-hidden relative"
+                        style={{ color: currentThemeConfig.textSecondary }}
+                      >
+                        {customIcons[tool.name] ? (
+                          <img src={customIcons[tool.name]} className="w-full h-full object-cover absolute inset-0" />
+                        ) : (
+                          <tool.icon size={26} strokeWidth={1.25} />
+                        )}
+                      </div>
+                      <span className="text-[11px] font-medium tracking-wide text-gray-600 leading-none mt-0.5">{tool.name}</span>
+                    </div>
+                  ))}
+                </motion.div>
+              </div>
             </div>
-            
-            {/* Dark text block */}
-            <p className="text-[13px] font-medium leading-relaxed text-center whitespace-pre-line px-2 max-w-[95%] mx-auto text-[#333] tracking-widest mb-3 mt-1 opacity-90">
-               {motto}
-            </p>
-            
-            {/* Light text block */}
-            <p className="text-[10px] uppercase tracking-[0.2em] text-[#888] font-semibold opacity-70">
-               {subtitle}
-            </p>
           </div>
-        </motion.div>
-
-        {/* Grouped Bottom Elements */}
-        <div className="flex flex-col w-full shrink-0 gap-3">
-          {/* Widgets Row */}
-          <div className="grid grid-cols-2 gap-3 shrink-0">
-          {/* Music Widget */}
-          <motion.div 
-            className="backdrop-blur-xl border border-white/60 rounded-[24px] p-4 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.06)] flex flex-col transition-colors duration-500 relative -mt-[1px]"
-            style={{ backgroundColor: currentThemeConfig.cardBg }}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-          >
-            <div className="flex justify-between items-center mb-2">
-               <div className="text-[10px] flex items-center gap-1" style={{color: currentThemeConfig.textSecondary}}>
-                 {playQueue.length > 0 ? (isMusicPlaying ? '播放中' : '已暂停') : '未添加音乐'}
-                 {activePlaylist !== '全部' && <span className="bg-black/5 px-1.5 py-0.5 rounded-sm">{activePlaylist}</span>}
-               </div>
-               <button onClick={() => setView('music_manager')} className="w-6 h-6 rounded-full bg-black/5 flex items-center justify-center hover:bg-black/10 active:scale-95 transition-all">
-                  <ListMusic size={12} style={{color: currentThemeConfig.textSecondary}} />
-               </button>
-            </div>
-            <div className="font-medium text-[12px] mb-0.5 truncate text-[#333]" style={{color: currentThemeConfig.textPrimary}}>
-              {playQueue.length > 0 ? playQueue[currentMusicIndex >= playQueue.length ? 0 : currentMusicIndex].name : '无音乐'}
-            </div>
-            <div className="text-[10px] mb-3 truncate" style={{color: currentThemeConfig.textSecondary}}>
-              {playQueue.length > 0 ? playQueue[currentMusicIndex >= playQueue.length ? 0 : currentMusicIndex].artist : 'No Artist'}
-            </div>
-            
-            <div className="w-full h-[3px] bg-black/5 rounded-full mb-4 relative mt-auto overflow-hidden">
-              <div className="absolute left-0 top-0 h-full rounded-full transition-all duration-300" style={{backgroundColor: currentThemeConfig.textSecondary, width: `${audioProgress * 100}%`}}></div>
-            </div>
-            
-            <div className="flex justify-between items-center px-1">
-              <button onClick={prevMusic} className="w-7 h-7 rounded-full bg-black/[0.03] flex items-center justify-center transition-colors hover:bg-black/[0.06] active:scale-95" style={{color: currentThemeConfig.textSecondary}}>
-                 <SkipBack size={12} fill="currentColor" />
-              </button>
-              <button onClick={toggleMusicPlay} className="w-8 h-8 rounded-full bg-black/[0.04] flex items-center justify-center transition-colors hover:bg-black/[0.07] active:scale-95" style={{color: currentThemeConfig.textSecondary}}>
-                 {isMusicPlaying ? <Pause size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" className="ml-0.5" />}
-              </button>
-              <button onClick={nextMusic} className="w-7 h-7 rounded-full bg-black/[0.03] flex items-center justify-center transition-colors hover:bg-black/[0.06] active:scale-95" style={{color: currentThemeConfig.textSecondary}}>
-                 <SkipForward size={12} fill="currentColor" />
-              </button>
-            </div>
-          </motion.div>
-
-          {/* Anniversary Widget */}
-          <motion.div 
-            className="backdrop-blur-xl border border-white/60 rounded-[24px] py-5 px-4 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.06)] flex flex-col justify-between items-center transition-colors duration-500 relative overflow-hidden -mt-[1px]"
-            style={{ backgroundColor: currentThemeConfig.cardBg }}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-          >
-            <div className="text-[12px] tracking-widest flex items-center justify-center font-medium" style={{color: currentThemeConfig.textSecondary}}>
-              <span>在一起已经</span>
-            </div>
-            
-            <div className="text-[46px] leading-[1] italic font-normal tracking-tight mb-2 mt-0" style={{color: currentThemeConfig.textPrimary, fontFamily: '"Playfair Display", "Georgia", "Times New Roman", serif'}}>
-              {getDaysTogether()}
-            </div>
-            
-            <div className="relative w-full flex justify-center">
-              <input 
-                type="date" 
-                value={anniversaryDate}
-                onChange={(e) => setAnniversaryDate(e.target.value)}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-              />
-              <div 
-                className="text-[11px] font-medium tracking-wider" 
-                style={{color: currentThemeConfig.textSecondary, fontFamily: 'system-ui, -apple-system, sans-serif'}}
-              >
-                {getFormattedDate(anniversaryDate)}
-              </div>
-            </div>
-          </motion.div>
-        </div>
-
-        {/* Apps Grid */}
-        <motion.div 
-          className="grid grid-cols-4 gap-y-3 gap-x-3 pt-1 pb-1 shrink-0 px-1"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          {apps.map((app, idx) => (
-            <div 
-              key={app.name} 
-              className="flex flex-col items-center gap-1.5 cursor-pointer group opacity-80 hover:opacity-100 transition-opacity"
-              onClick={() => {
-                if (app.name === '心情便签') setView('decide');
-                if (app.name === '聊天') setView('chat');
-                if (app.name === '朋友圈') setView('moments');
-                if (app.name === '书影音记录') setView('wishlist');
-                if (app.name === '查岗') setView('check_in');
-                if (app.name === '记账') setView('accounting');
-                if (app.name === 'Todo') setView('todo');
-                if (app.name === '信箱') setView('mailbox');
-              }}
-            >
-              <div 
-                className="w-[66px] h-[66px] rounded-[22px] backdrop-blur-md shadow-[0_4px_20px_-6px_rgba(0,0,0,0.06)] flex items-center justify-center transition-all group-active:scale-95"
-                style={{ 
-                   color: currentThemeConfig.textSecondary,
-                   backgroundColor: `rgba(255, 255, 255, ${appOpacity / 100})`,
-                   border: `1px solid rgba(255, 255, 255, ${appOpacity / 100})`
-                }}
-              >
-                <app.icon size={28} strokeWidth={1.5} />
-              </div>
-              <span className="text-[12px] font-medium" style={{ color: currentThemeConfig.textSecondary }}>{app.name}</span>
-            </div>
-          ))}
-        </motion.div>
-
-        {/* Bottom Tools Pill */}
-        <motion.div 
-          className="backdrop-blur-xl border border-white/60 rounded-[40px] p-2.5 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.06)] grid grid-cols-4 shrink-0 items-center justify-items-center transition-colors duration-500 mb-0"
-          style={{ backgroundColor: currentThemeConfig.cardBg }}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25 }}
-        >
-          {tools.map(tool => (
-            <div 
-              key={tool.name} 
-              className="flex flex-col items-center justify-center gap-1.5 cursor-pointer group"
-              onClick={() => {
-                if (tool.name === '外观设置') setView('appearance');
-                if (tool.name === '字卡库') setView('library');
-                if (tool.name === '数据管理') setView('data');
-                if (tool.name === '聊天设置') setView('chat_settings');
-              }}
-            >
-              <div 
-                className="w-[48px] h-[48px] rounded-[16px] bg-white/50 backdrop-blur-md border border-white/80 shadow-[0_4px_12px_-6px_rgba(0,0,0,0.04)] flex items-center justify-center group-hover:bg-white/65 transition-all group-active:scale-95"
-                style={{ color: currentThemeConfig.textSecondary }}
-              >
-                <tool.icon size={22} strokeWidth={1.25} />
-              </div>
-              <span className="text-[11px] leading-none mt-0.5 font-medium" style={{ color: currentThemeConfig.textSecondary }}>{tool.name}</span>
-            </div>
-          ))}
-        </motion.div>
-        
-        </div>
-
-      </div>
       {renderOverlays()}
       {chatKeepAlive && (
         <audio 
@@ -2132,6 +2272,62 @@ export default function App() {
       </div>
       {view === "chat" && <VideoCallOverlay />}
       {view !== "chat" && renderContent()}
+
+      <AnimatePresence>
+        {showSplash && (
+          <motion.div
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.8 }}
+            className="fixed inset-0 z-[999] flex flex-col items-center justify-center overflow-hidden"
+            style={{ 
+              background: 'linear-gradient(135deg, #FFF7F9 0%, #FFFFFF 100%)' 
+            }}
+          >
+            {/* Blurry decorative background circles */}
+            <div className="absolute top-[20%] left-[10%] w-[200px] h-[200px] bg-pink-100/40 rounded-full blur-[80px]" />
+            <div className="absolute bottom-[20%] right-[10%] w-[250px] h-[250px] bg-rose-100/30 rounded-full blur-[100px]" />
+
+            <div className="flex items-center justify-center gap-4 z-10">
+              <motion.div 
+                initial={{ x: -20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ delay: 0.2, duration: 0.8 }}
+                className="w-20 h-20 rounded-full border-[3px] border-white shadow-[0_8px_16px_rgba(0,0,0,0.05)] overflow-hidden bg-white/50 flex items-center justify-center"
+              >
+                {avatar1 ? <img src={avatar1} className="w-full h-full object-cover" /> : <Cat size={32} className="text-black/30" />}
+              </motion.div>
+
+              <motion.div 
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.6, type: "spring", stiffness: 200, damping: 15 }}
+                className="text-rose-400"
+              >
+                <Activity size={32} strokeWidth={2} className="animate-pulse" />
+              </motion.div>
+
+              <motion.div 
+                initial={{ x: 20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ delay: 0.4, duration: 0.8 }}
+                className="w-20 h-20 rounded-full border-[3px] border-white shadow-[0_8px_16px_rgba(0,0,0,0.05)] overflow-hidden bg-white/50 flex items-center justify-center"
+              >
+                {avatar2 ? <img src={avatar2} className="w-full h-full object-cover" /> : <Cat size={32} className="text-black/30" />}
+              </motion.div>
+            </div>
+            
+            <motion.div 
+              initial={{ y: 10, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 1, duration: 0.5 }}
+              className="mt-8 text-[14px] tracking-[0.3em] font-medium text-black/40 uppercase"
+            >
+              Loading
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }

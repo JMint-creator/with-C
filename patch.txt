@@ -1,0 +1,32 @@
+--- src/App.tsx
++++ src/App.tsx
+@@ -2128,4 +2128,26 @@
+                     </div>
+                   ))}
+                 </motion.div>
++
++                {/* Dynamic Beautification Widget */}
++                <motion.div
++                   className="w-[96%] mx-auto h-[105px] rounded-[24px] p-4 flex flex-col mt-4 shrink-0 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.06)] pointer-events-auto"
++                   style={{ backgroundColor: currentThemeConfig.cardBg }}
++                   initial={{ opacity: 0, y: 20 }}
++                   animate={{ opacity: 1, y: 0 }}
++                   transition={{ delay: 0.3 }}
++                >
++                   <div className="text-[12px] font-semibold tracking-wide mb-2 pl-1 outline-none pointer-events-auto leading-none" style={{ color: currentThemeConfig.textPrimary }} contentEditable suppressContentEditableWarning onBlur={(e) => setDynamicText(e.currentTarget.textContent || '')}>
++                      {dynamicText}
++                   </div>
++                   <div className="flex w-full gap-2.5 h-[52px] overflow-hidden items-stretch">
++                      <div className="flex-1 rounded-[12px] bg-black/5 overflow-hidden cursor-pointer flex items-center justify-center border border-black/5" onClick={() => dynamicImg1InputRef.current?.click()}>
++                         {dynamicImg1 ? <img src={dynamicImg1} className="w-full h-full object-cover" /> : <ImageIcon size={16} className="text-black/20" />}
++                      </div>
++                      <div className="flex-1 rounded-[12px] bg-black/5 overflow-hidden cursor-pointer flex items-center justify-center border border-black/5" onClick={() => dynamicImg2InputRef.current?.click()}>
++                         {dynamicImg2 ? <img src={dynamicImg2} className="w-full h-full object-cover" /> : <ImageIcon size={16} className="text-black/20" />}
++                      </div>
++                      <div className="flex-1 rounded-[12px] bg-black/5 overflow-hidden cursor-pointer flex items-center justify-center border border-black/5" onClick={() => dynamicImg3InputRef.current?.click()}>
++                         {dynamicImg3 ? <img src={dynamicImg3} className="w-full h-full object-cover" /> : <ImageIcon size={16} className="text-black/20" />}
++                      </div>
++                   </div>
++                </motion.div>
+               
+               </div>

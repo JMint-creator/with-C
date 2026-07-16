@@ -441,7 +441,7 @@ export const DataView: React.FC<DataViewProps> = ({ onClose, showToast }) => {
   };
 
   return (
-    <div className="absolute inset-0 bg-[#FAFAFA] flex flex-col overflow-x-hidden overflow-y-auto text-[13px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
+    <div className="absolute inset-0 bg-[#FAFAFA] flex flex-col overflow-x-hidden overflow-y-auto text-[13px]">
         
         <div 
           className="w-full flex items-center justify-between px-4 pb-3 bg-[#FAFAFA]/80 sticky top-0 z-10 border-b border-[#E5E5EA] backdrop-blur-md"

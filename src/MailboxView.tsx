@@ -344,7 +344,7 @@ export function MailboxView({
     <div 
       className="absolute inset-0 flex flex-col overflow-hidden text-[14px]" 
       style={{ 
-        fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif', 
+        
         backgroundColor: themeConfig.bg || '#F8F9FA' 
       }}
     >

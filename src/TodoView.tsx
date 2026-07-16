@@ -389,7 +389,7 @@ export function TodoView({ onClose, themeConfig, avatar2, name2, cardGroups }: T
   };
 
   return (
-    <div className="absolute inset-0 flex flex-col overflow-hidden text-[14px]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif', backgroundColor: themeConfig.bg || '#F2F2F7' }}>
+    <div className="absolute inset-0 flex flex-col overflow-hidden text-[14px]" style={{ backgroundColor: themeConfig.bg || '#F2F2F7' }}>
       
       {/* Title Header */}
       <div 
