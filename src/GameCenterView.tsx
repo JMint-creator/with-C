@@ -210,7 +210,7 @@ export function GameCenterView({
               </div>
               <div className="flex-1">
                 <div className="text-[16px] font-semibold text-inherit opacity-90">情侣飞行棋</div>
-                <div className="text-[12px] text-inherit opacity-60 mt-0.5">专属两人的私密互动小游戏</div>
+                <div className="text-[12px] text-inherit opacity-60 mt-0.5">专属两人的互动小游戏</div>
               </div>
             </div>
             

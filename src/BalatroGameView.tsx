@@ -177,7 +177,7 @@ const BUFFS = [
 const POSITIVE_BUFFS = BUFFS.filter(b => b.type === 'positive');
 
 const BOSSES = [
-  { name: 'Boss盲注 - 坚石', targetScore: 5000, description: '基础分数与倍率减半', bossEffect: '坚石' },
+  { name: 'Boss盲注 - 坚石', targetScore: 2500, description: '基础分数与倍率减半', bossEffect: '坚石' },
   { name: 'Boss盲注 - 高墙', targetScore: 10000, description: '极高的目标分数', bossEffect: '高墙' },
   { name: 'Boss盲注 - 针刺', targetScore: 2500, description: '只有 1 次出牌机会', bossEffect: '针刺' },
   { name: 'Boss盲注 - 灵媒', targetScore: 5000, description: '每次必须打出恰好 5 张牌', bossEffect: '灵媒' },
@@ -193,10 +193,13 @@ export const BalatroGameView = ({ onClose, themeConfig }: any) => {
   const [mjNickname] = useLocalState('app_mjNickname', '梦角');
   
   const [gameState, setGameState] = useState<'intro' | 'playing' | 'round_won' | 'shop' | 'game_won' | 'lost'>('intro');
-  const [rounds, setRounds] = useState<any[]>([
-    ...DEFAULT_ROUNDS,
-    { level: 3, name: 'Boss盲注 - 坚石', targetScore: 5000, description: '基础分数与倍率减半', bossEffect: '坚石' }
-  ]);
+  const [rounds, setRounds] = useState<any[]>(() => {
+    const randomBoss = BOSSES[Math.floor(Math.random() * BOSSES.length)];
+    return [
+      ...DEFAULT_ROUNDS,
+      { level: 3, ...randomBoss }
+    ];
+  });
   const [currentRoundIndex, setCurrentRoundIndex] = useState(0);
 
   const [deck, setDeck] = useState<PlayingCard[]>([]);
