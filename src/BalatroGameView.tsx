@@ -524,29 +524,42 @@ export const BalatroGameView = ({ onClose, themeConfig }: any) => {
       ) : (
         <div className="flex-1 flex flex-col relative">
           {/* Top Bar Stats */}
-          <div className="flex px-4 py-3 gap-3 bg-white/5 border-b border-white/5">
-            <div className="flex-1 bg-black/40 rounded-xl p-3 flex flex-col border border-white/5 shadow-inner">
-              <div className="flex justify-between items-center mb-1">
-                <span className="text-white/50 text-[11px] font-bold uppercase tracking-wider">分数</span>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${currentRound.bossEffect ? 'bg-red-500/20 text-red-400' : 'bg-white/10 text-white/70'}`}>
-                  {currentRoundIndex + 1}/{ROUNDS.length} {currentRound.name}
-                </span>
+          {/* Top Bar Stats */}
+          <div className="flex flex-col px-4 py-3 gap-2 bg-white/5 border-b border-white/5">
+            <div className="flex gap-3">
+              <div className="flex-1 bg-black/40 rounded-xl p-3 flex flex-col border border-white/5 shadow-inner">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-white/50 text-[11px] font-bold uppercase tracking-wider">分数</span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${currentRound.bossEffect ? 'bg-red-500/20 text-red-400' : 'bg-white/10 text-white/70'}`}>
+                    {currentRoundIndex + 1}/{rounds.length} {currentRound.name}
+                  </span>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-black text-white">{score}</span>
+                  <span className="text-white/40 text-sm">/ {currentRound.targetScore}</span>
+                </div>
               </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-black text-white">{score}</span>
-                <span className="text-white/40 text-sm">/ {currentRound.targetScore}</span>
+              
+              <div className="w-[100px] flex flex-col gap-2">
+                <div className="bg-blue-500/20 rounded-lg p-1.5 flex justify-between items-center border border-blue-500/30">
+                  <span className="text-blue-200/80 text-[11px] font-bold ml-1">出牌</span>
+                  <span className="text-blue-400 font-bold px-2">{handsLeft}</span>
+                </div>
+                <div className="bg-red-500/20 rounded-lg p-1.5 flex justify-between items-center border border-red-500/30">
+                  <span className="text-red-200/80 text-[11px] font-bold ml-1">弃牌</span>
+                  <span className="text-red-400 font-bold px-2">{discardsLeft}</span>
+                </div>
               </div>
             </div>
-            <div className="w-[100px] flex flex-col gap-2">
-              <div className="bg-blue-500/20 rounded-lg p-1.5 flex justify-between items-center border border-blue-500/30">
-                <span className="text-blue-200/80 text-[11px] font-bold ml-1">出牌</span>
-                <span className="text-blue-400 font-bold px-2">{handsLeft}</span>
+            {/* Boss Effect Mini Banner */}
+            {currentRound.bossEffect && (
+              <div className="w-full bg-red-500/20 border border-red-500/30 rounded-lg px-2 py-1.5 flex items-center justify-center gap-1.5 shadow-inner overflow-hidden">
+                 <AlertTriangle size={12} className="text-red-400 shrink-0" />
+                 <div className="text-[11px] font-bold text-red-300 truncate">
+                    ⚠️ {currentRound.bossEffect}: {currentRound.description}
+                 </div>
               </div>
-              <div className="bg-red-500/20 rounded-lg p-1.5 flex justify-between items-center border border-red-500/30">
-                <span className="text-red-200/80 text-[11px] font-bold ml-1">弃牌</span>
-                <span className="text-red-400 font-bold px-2">{discardsLeft}</span>
-              </div>
-            </div>
+            )}
           </div>
 
           {/* Buff Display */}
