@@ -45,71 +45,39 @@ const HAND_TYPES = {
   'High Card':      { chips: 5,  mult: 1, name: '高牌' },
 };
 
-const evaluateHand = (cards: PlayingCard[], buffs: any[]) => {
+const evaluateHand = (cards: PlayingCard[]) => {
   if (cards.length === 0) return { ...HAND_TYPES['High Card'], scoringCards: [] };
   
-  const hasSmeared = buffs.some(b => b.id === 'smeared');
-  const hasShortcut = buffs.some(b => b.id === 'shortcut');
-
   const ranks = cards.map(c => c.rank);
+  const suits = cards.map(c => c.suit);
+  
   const rankCounts: Record<string, number> = {};
   ranks.forEach(r => rankCounts[r] = (rankCounts[r] || 0) + 1);
   const counts = Object.values(rankCounts).sort((a, b) => b - a);
   
-  const getEffectiveSuit = (suit: string) => {
-    if (hasSmeared) {
-      if (suit === '♥' || suit === '♦') return 'red';
-      if (suit === '♠' || suit === '♣') return 'black';
-    }
-    return suit;
-  };
-  const effectiveSuits = cards.map(c => getEffectiveSuit(c.suit));
-  const minReq = hasShortcut ? 4 : 5;
-  
-  let isFlush = false;
-  let flushSuit = '';
-  if (cards.length >= minReq) {
-    const suitCounts: Record<string, number> = {};
-    effectiveSuits.forEach(s => suitCounts[s] = (suitCounts[s] || 0) + 1);
-    const flushEntry = Object.entries(suitCounts).find(([_, c]) => c >= minReq);
-    if (flushEntry) {
-      isFlush = true;
-      flushSuit = flushEntry[0];
-    }
-  }
+  const isFlush = cards.length >= 5 && suits.every(s => s === suits[0]);
   
   const rankOrder = RANKS;
-  const uniqueIndices = Array.from(new Set(ranks.map(r => rankOrder.indexOf(r)))).sort((a, b) => a - b);
+  const sortedIndices = ranks.map(r => rankOrder.indexOf(r)).sort((a, b) => a - b);
   let isStraight = false;
-  
-  if (uniqueIndices.length >= minReq) {
-    let maxSeq = 1;
-    let currentSeq = 1;
-    for (let i = 1; i < uniqueIndices.length; i++) {
-      if (uniqueIndices[i] === uniqueIndices[i-1] + 1) {
-        currentSeq++;
-        maxSeq = Math.max(maxSeq, currentSeq);
-      } else {
-        currentSeq = 1;
+  if (cards.length >= 5) {
+    isStraight = true;
+    for (let i = 1; i < sortedIndices.length; i++) {
+      if (sortedIndices[i] !== sortedIndices[i-1] + 1) {
+        isStraight = false;
+        break;
       }
     }
-    if (maxSeq >= minReq) isStraight = true;
-    
-    if (!isStraight && ranks.includes('A')) {
-      const lowStraights = hasShortcut ? ['A', '2', '3', '4'] : ['A', '2', '3', '4', '5'];
-      if (lowStraights.every(r => ranks.includes(r as Rank))) {
-        isStraight = true;
-      }
+    // Special case A-2-3-4-5
+    if (!isStraight && ranks.includes('A') && ranks.includes('2') && ranks.includes('3') && ranks.includes('4') && ranks.includes('5')) {
+      isStraight = true;
     }
   }
 
   let handType = 'High Card';
   let scoringCards = [...cards];
 
-  if (isStraight && isFlush) {
-    handType = 'Straight Flush';
-    scoringCards = cards.filter(c => getEffectiveSuit(c.suit) === flushSuit);
-  }
+  if (isStraight && isFlush) handType = 'Straight Flush';
   else if (counts[0] === 4) {
     handType = 'Four of a Kind';
     const quadRank = Object.keys(rankCounts).find(k => rankCounts[k] === 4);
@@ -121,16 +89,8 @@ const evaluateHand = (cards: PlayingCard[], buffs: any[]) => {
     const pairRank = Object.keys(rankCounts).find(k => rankCounts[k] >= 2 && k !== tripRank);
     scoringCards = cards.filter(c => c.rank === tripRank || c.rank === pairRank);
   }
-  else if (isFlush) {
-    handType = 'Flush';
-    scoringCards = cards.filter(c => getEffectiveSuit(c.suit) === flushSuit);
-  }
-  else if (isStraight) {
-    handType = 'Straight';
-    // Simplified: in real balatro it exactly extracts the straight cards, 
-    // but here we just score all selected cards for straight (as usually 4 or 5 are selected)
-    scoringCards = [...cards]; 
-  }
+  else if (isFlush) handType = 'Flush';
+  else if (isStraight) handType = 'Straight';
   else if (counts[0] === 3) {
     handType = 'Three of a Kind';
     const tripRank = Object.keys(rankCounts).find(k => rankCounts[k] === 3);
@@ -154,20 +114,16 @@ const evaluateHand = (cards: PlayingCard[], buffs: any[]) => {
 };
 
 const BUFFS = [
-  { id: 'b1', name: '心有灵犀', desc: '初始出牌次数 +1', type: 'positive', price: 15, apply: (state: any) => ({...state, handsLeft: state.handsLeft + 1}) },
-  { id: 'b2', name: '好运连连', desc: '所有得分倍率 x1.5', type: 'positive', price: 25, apply: (state: any) => ({...state, globalMult: state.globalMult * 1.5}) },
-  { id: 'b3', name: '偷偷放水', desc: '初始弃牌次数 +2', type: 'positive', price: 10, apply: (state: any) => ({...state, discardsLeft: state.discardsLeft + 2}) },
-  { id: 'b4', name: '大满足', desc: '基础分数 +50', type: 'positive', price: 15, apply: (state: any) => ({...state, baseChipsBonus: state.baseChipsBonus + 50}) },
-  { id: 'b5', name: '运筹帷幄', desc: '选牌上限变为 6 张', type: 'positive', price: 20, apply: (state: any) => ({...state, maxSelect: 6}) },
+  { id: 'b1', name: '心有灵犀', desc: '初始出牌次数 +1', type: 'positive', price: 25, apply: (state: any) => ({...state, handsLeft: state.handsLeft + 1}) },
+  { id: 'b2', name: '好运连连', desc: '所有得分倍率 x1.5', type: 'positive', price: 40, apply: (state: any) => ({...state, globalMult: state.globalMult * 1.5}) },
+  { id: 'b3', name: '偷偷放水', desc: '初始弃牌次数 +2', type: 'positive', price: 15, apply: (state: any) => ({...state, discardsLeft: state.discardsLeft + 2}) },
+  { id: 'b4', name: '大满足', desc: '基础分数 +50', type: 'positive', price: 20, apply: (state: any) => ({...state, baseChipsBonus: state.baseChipsBonus + 50}) },
+  { id: 'b5', name: '运筹帷幄', desc: '选牌上限变为 6 张', type: 'positive', price: 35, apply: (state: any) => ({...state, maxSelect: 6}) },
   
-  { id: 'smiley_face', name: '微笑表情', desc: '计分的人头牌(J,Q,K)每张 +2 倍率', type: 'positive', price: 18, apply: (state: any) => state },
-  { id: 'scary_face', name: '恐怖面孔', desc: '计分的人头牌每张 +30 分数', type: 'positive', price: 15, apply: (state: any) => state },
-  { id: 'fibonacci', name: '斐波那契', desc: '计分的 A,2,3,5,8 每张 +3 倍率', type: 'positive', price: 20, apply: (state: any) => state },
-  { id: 'even_steven', name: '偶数史蒂文', desc: '计分的 2,4,6,8,10 每张 +20 分数', type: 'positive', price: 15, apply: (state: any) => state },
-  
-  { id: 'smeared', name: '模糊小丑', desc: '红心与方块、黑桃与梅花视为同花色', type: 'positive', price: 22, apply: (state: any) => state },
-  { id: 'shortcut', name: '捷径', desc: '4张牌即可组成同花或顺子', type: 'positive', price: 25, apply: (state: any) => state },
-  { id: 'four_suits', name: '贪婪小丑', desc: '任何花色计分时均 +4 倍率', type: 'positive', price: 20, apply: (state: any) => state },
+  { id: 'smiley_face', name: '微笑表情', desc: '计分的人头牌(J,Q,K)每张 +2 倍率', type: 'positive', price: 25, apply: (state: any) => state },
+  { id: 'scary_face', name: '恐怖面孔', desc: '计分的人头牌每张 +30 分数', type: 'positive', price: 20, apply: (state: any) => state },
+  { id: 'fibonacci', name: '斐波那契', desc: '计分的 A,2,3,5,8 每张 +3 倍率', type: 'positive', price: 30, apply: (state: any) => state },
+  { id: 'even_steven', name: '偶数史蒂文', desc: '计分的 2,4,6,8,10 每张 +20 分数', type: 'positive', price: 20, apply: (state: any) => state },
 
   { id: 'd1', name: '小恶魔的玩笑', desc: '初始出牌次数 -1', type: 'negative', price: 0, apply: (state: any) => ({...state, handsLeft: Math.max(1, state.handsLeft - 1)}) },
   { id: 'd2', name: '粗心大意', desc: '初始弃牌次数 -1', type: 'negative', price: 0, apply: (state: any) => ({...state, discardsLeft: Math.max(0, state.discardsLeft - 1)}) },
@@ -176,27 +132,16 @@ const BUFFS = [
 
 const POSITIVE_BUFFS = BUFFS.filter(b => b.type === 'positive');
 
-const BOSSES = [
-  { name: 'Boss盲注 - 坚石', targetScore: 5000, description: '基础分数与倍率减半', bossEffect: '坚石' },
-  { name: 'Boss盲注 - 高墙', targetScore: 10000, description: '极高的目标分数', bossEffect: '高墙' },
-  { name: 'Boss盲注 - 针刺', targetScore: 2500, description: '只有 1 次出牌机会', bossEffect: '针刺' },
-  { name: 'Boss盲注 - 灵媒', targetScore: 5000, description: '每次必须打出恰好 5 张牌', bossEffect: '灵媒' },
-  { name: 'Boss盲注 - 窗户', targetScore: 5000, description: '所有方块(♦)牌不计分', bossEffect: '窗户' }
-];
-
-const DEFAULT_ROUNDS = [
+const ROUNDS = [
   { level: 1, name: '小盲注', targetScore: 1000, description: '练手关卡', bossEffect: null },
-  { level: 2, name: '大盲注', targetScore: 2500, description: '渐入佳境', bossEffect: null }
+  { level: 2, name: '大盲注', targetScore: 2500, description: '渐入佳境', bossEffect: null },
+  { level: 3, name: 'Boss盲注 - 坚石', targetScore: 5000, description: '超高目标分数，且基础分数减半！', bossEffect: '坚石' }
 ];
 
 export const BalatroGameView = ({ onClose, themeConfig }: any) => {
   const [mjNickname] = useLocalState('app_mjNickname', '梦角');
   
   const [gameState, setGameState] = useState<'intro' | 'playing' | 'round_won' | 'shop' | 'game_won' | 'lost'>('intro');
-  const [rounds, setRounds] = useState<any[]>([
-    ...DEFAULT_ROUNDS,
-    { level: 3, name: 'Boss盲注 - 坚石', targetScore: 5000, description: '基础分数与倍率减半', bossEffect: '坚石' }
-  ]);
   const [currentRoundIndex, setCurrentRoundIndex] = useState(0);
 
   const [deck, setDeck] = useState<PlayingCard[]>([]);
@@ -220,7 +165,7 @@ export const BalatroGameView = ({ onClose, themeConfig }: any) => {
 
   const [lastPlayInfo, setLastPlayInfo] = useState<{name: string, score: number, cards: PlayingCard[]} | null>(null);
 
-  const currentRound = rounds[currentRoundIndex];
+  const currentRound = ROUNDS[currentRoundIndex];
 
   const startNewGame = () => {
     const randomBuff = BUFFS[Math.floor(Math.random() * BUFFS.length)];
@@ -307,21 +252,15 @@ export const BalatroGameView = ({ onClose, themeConfig }: any) => {
     if (handsLeft <= 0 || selectedIds.size === 0) return;
 
     const selectedCards = hand.filter(c => selectedIds.has(c.id));
+    const evalResult = evaluateHand(selectedCards);
     
-    const allBuffs = [...activeBuffs];
-    if (buff && buff.type === 'positive') allBuffs.push(buff);
-    const evalResult = evaluateHand(selectedCards, allBuffs);
-    if (currentRound.bossEffect === '窗户') {
-      evalResult.scoringCards = evalResult.scoringCards.filter(c => c.suit !== '♦');
-    }
-    
-    const cardChips = selectedCards.reduce((acc, c) => {
-      if (currentRound.bossEffect === '窗户' && c.suit === '♦') return acc;
-      return acc + c.value;
-    }, 0);
+    const cardChips = selectedCards.reduce((acc, c) => acc + c.value, 0);
     let totalChips = evalResult.chips + cardChips + baseChipsBonus;
     let totalMult = evalResult.mult * globalMult;
     
+    const allBuffs = [...activeBuffs];
+    if (buff && buff.type === 'positive') allBuffs.push(buff);
+
     allBuffs.forEach(b => {
       if (b.id === 'smiley_face') {
         const count = evalResult.scoringCards.filter(c => ['J', 'Q', 'K'].includes(c.rank)).length;
@@ -339,16 +278,11 @@ export const BalatroGameView = ({ onClose, themeConfig }: any) => {
         const count = evalResult.scoringCards.filter(c => ['2', '4', '6', '8', '10'].includes(c.rank)).length;
         totalChips += count * 20;
       }
-      if (b.id === 'four_suits') {
-        const count = evalResult.scoringCards.length;
-        totalMult += count * 4;
-      }
     });
 
     // Boss effect
     if (currentRound.bossEffect === '坚石') {
         totalChips = Math.max(1, Math.floor(totalChips / 2));
-        totalMult = Math.max(1, Math.floor(totalMult / 2));
     }
 
     const playScore = Math.floor(totalChips * totalMult);
@@ -377,7 +311,7 @@ export const BalatroGameView = ({ onClose, themeConfig }: any) => {
       setEarnedMoney(earned);
       setMoney(prev => prev + earned);
 
-      if (currentRoundIndex === rounds.length - 1) {
+      if (currentRoundIndex === ROUNDS.length - 1) {
         setTimeout(() => setGameState('game_won'), 1000);
       } else {
         setTimeout(() => setGameState('round_won'), 1000);
@@ -444,7 +378,7 @@ export const BalatroGameView = ({ onClose, themeConfig }: any) => {
       {gameState === 'intro' ? (
         <div className="flex-1 flex flex-col items-center justify-center p-6 bg-[#0F172A]">
           <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-[#F57F17] to-[#F9A825] flex items-center justify-center shadow-lg shadow-[#F57F17]/30 mb-6">
-            <span className="text-[40px]">♣</span>
+            <span className="text-[40px]">🃏</span>
           </div>
           <h2 className="text-2xl font-bold mb-3 text-white">小丑牌</h2>
           <p className="text-white/60 text-center mb-8 text-sm max-w-[260px] leading-relaxed">
@@ -573,7 +507,15 @@ export const BalatroGameView = ({ onClose, themeConfig }: any) => {
             </div>
           )}
           
-
+          {/* Boss Effect Display */}
+          {currentRound.bossEffect && (
+            <div className="mx-4 mt-2 bg-red-500/20 border border-red-500/30 rounded-xl p-3 flex items-center gap-3 shadow-lg">
+              <div className="flex-1">
+                <div className="text-[12px] text-red-300/80 mb-0.5">⚠️ 盲注效果激活</div>
+                <div className="text-[13px] font-bold text-red-200">{currentRound.bossEffect}: 基础分数减半！</div>
+              </div>
+            </div>
+          )}
 
           {/* Play Area */}
           <div className="flex-1 flex flex-col items-center justify-center py-4">
@@ -633,10 +575,10 @@ export const BalatroGameView = ({ onClose, themeConfig }: any) => {
               </button>
               <button 
                 onClick={handlePlay}
-                disabled={selectedIds.size === 0 || handsLeft <= 0 || (currentRound.bossEffect === '灵媒' && selectedIds.size !== 5)}
+                disabled={selectedIds.size === 0 || handsLeft <= 0}
                 className="flex-1 py-3.5 rounded-xl font-bold text-slate-900 transition-all disabled:opacity-30 bg-[#F57F17] active:bg-[#F9A825]"
               >
-                {currentRound.bossEffect === '灵媒' && selectedIds.size !== 5 ? '需要 5 张牌' : '出牌'}
+                出牌
               </button>
             </div>
           </div>

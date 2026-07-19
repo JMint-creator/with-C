@@ -175,7 +175,7 @@ export function GameCenterView({
           >
             <div className="flex items-center gap-4 mb-4">
               <div className="w-14 h-14 rounded-[16px] flex items-center justify-center bg-[#FFF8E1] text-[#F57F17]">
-                <span className="text-[26px]">🃏</span>
+                <span className="text-[26px]">♣</span>
               </div>
               <div className="flex-1">
                 <div className="text-[16px] font-semibold text-inherit opacity-90">小丑牌 (Balatro)</div>
