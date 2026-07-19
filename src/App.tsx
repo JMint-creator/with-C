@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { 
+import { Gamepad2, 
   MessageCircle, 
   Mail, 
   CalendarDays, 
@@ -42,7 +42,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { ChatView } from './ChatView';
 import { MomentsView } from './MomentsView';
-import { WishlistView } from './WishlistView';
+import { GameCenterView } from './GameCenterView';
 import { ChatSettingsView } from './ChatSettingsView';
 import { CheckInsView } from './CheckInsView';
 import { DataView } from './DataView';
@@ -60,7 +60,7 @@ const apps = [
   { name: '信箱', icon: Mail },
   { name: '查岗', icon: Radar },
   { name: '朋友圈', icon: Aperture },
-  { name: '书影音记录', icon: BookHeart },
+  { name: '游戏中心', icon: Gamepad2 },
   { name: '记账', icon: Wallet },
   { name: 'Todo', icon: CheckSquare },
   { name: '心情便签', icon: StickyNote },
@@ -214,7 +214,7 @@ export default function App() {
     return () => clearTimeout(timer);
   }, []);
 
-  const [view, setView] = useState<'home' | 'appearance' | 'data' | 'library' | 'decide' | 'chat' | 'chat_settings' | 'music_manager' | 'moments' | 'wishlist' | 'check_in' | 'accounting' | 'todo' | 'mailbox'>('home');
+  const [view, setView] = useState<'home' | 'appearance' | 'data' | 'library' | 'decide' | 'chat' | 'chat_settings' | 'music_manager' | 'moments' | 'game_center' | 'check_in' | 'accounting' | 'todo' | 'mailbox'>('home');
   const [appearanceTab, setAppearanceTab] = useState<'global' | 'chat' | 'component' | 'wallpaper'>('global');
 
   // Library States
@@ -299,10 +299,10 @@ export default function App() {
   const [mjHandle, setMjHandle] = useLocalState('app_mjHandle', 'mengjiao');
   const [keepaliveIcon, setKeepaliveIcon] = useIDBState('app_keepalive_icon', '');
   const [momentsBg, setMomentsBg] = useIDBState('app_moments_bg', '');
-  const [wishlistBg, setWishlistBg] = useIDBState('app_wishlist_bg', '');
+  const [game_centerBg, setGameCenterBg] = useIDBState('app_game_center_bg', '');
   const [checkinsBg, setCheckinsBg] = useIDBState('app_checkins_bg', '');
   const [appOpacity, setAppOpacity] = useLocalState('app_home_icon_opacity', 40);
-  const [wishlistCardOpacity, setWishlistCardOpacity] = useLocalState('app_wishlist_card_opacity', 85);
+  const [game_centerCardOpacity, setGameCenterCardOpacity] = useLocalState('app_game_center_card_opacity', 85);
   const [momentsStyle, setMomentsStyle] = useLocalState<'wechat' | 'weibo'>('app_moments_style', 'wechat');
   const [chatCss, setChatCss] = useIDBState('app_chatCss', '');
   const [chatFont, setChatFont] = useIDBState('app_chatFont', '');
@@ -495,7 +495,7 @@ export default function App() {
   const beautifyAvatarInputRef = useRef<HTMLInputElement>(null);
   const avatar2InputRef = useRef<HTMLInputElement>(null);
   const momentsBgInputRef = useRef<HTMLInputElement>(null);
-  const wishlistBgInputRef = useRef<HTMLInputElement>(null);
+  const game_centerBgInputRef = useRef<HTMLInputElement>(null);
   const checkinsBgInputRef = useRef<HTMLInputElement>(null);
   const chatAvatar1InputRef = useRef<HTMLInputElement>(null);
   const chatAvatar2InputRef = useRef<HTMLInputElement>(null);
@@ -676,8 +676,8 @@ export default function App() {
       bgImage = `url(${wallpaper})`;
     } else if (view === 'chat' && chatBg) {
       bgImage = `url(${chatBg})`;
-    } else if (view === 'wishlist' && wishlistBg) {
-      bgImage = `url(${wishlistBg})`;
+    } else if (view === 'game_center' && game_centerBg) {
+      bgImage = `url(${game_centerBg})`;
     } else if (view === 'check_in' && checkinsBg) {
       bgImage = `url(${checkinsBg})`;
     } else if (view === 'moments' && momentsBg) {
@@ -719,7 +719,7 @@ export default function App() {
     view, 
     wallpaper, 
     chatBg, 
-    wishlistBg, 
+    game_centerBg, 
     checkinsBg, 
     momentsBg, 
     momentsStyle
@@ -1748,7 +1748,7 @@ export default function App() {
                       <SettingItem icon={ImageIcon} label="主界面壁纸" value={wallpaper ? '已上传' : '未设置'} onClick={() => wallpaperInputRef.current?.click()} />
                       <SettingItem icon={ImageIcon} label="朋友圈背景图" value={momentsBg ? '已上传' : '未设置'} onClick={() => momentsBgInputRef.current?.click()} />
                       <SettingItem icon={ImageIcon} label="查岗背景图" value={checkinsBg ? '已上传' : '未设置'} onClick={() => checkinsBgInputRef.current?.click()} />
-                      <SettingItem icon={ImageIcon} label="书影音背景图" value={wishlistBg ? '已上传' : '未设置'} onClick={() => wishlistBgInputRef.current?.click()} hideBorder={true}/>
+                      <SettingItem icon={ImageIcon} label="游戏中心背景图" value={game_centerBg ? '已上传' : '未设置'} onClick={() => game_centerBgInputRef.current?.click()} hideBorder={true}/>
                    </div>
                 </div>
              </motion.div>
@@ -1771,7 +1771,7 @@ export default function App() {
         <input type="file" ref={beautifyAvatarInputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setBeautifyAvatar)} />
         <input type="file" ref={avatar2InputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setAvatar2)} />
         <input type="file" ref={momentsBgInputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setMomentsBg)} />
-        <input type="file" ref={wishlistBgInputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setWishlistBg)} />
+        <input type="file" ref={game_centerBgInputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setGameCenterBg)} />
         <input type="file" ref={checkinsBgInputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, setCheckinsBg)} />
         <input type="file" ref={keepaliveIconInputRef} className="hidden" accept="image/*" onChange={handleKeepaliveIconChange} />
         
@@ -1809,8 +1809,8 @@ export default function App() {
     return <><MomentsView onClose={() => setView('home')} themeConfig={currentThemeConfig} cardGroups={cardGroups} avatar1={chatAvatar1 || avatar1} avatar2={chatAvatar2 || avatar2} name1={myNickname} name2={mjNickname} bgImage={momentsBg} viewStyle={momentsStyle} /><VideoCallOverlay /></>;
   }
 
-  if (view === 'wishlist') {
-    return <><WishlistView onClose={() => setView('home')} themeConfig={currentThemeConfig} cardGroups={cardGroups} myNickname={myNickname} mjNickname={mjNickname} wishlistCardOpacity={wishlistCardOpacity} /><VideoCallOverlay /></>;
+  if (view === 'game_center') {
+    return <><GameCenterView onClose={() => setView('home')} themeConfig={currentThemeConfig} bgImage={currentBgImage} /><VideoCallOverlay /></>;
   }
 
   if (view === 'check_in') {
@@ -1831,7 +1831,7 @@ export default function App() {
 
     if (view === 'home') {
       const page1Apps = apps.filter(a => ['聊天', '信箱', '朋友圈', '心情便签'].includes(a.name));
-      const page2Apps = apps.filter(a => ['书影音记录', '记账', 'Todo', '查岗'].includes(a.name));
+      const page2Apps = apps.filter(a => ['游戏中心', '记账', 'Todo', '查岗'].includes(a.name));
 
       return (
         <div 
@@ -2115,7 +2115,7 @@ export default function App() {
                       key={app.name} 
                       className="flex flex-col items-center justify-center gap-1.5 cursor-pointer group"
                       onClick={() => {
-                        if (app.name === '书影音记录') setView('wishlist');
+                        if (app.name === '游戏中心') setView('game_center');
                         if (app.name === '查岗') setView('check_in');
                         if (app.name === '记账') setView('accounting');
                         if (app.name === 'Todo') setView('todo');
@@ -2230,8 +2230,8 @@ export default function App() {
     currentBgImage = `url(${wallpaper})`;
   } else if (view === 'chat') {
     currentBgImage = chatBg ? `url(${chatBg})` : (wallpaper ? `url(${wallpaper})` : 'none');
-  } else if (view === 'wishlist') {
-    currentBgImage = wishlistBg ? `url(${wishlistBg})` : (wallpaper ? `url(${wallpaper})` : 'none');
+  } else if (view === 'game_center') {
+    currentBgImage = game_centerBg ? `url(${game_centerBg})` : (wallpaper ? `url(${wallpaper})` : 'none');
   } else if (view === 'check_in') {
     currentBgImage = checkinsBg ? `url(${checkinsBg})` : (wallpaper ? `url(${wallpaper})` : 'none');
   } else if (view === 'todo') {
