@@ -43,13 +43,13 @@ function useLocalStorage<T>(key: string, initialValue: T): [T, (val: T | ((prev:
 
 // Custom-drawn high-quality wool ball emoji image mapping
 export const MOOD_IMAGES: Record<string, string> = {
-  excited: 'https://backup.fukit.cn/autoupload/f/s2nONsYq5NowA8qpLYF2y9iO_OyvX7mIgxFBfDMDErs/20260708/d3gw/249X260/%E5%85%B4%E5%A5%8B.png',
-  happy: 'https://backup.fukit.cn/autoupload/f/s2nONsYq5NowA8qpLYF2y9iO_OyvX7mIgxFBfDMDErs/20260708/GKGs/263X254/%E5%BC%80%E5%BF%83.png',
-  romantic: 'https://backup.fukit.cn/autoupload/f/s2nONsYq5NowA8qpLYF2y9iO_OyvX7mIgxFBfDMDErs/20260708/qzp1/237X247/%E5%BF%83%E5%8A%A8.png',
-  calm: 'https://backup.fukit.cn/autoupload/f/s2nONsYq5NowA8qpLYF2y9iO_OyvX7mIgxFBfDMDErs/20260708/OK4X/232X240/%E5%B9%B3%E9%9D%99.png',
-  sad: 'https://backup.fukit.cn/autoupload/f/s2nONsYq5NowA8qpLYF2y9iO_OyvX7mIgxFBfDMDErs/20260708/XKi5/241X238/%E4%BC%A4%E5%BF%83.png',
-  anxious: 'https://backup.fukit.cn/autoupload/f/s2nONsYq5NowA8qpLYF2y9iO_OyvX7mIgxFBfDMDErs/20260708/JIV7/242X232/%E7%84%A6%E8%99%91.png',
-  angry: 'https://backup.fukit.cn/autoupload/f/s2nONsYq5NowA8qpLYF2y9iO_OyvX7mIgxFBfDMDErs/20260708/Ot98/229X231/%E7%94%9F%E6%B0%94.png'
+  excited: 'https://aly3.tuchuangyun.top/autoupload/s2nONsYq5NowA8qpLYF2y9iO_OyvX7mIgxFBfDMDErs/20260724/OlUU/249X260/%E5%85%B4%E5%A5%8B.png',
+  happy: 'https://aly3.tuchuangyun.top/autoupload/s2nONsYq5NowA8qpLYF2y9iO_OyvX7mIgxFBfDMDErs/20260724/2RZT/263X254/%E5%BC%80%E5%BF%83.png',
+  romantic: 'https://aly3.tuchuangyun.top/autoupload/s2nONsYq5NowA8qpLYF2y9iO_OyvX7mIgxFBfDMDErs/20260724/k8lg/237X247/%E5%BF%83%E5%8A%A8.png',
+  calm: 'https://aly3.tuchuangyun.top/autoupload/s2nONsYq5NowA8qpLYF2y9iO_OyvX7mIgxFBfDMDErs/20260724/ANjW/232X240/%E5%B9%B3%E9%9D%99.png',
+  sad: 'https://aly3.tuchuangyun.top/autoupload/s2nONsYq5NowA8qpLYF2y9iO_OyvX7mIgxFBfDMDErs/20260724/G0vA/241X238/%E4%BC%A4%E5%BF%83.png',
+  anxious: 'https://aly3.tuchuangyun.top/autoupload/s2nONsYq5NowA8qpLYF2y9iO_OyvX7mIgxFBfDMDErs/20260724/72op/242X232/%E7%84%A6%E8%99%91.png',
+  angry: 'https://aly3.tuchuangyun.top/autoupload/s2nONsYq5NowA8qpLYF2y9iO_OyvX7mIgxFBfDMDErs/20260724/p2TO/229X231/%E7%94%9F%E6%B0%94.png'
 };
 
 // Custom-drawn high-quality, desaturated Morandi vector mood icons (with cute wool ball image priority!)

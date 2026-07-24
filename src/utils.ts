@@ -57,6 +57,33 @@ export function useIDBState<T>(key: string, initialValue: T): [T, Dispatch<SetSt
   return [state, setValue as Dispatch<SetStateAction<T>>];
 }
 
+export interface ParsedLyric {
+  time: number;
+  text: string;
+}
+
+export function parseLrc(lrc: string): ParsedLyric[] {
+  if (!lrc) return [];
+  const lines = lrc.split('\n');
+  const result: ParsedLyric[] = [];
+  const timeReg = /\[(\d{2}):(\d{2})\.(\d{2,3})\]/;
+  for (const line of lines) {
+    const match = timeReg.exec(line);
+    if (match) {
+      const min = parseInt(match[1], 10);
+      const sec = parseInt(match[2], 10);
+      const msStr = match[3];
+      const ms = parseInt(msStr, 10) * (msStr.length === 2 ? 10 : 1);
+      const time = min * 60 + sec + ms / 1000;
+      const text = line.replace(timeReg, '').trim();
+      if (text) {
+          result.push({ time, text });
+      }
+    }
+  }
+  return result;
+}
+
 export function compressImage(file: File, maxWidth = 2500, maxHeight = 2500, quality = 0.9): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();

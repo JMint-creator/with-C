@@ -50,9 +50,10 @@ import { AccountingView } from './AccountingView';
 import { TodoView } from './TodoView';
 import { MailboxView } from './MailboxView';
 import { MoodNotesView } from './MoodNotesView';
-import { compressImage, useIDBState } from './utils';
+import { compressImage, useIDBState, parseLrc, ParsedLyric } from './utils';
 import { VideoCallOverlay } from './VideoCallOverlay';
 import { TodoScheduler } from './TodoScheduler';
+import { GlobalMusicWidget } from './GlobalMusicWidget';
 import { get, set } from 'idb-keyval';
 
 const apps = [
@@ -334,8 +335,10 @@ export default function App() {
   const [musicList, setMusicList] = useLocalState<Array<{ id: string, name: string, artist: string, url: string, category?: string }>>('app_musicList', []);
   const [activePlaylist, setActivePlaylist] = useLocalState<string>('app_activePlaylist', '全部');
   const [currentMusicIndex, setCurrentMusicIndex] = useLocalState<number>('app_currentMusicIndex', 0);
+  const [showMusicWidget, setShowMusicWidget] = useLocalState<boolean>('app_showMusicWidget', true);
   const [isMusicPlaying, setIsMusicPlaying] = useState(false);
   const [audioProgress, setAudioProgress] = useState(0);
+  const [audioCurrentTime, setAudioCurrentTime] = useState(0);
 
   const playQueue = React.useMemo(() => {
      return activePlaylist === '全部' ? musicList : musicList.filter(m => (m.category || '默认') === activePlaylist);
@@ -354,8 +357,10 @@ export default function App() {
     const updateProgress = () => {
       if (globalAudio.duration) {
         setAudioProgress(globalAudio.currentTime / globalAudio.duration);
+        setAudioCurrentTime(globalAudio.currentTime);
       } else {
         setAudioProgress(0);
+        setAudioCurrentTime(0);
       }
     };
     const onEnded = () => {
@@ -730,6 +735,7 @@ export default function App() {
   const [addMusicArtist, setAddMusicArtist] = useState('');
   const [addMusicUrl, setAddMusicUrl] = useState('');
   const [addMusicCategory, setAddMusicCategory] = useState('');
+  const [addMusicLrc, setAddMusicLrc] = useState('');
 
   const allCategories = React.useMemo(() => {
       const cats = musicList.map(m => m.category || '默认');
@@ -774,6 +780,12 @@ export default function App() {
                        <datalist id="music-categories">
                           {allCategories.map(cat => <option key={cat} value={cat} />)}
                        </datalist>
+                       <textarea
+                          placeholder="LRC 歌词 (可选)"
+                          value={addMusicLrc}
+                         onChange={e => setAddMusicLrc(e.target.value)}
+                         className="w-full bg-white rounded-lg px-3 py-2 text-[13px] border border-black/5 h-[60px] resize-none focus:outline-none focus:border-black/20"
+                       />
                        <span className="text-[10px] text-black/50 px-1 -mt-1 leading-tight">注意：必须是能够直接播放的原始音频链接。如果是普通网页或网盘分享链接将无法播放。</span>
                     </div>
                     <div className="flex w-full border-t border-[#3c3c43]/20">
@@ -788,12 +800,14 @@ export default function App() {
                                 name: addMusicName,
                                 artist: addMusicArtist,
                                 url: addMusicUrl,
-                                category: addMusicCategory || '默认'
+                                category: addMusicCategory || '默认',
+                                lrc: addMusicLrc
                             }]);
                             setAddMusicName('');
                             setAddMusicArtist('');
                             setAddMusicUrl('');
                             setAddMusicCategory('');
+                            setAddMusicLrc('');
                             setShowAddMusicModal(false);
                             showToast('添加成功');
                         }}>添加</button>
@@ -1406,6 +1420,16 @@ export default function App() {
 
         <div className="px-4 py-4 max-w-2xl mx-auto w-full">
           <div className="mb-6">
+             <div className="text-[12px] text-[#6d6d72] ml-4 mb-2 uppercase tracking-wide">播放设置</div>
+             <div className="bg-white rounded-[10px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)] px-4 py-3 relative flex items-center justify-between mb-4">
+                <span className="text-[15px] font-medium">全局黑胶 CD 悬浮窗</span>
+                <input 
+                    type="checkbox" 
+                    checked={showMusicWidget} 
+                    onChange={(e) => setShowMusicWidget(e.target.checked)} 
+                    className="w-[48px] h-[28px] rounded-full appearance-none bg-[#E5E5EA] checked:bg-[#34C759] relative transition-colors duration-200 cursor-pointer before:content-[''] before:absolute before:w-[24px] before:h-[24px] before:bg-white before:rounded-full before:top-[2px] before:left-[2px] checked:before:translate-x-[20px] before:transition-transform before:duration-200 before:shadow-[0_1px_3px_rgba(0,0,0,0.2)] outline-none"
+                />
+             </div>
              <div className="text-[12px] text-[#6d6d72] ml-4 mb-2 uppercase tracking-wide">当前播放歌单</div>
              <div className="bg-white rounded-[10px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)] px-3 relative">
                 <select 
@@ -2328,6 +2352,17 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
+      <GlobalMusicWidget 
+        playQueue={playQueue}
+        currentMusicIndex={currentMusicIndex}
+        isMusicPlaying={isMusicPlaying}
+        toggleMusicPlay={toggleMusicPlay}
+        prevMusic={prevMusic}
+        nextMusic={nextMusic}
+        audioCurrentTime={audioCurrentTime}
+        audioProgress={audioProgress}
+        showMusicWidget={showMusicWidget}
+      />
     </>
   );
 }
