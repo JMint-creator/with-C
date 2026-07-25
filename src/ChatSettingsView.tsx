@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { ChevronLeft, MessageCircle, RotateCcw, CheckSquare, EyeOff, Keyboard, Clock, Phone, Send, Smile, Volume2, Bell, MessageSquare, Hand } from 'lucide-react';
+import { ChevronLeft, MessageCircle, RotateCcw, CheckSquare, EyeOff, Keyboard, Clock, Phone, Send, Smile, Volume2, Bell, MessageSquare, Hand, Music } from 'lucide-react';
 import { useLocalState, useIDBState } from './utils';
 
 export const ChatSettingsView = ({ onClose, themeConfig }: { onClose: () => void, themeConfig: any }) => {
@@ -24,6 +24,7 @@ export const ChatSettingsView = ({ onClose, themeConfig }: { onClose: () => void
   const [keepAlive, setKeepAlive] = useLocalState('app_chatKeepAlive', false);
   const [keepaliveAudio, setKeepaliveAudio] = useIDBState('app_keepalive_audio', '');
   const [pushNotify, setPushNotify] = useLocalState('app_chatPushNotify', true);
+  const [mjAllowRandomMusicSwitch, setMjAllowRandomMusicSwitch] = useLocalState<boolean>('app_mjAllowRandomMusicSwitch', true);
 
   const handleAudioUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
       if (e.target.files && e.target.files[0]) {
@@ -226,6 +227,23 @@ export const ChatSettingsView = ({ onClose, themeConfig }: { onClose: () => void
                     </div>
                   </div>
                 )}
+              </div>
+            </div>
+
+            {/* 互动设置 */}
+            <div>
+              <div className="text-[12px] font-medium text-[#8E8E93] mb-3 px-1 tracking-wide uppercase">互动设置</div>
+              <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-[#F2F2F7]">
+                <div className="px-5 py-4.5 flex items-center justify-between">
+                  <div className="flex items-center space-x-3.5 pr-2">
+                    <div className="w-[36px] h-[36px] rounded-[10px] flex items-center justify-center shrink-0" style={{ backgroundColor: `${primaryColor}15`, color: primaryColor }}><Music size={18} /></div>
+                    <div>
+                      <div className="text-[15px] font-medium text-[#333]">允许梦角随机切歌</div>
+                      <div className="text-[12px] text-[#8e8e93] mt-0.5 leading-snug">开启后，梦角会在听歌时偶尔为你切换好听的歌曲</div>
+                    </div>
+                  </div>
+                  <Switch checked={mjAllowRandomMusicSwitch} onChange={setMjAllowRandomMusicSwitch} color={primaryColor} />
+                </div>
               </div>
             </div>
 

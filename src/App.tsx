@@ -434,6 +434,7 @@ export default function App() {
 
   // Dream character active song-switching
   const [mjMusicSessionActive, setMjMusicSessionActive] = useLocalState<boolean>('app_mj_music_session_active', false);
+  const [mjAllowRandomMusicSwitch, setMjAllowRandomMusicSwitch] = useLocalState<boolean>('app_mjAllowRandomMusicSwitch', true);
 
   useEffect(() => {
     const handleStartSession = () => setMjMusicSessionActive(true);
@@ -447,11 +448,11 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!isMusicPlaying || !mjMusicSessionActive || playQueue.length <= 1) return;
+    if (!isMusicPlaying || !mjMusicSessionActive || playQueue.length <= 1 || !mjAllowRandomMusicSwitch) return;
 
-    // 每15秒有3%的概率小概率随机切歌，使听歌互动更加自然和不可预测
+    // 每60秒有1%的概率小概率随机切歌，使听歌互动更加自然和不可预测
     const interval = setInterval(() => {
-      if (Math.random() < 0.03) {
+      if (Math.random() < 0.01) {
         let nextIndex = currentMusicIndex;
         if (playQueue.length > 1) {
           while (nextIndex === currentMusicIndex) {
@@ -463,10 +464,10 @@ export default function App() {
         const songName = playQueue[nextIndex]?.name || '好听的歌';
         showToast(`🎵 ${mjNickname} 帮你切了歌，现在听《${songName}》吧～`);
       }
-    }, 15000);
+    }, 60000);
 
     return () => clearInterval(interval);
-  }, [isMusicPlaying, mjMusicSessionActive, playQueue, currentMusicIndex, mjNickname]);
+  }, [isMusicPlaying, mjMusicSessionActive, playQueue, currentMusicIndex, mjNickname, mjAllowRandomMusicSwitch]);
 
   // Global Decide State
   const [globalDecideCountdown, setGlobalDecideCountdown] = useState(0);
